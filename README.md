@@ -42,6 +42,12 @@ you one file to send: the slides only, pictures inside, with a Present button.
 - Everything runs on your machine, at `http://localhost:8790`.
 - Code: MIT. Templates: CC BY 4.0.
 
+## Recommended setup
+
+I use Decks in the Claude and Codex apps, with the deck open in the app's built-in
+browser, so the agent and I look at the same page. Models: Opus 5.5 or Sol 6.1. I haven't
+tried others yet.
+
 ## Install
 
 You need Python 3.9 or newer, Node.js 18 or newer, and git (optional; decks get version
