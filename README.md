@@ -20,6 +20,8 @@ may continue to evolve and I'm sure Claude's slide project may eventually kick m
 for now, I am putting this out there as a simple harness that you can open in Claude or
 Codex and work in iteratively.
 
+![Two charts. Then: you keep steering the model back on course ("undo this", "fix that") until it's fine. Now: the model takes your thinking past where you were headed, to a new direction.](docs/partner-not-intern.png)
+
 Decks is built that way. You say what should change, your agent changes it, and it tells
 you on the slide what it did and why. I have a tab, **Checks**, that offers some of the
 tests I teach to teams and also still run on my own slides: five- and ten-second tests,
