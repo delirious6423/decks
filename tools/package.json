@@ -1,7 +1,7 @@
 {
-  "name": "strategyu-decks-tools",
+  "name": "decks-tools",
   "private": true,
   "type": "module",
-  "description": "Headless tools for StrategyU Decks: screenshots, overflow audit, PDF export, dashboard thumbnails",
+  "description": "Headless tools for Decks: screenshots, overflow audit, PDF export, dashboard thumbnails",
   "dependencies": { "playwright-core": "1.56.1" }
 }

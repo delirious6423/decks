@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Convert a PPTX into editable native slides for a StrategyU Decks deck.
+"""Convert a PPTX into editable native slides for a Decks deck.
 
     python3 tools/pptx2native.py "<deck.pptx>" "<render-dir>" "<prefix>" --pdf deck.pdf --var CT > ct-slides.js
 
@@ -1554,7 +1554,7 @@ def parse_slides(spec):
 
 if __name__ == '__main__':
     import argparse
-    ap = argparse.ArgumentParser(description='Convert a PPTX into editable native slides for a StrategyU Decks deck.')
+    ap = argparse.ArgumentParser(description='Convert a PPTX into editable native slides for a Decks deck.')
     ap.add_argument('pptx')
     ap.add_argument('render_dir', help='folder with <prefix>-NNN.jpg renders; crops are written here too')
     ap.add_argument('prefix')

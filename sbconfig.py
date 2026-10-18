@@ -1,4 +1,4 @@
-"""Where StrategyU Decks keeps your decks, and which port it serves them on.
+"""Where Decks keeps your decks, and which port it serves them on.
 
 Settings come from, in order (later wins):
 

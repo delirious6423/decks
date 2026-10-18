@@ -1,7 +1,7 @@
-# Optional (Linux): keep StrategyU Decks running as a systemd user service.
+# Optional (Linux): keep Decks running as a systemd user service.
 # Install: see "Run it at login" in README.md. __APP__ is filled in then.
 [Unit]
-Description=StrategyU Decks
+Description=Decks
 After=network.target
 
 [Service]

@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<!-- Optional (macOS): keep StrategyU Decks running and start it at login.
+<!-- Optional (macOS): keep Decks running and start it at login.
      Install: see "Run it at login" in README.md. __APP__ and __HOME__ are filled in then. -->
 <plist version="1.0">
 <dict>
-  <key>Label</key><string>local.strategyu-decks</string>
+  <key>Label</key><string>local.decks</string>
   <key>ProgramArguments</key>
   <array>
     <string>/usr/bin/python3</string>
@@ -17,7 +17,7 @@
   </dict>
   <key>RunAtLoad</key><true/>
   <key>KeepAlive</key><true/>
-  <key>StandardOutPath</key><string>__HOME__/Library/Logs/strategyu-decks.log</string>
-  <key>StandardErrorPath</key><string>__HOME__/Library/Logs/strategyu-decks.log</string>
+  <key>StandardOutPath</key><string>__HOME__/Library/Logs/decks.log</string>
+  <key>StandardErrorPath</key><string>__HOME__/Library/Logs/decks.log</string>
 </dict>
 </plist>

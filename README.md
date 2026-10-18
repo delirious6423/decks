@@ -1,4 +1,4 @@
-# StrategyU Decks
+# Decks
 
 Agent-first slide decks. You review a deck in the browser: leave a comment under any
 slide, or click its text and edit it in place. Your coding agent (Claude Code or Codex)
@@ -25,8 +25,8 @@ You need Python 3.9 or newer, Node.js 18 or newer, and git (optional; decks get 
 history with it). macOS and Linux.
 
 ```bash
-git clone <this repository> strategyu-decks
-cd strategyu-decks
+git clone <this repository> decks
+cd decks
 ./setup.sh
 python3 server.py
 ```
@@ -62,7 +62,7 @@ copy `config.example.json` to `config.json`, or set environment variables (they 
    the deck (`.slidebuilder/state.json`), not just in your browser.
 2. **Ask Claude.** Click **Ask Claude** in the top bar. It copies a prompt that names the
    deck file and the `sb` steps. Paste it into Claude Code or Codex. With the
-   `strategyu-decks` skill installed, you can just say "process changes".
+   `decks` skill installed, you can just say "process changes".
 3. **The agent works.** It runs `sb comments` and `sb edits`, changes the deck file, and
    replies on each slide with `sb reply`. You see "Claude working" on the slide and a live
    status line in the top bar.
@@ -189,12 +189,12 @@ only leaves the dashboard, and its files stay where they are.
 
 ## Use it with your agent
 
-The agent instructions are in `.claude/skills/strategyu-decks/SKILL.md`: the round
+The agent instructions are in `.claude/skills/decks/SKILL.md`: the round
 procedure, the `sb` commands, how the deck file is organized, and slide style rules.
 
 - **Claude Code** finds the skill on its own when you start it in this folder. To use it
   from anywhere, copy it to your user skills:
-  `mkdir -p ~/.claude/skills && cp -r .claude/skills/strategyu-decks ~/.claude/skills/`
+  `mkdir -p ~/.claude/skills && cp -r .claude/skills/decks ~/.claude/skills/`
 - **Codex** and other agents read `AGENTS.md` in this folder, which points to the same
   file.
 
@@ -227,19 +227,19 @@ Run from this folder (or by its full path). It talks to the running server.
 macOS (launchd):
 
 ```bash
-sed -e "s|__APP__|$PWD|g" -e "s|__HOME__|$HOME|g" contrib/strategyu-decks.plist > ~/Library/LaunchAgents/local.strategyu-decks.plist
-launchctl load ~/Library/LaunchAgents/local.strategyu-decks.plist
+sed -e "s|__APP__|$PWD|g" -e "s|__HOME__|$HOME|g" contrib/decks.plist > ~/Library/LaunchAgents/local.decks.plist
+launchctl load ~/Library/LaunchAgents/local.decks.plist
 ```
 
-Restart it with `launchctl kickstart -k gui/$(id -u)/local.strategyu-decks`; the log is
-`~/Library/Logs/strategyu-decks.log`.
+Restart it with `launchctl kickstart -k gui/$(id -u)/local.decks`; the log is
+`~/Library/Logs/decks.log`.
 
 Linux (systemd user service):
 
 ```bash
 mkdir -p ~/.config/systemd/user
-sed "s|__APP__|$PWD|g" contrib/strategyu-decks.service > ~/.config/systemd/user/strategyu-decks.service
-systemctl --user enable --now strategyu-decks
+sed "s|__APP__|$PWD|g" contrib/decks.service > ~/.config/systemd/user/decks.service
+systemctl --user enable --now decks
 ```
 
 ## How it works
@@ -287,4 +287,4 @@ API (what `sb` uses):
 ## License
 
 The code is MIT (`LICENSE`). The template content (the slides, their wording, and their
-notes) is CC BY 4.0 (`LICENSE-templates`). Decks you make are yours. Fonts and the StrategyU name: `NOTICE`.
+notes) is CC BY 4.0 (`LICENSE-templates`). Decks you make are yours. Fonts: `NOTICE`.

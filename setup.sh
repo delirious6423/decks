@@ -1,5 +1,5 @@
 #!/bin/sh
-# One-time setup for StrategyU Decks on macOS or Linux.
+# One-time setup for Decks on macOS or Linux.
 # The server itself needs only Python 3. This installs what `sb shot`, `sb audit`,
 # `sb export`, and the dashboard thumbnails use: playwright-core (in tools/) and
 # Chrome for Testing (in Playwright's cache: ~/Library/Caches/ms-playwright on macOS,

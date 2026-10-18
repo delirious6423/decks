@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""sb: the agent's command line for StrategyU Decks (Claude Code, Codex, or you).
+"""sb: the agent's command line for Decks (Claude Code, Codex, or you).
 
   sb decks                                  every deck, with open comments
   sb comments <deck> [--all]                comments to act on (numbered like the deck); --all adds drafts
@@ -16,7 +16,7 @@
   sb commit <deck> <message>                save the deck folder to version history
   sb url <deck>
   sb hide <deck> / sb show <deck>           take a deck off the dashboard (into Hidden), or put it back
-  sb delete <deck> --yes                    a deck StrategyU Decks made: its folder goes to the Trash;
+  sb delete <deck> --yes                    a deck this app made: its folder goes to the Trash;
                                             a deck in a folder of your own: leaves the registry, files stay
   sb templates                              the templates a new deck can start from
   sb new "<name>" [--template id] [--audience A] [--audience-type T] [--knows K] [--use U] [--length L]
@@ -56,7 +56,7 @@ def call(method, path, data=None):
         except Exception: msg = str(e)
         sys.exit(f"{msg} ({method} {path}). Try: sb decks" if e.code == 404 else msg)
     except urllib.error.URLError as e:
-        sys.exit(f'StrategyU Decks server not reachable at {BASE} ({e}). Start it: python3 {APP / "server.py"}')
+        sys.exit(f'Decks server not reachable at {BASE} ({e}). Start it: python3 {APP / "server.py"}')
 
 
 def node(*args):
@@ -235,17 +235,17 @@ def main(argv):
     elif cmd in ('hide', 'show', 'delete'):
         if cmd == 'delete' and '--yes' not in rest:
             d = next((x for x in call('GET', '/api/decks')['decks'] if x['slug'] == slug), None)
-            what = f"moves {d['trashes']} to the Trash" if d and d.get('trashes') else 'removes it from StrategyU Decks; its files stay where they are'
+            what = f"moves {d['trashes']} to the Trash" if d and d.get('trashes') else 'removes it from the dashboard; its files stay where they are'
             sys.exit(f"sb delete {slug} {what}. Run it again with --yes to go ahead.")
         r = call('POST', f'/api/decks/{slug}/manage', {'op': cmd})
         print({'hide': f'Hidden: {slug} (sb show {slug} brings it back).', 'show': f'Back on the dashboard: {slug}.'}.get(cmd)
-              or (f"Deleted {slug}: its folder is in the Trash ({r['trashed']})." if r.get('trashed') else f'Removed {slug} from StrategyU Decks. Its files are untouched.'))
+              or (f"Deleted {slug}: its folder is in the Trash ({r['trashed']})." if r.get('trashed') else f'Removed {slug} from the dashboard. Its files are untouched.'))
     elif cmd == 'thumb':
         _, path = folder(slug)
         print(node('thumb', slug, str(path / '.slidebuilder' / 'thumb.png')), end='')
     elif cmd == 'commit':
         _, path = folder(slug)
-        msg = ' '.join(rest) or 'StrategyU Decks round'
+        msg = ' '.join(rest) or 'Decks round'
         subprocess.run(['git', '-C', str(path), 'add', '-A'], check=True)
         res = subprocess.run(['git', '-C', str(path), 'commit', '-q', '-m', msg], capture_output=True, text=True)
         print(res.stdout.strip() or res.stderr.strip() or 'committed')

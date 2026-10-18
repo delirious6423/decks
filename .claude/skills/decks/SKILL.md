@@ -1,15 +1,15 @@
 ---
-name: strategyu-decks
-description: Run feedback rounds and build slides in StrategyU Decks, HTML slide decks reviewed in the browser at http://localhost:8790 (or the configured port). Use when the user says "process changes", "read my feedback", "check my comments", pastes an "Ask Claude" prompt from a deck, asks to find, open, or export a deck, or wants a new deck built. Covers the round procedure, the sb command line, the deck file, and slide style rules.
+name: decks
+description: Run feedback rounds and build slides in Decks, HTML slide decks reviewed in the browser at http://localhost:8790 (or the configured port). Use when the user says "process changes", "read my feedback", "check my comments", pastes an "Ask Claude" prompt from a deck, asks to find, open, or export a deck, or wants a new deck built. Covers the round procedure, the sb command line, the deck file, and slide style rules.
 ---
 
-# StrategyU Decks
+# Decks
 
 The user reviews a deck in the browser. They type a comment under a slide (or edit text right on it), then say "process changes" or click **Ask Claude** in the deck, which copies a prompt naming the deck file and the `sb` steps below; treat that prompt as "process changes" for that deck. You act on every comment, reply on the slide itself, check your work, and export. Keep the chat summary short: the replies on the slides carry the detail.
 
 ## Where things are
 
-- The app folder is the StrategyU Decks repository: the folder this skill ships in (`.claude/skills/strategyu-decks/` inside it), or, for a copy of this skill in `~/.claude/skills/`, wherever the user cloned it. The Ask Claude prompt names it. It has `server.py`, the `sb` command line, the browser shell in `static/`, templates in `templates/`, and headless tools in `tools/`. Run `sb` from there: `./sb ...`.
+- The app folder is the Decks repository: the folder this skill ships in (`.claude/skills/decks/` inside it), or, for a copy of this skill in `~/.claude/skills/`, wherever the user cloned it. The Ask Claude prompt names it. It has `server.py`, the `sb` command line, the browser shell in `static/`, templates in `templates/`, and headless tools in `tools/`. Run `sb` from there: `./sb ...`.
 - The server: `python3 server.py`, at http://localhost:8790/ unless `config.json` or `SB_PORT` says otherwise. If `sb` says the server is not reachable, start it (in the background) and try again. `sb` finds it at `SB_URL`, or at the configured port.
 - Decks live in the decks folder (default `~/slide-decks`), one folder per deck, listed in `decks.json` there. `./sb decks` lists them with their addresses.
 - Open a deck at `http://localhost:<port>/d/<slug>/<entry>`. `#s=<slide-id>` jumps to a slide, and `#v=<version>&s=<id>` picks a version.
@@ -54,7 +54,7 @@ The user reviews a deck in the browser. They type a comment under a slide (or ed
 
 New comments can arrive while you work. Run `./sb comments` again before finishing.
 
-The reviewer clears handled comments with "Looks good". Don't add them to `DONE_FB`; that list is only for copies opened outside StrategyU Decks, such as a file sent to someone else.
+The reviewer clears handled comments with "Looks good". Don't add them to `DONE_FB`; that list is only for copies opened outside Decks, such as a file sent to someone else.
 
 ## The deck file
 
