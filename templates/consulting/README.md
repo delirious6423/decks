@@ -1,5 +1,8 @@
 # Consulting starter
 
+These slides are converted from the StrategyU [free consulting PowerPoint templates](https://strategyu.co/strategy-consulting-powerpoint-templates/)
+(100+ slides). Download those for the full library in PowerPoint.
+
 A guided storyline in eight slides, in the order a consulting-style deck usually runs:
 
 1. Cover: the question the deck answers, or the answer itself

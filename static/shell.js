@@ -103,6 +103,8 @@
   proxy('#save-copy', 'Editable copy: with notes and comments');
   proxy('#copy-edits', 'Copy edits');
   proxy('#notes-toggle', 'Show facilitator notes (scroll view)');
+  { const b = h('button', null, 'Made by StrategyU ↗'); b.title = 'Decks is made by Paul Millerd at StrategyU, where he teaches the consulting method it is built on';
+    b.addEventListener('click', () => { more.classList.remove('open'); window.open('https://strategyu.co/?utm_source=decks&utm_medium=app&utm_campaign=deck-menu', '_blank', 'noopener'); }); moreBox.appendChild(b); }
   const help = h('div'); help.id = 'sb-help';
   help.innerHTML = `<h4>How this works</h4><ul>
     <li>Click any text on a slide to edit it. It saves to disk as you type.</li>

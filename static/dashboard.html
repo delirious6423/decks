@@ -128,6 +128,8 @@
   .howto .x { border: 0; background: none; font-size: 20px; line-height: 1; color: var(--faint); cursor: pointer; padding: 0 2px; }
   @media (max-width: 900px) { .howto { grid-template-columns: minmax(0, 1fr); } }
   .empty { color: var(--faint); font-size: 13px; padding: 6px 2px; }
+  .side a, footer a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+  .side a:hover, footer a:hover { color: var(--red); }
   footer { max-width: 1180px; margin: -40px auto 0; padding: 0 22px 28px; font-size: 12px; color: var(--faint); }
 </style>
 </head>
@@ -203,9 +205,10 @@
   <aside>
     <h2>Recent rounds</h2><div id="rounds"><div class="empty">No rounds yet.</div></div>
     <h2>Server</h2><div class="side" id="server"></div>
+    <h2>About</h2><div class="side" id="about">Decks is made by Paul Millerd at <a href="https://strategyu.co/?utm_source=decks&utm_medium=app&utm_campaign=dashboard" target="_blank" rel="noopener">StrategyU</a>, where he teaches the consulting method it is built on. The consulting template comes from his <a href="https://strategyu.co/strategy-consulting-powerpoint-templates/?utm_source=decks&utm_medium=app&utm_campaign=dashboard" target="_blank" rel="noopener">free consulting PowerPoint templates</a>.</div>
   </aside>
 </main>
-<footer>Decks · <a href="https://github.com/paulmil11/decks/blob/main/LICENSE" target="_blank" rel="noopener">MIT license</a></footer>
+<footer>Decks · <a href="https://github.com/paulmil11/decks/blob/main/LICENSE" target="_blank" rel="noopener">MIT license</a> · Made by <a href="https://strategyu.co/?utm_source=decks&utm_medium=app&utm_campaign=footer" target="_blank" rel="noopener">StrategyU</a></footer>
 <script>
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const ago = (t) => { if (!t) return ''; const s = Date.now() / 1000 - t; if (s < 90) return 'just now'; if (s < 3600) return Math.round(s / 60) + ' min ago'; if (s < 86400) return Math.round(s / 3600) + 'h ago'; return new Date(t * 1000).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }); };

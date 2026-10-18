@@ -192,7 +192,7 @@ Templates (`templates/<id>/`):
 
 | Template | What it is |
 |---|---|
-| `consulting` | A guided storyline in eight slides: cover, executive summary, storyline, hypothesis tree, ghost chart, 2x2, plan, next steps. Every line says what goes there. |
+| `consulting` | A guided storyline in eight slides: cover, executive summary, storyline, hypothesis tree, ghost chart, 2x2, plan, next steps. Every line says what goes there. Built on my [free consulting PowerPoint templates](https://strategyu.co/strategy-consulting-powerpoint-templates/), 100+ slides you can also download for PowerPoint. |
 | `talk` | An opening, three parts with dividers, and a close |
 | `workshop` | A training day: agenda, modules, practice, breaks, and a facilitator pack |
 | `proposal` | Situation, approach, team, fees, next steps |
