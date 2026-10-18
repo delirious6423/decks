@@ -18,7 +18,17 @@
       notes: 'Basic layout from Add a slide. Only real quotes from a source you have open, attributed to who actually said them.' },
     'basic-section': { cat: C, alt: true, lib: true, layout: 'section', dark: true, n: '', mod: 'New part', short: 'New part', title: 'The next part of the argument', able: 'One line on what this part shows.', notes: D },
     'basic-question': { cat: C, alt: true, lib: true, layout: 'reflect', title: 'A question for the group', q: 'A plain question about the group’s own work', subq: 'Give them a minute to think before anyone answers.', notes: D },
+    'basic-picture': { cat: C, alt: true, lib: true, layout: 'picture', title: 'Put the point in the title, and let the picture prove it',
+      body: ['One or two lines on what to notice in the picture.', 'Click the picture to put your own in, or drop an image on it.'], notes: D },
+    'basic-pictures': { cat: C, alt: true, lib: true, layout: 'pictures', title: 'Two pictures side by side make a difference easy to see',
+      pics: [{ cap: 'Before: what it looked like' }, { cap: 'After: what changed' }], notes: D },
+    'basic-photo': { cat: C, alt: true, lib: true, layout: 'photofull', title: 'A full-screen photo, with the point said plainly on it',
+      sub: 'Click the photo to put your own in.', notes: D },
     'basic-exercise': { cat: C, alt: true, lib: true, layout: 'breakout', lab: 'Practice', time: '15', setup: '<b>Pairs</b>Who works with whom.',
       title: 'What each pair or team does, in one sentence', steps: ['The first instruction, one plain sentence.', 'The second instruction.', 'How they share back.'], notes: D },
+  });
+  // up to six of each, so a deck can have several picture or point slides without editing the file
+  Object.keys(LIBRARY).filter((k) => LIBRARY[k].lib && !LIBRARY[k].copyOf).forEach((k) => {
+    for (let n = 2; n <= 6; n++) LIBRARY[`${k}-${n}`] = Object.assign({}, LIBRARY[k], { copyOf: k });
   });
 })();

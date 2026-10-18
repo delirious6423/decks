@@ -1318,7 +1318,7 @@
   .l-ways3 .wc.green .wh { background: var(--accent); }
   .l-ways3 .wc.lime .wh { background: var(--lime); color: var(--ink); }
   .l-ways3 .good { background: #F7ECEC; padding: .65rem 1.1rem .7rem; border-bottom: 1px solid #EBD3D5; }
-  .l-ways3 .good .gl { display: block; font-size: .72rem; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); margin-bottom: .15rem; }
+  .l-ways3 .good .gl { display: block; font-size: .8rem; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); margin-bottom: .15rem; }
   .l-ways3 .good .gt { font-size: 1.18rem; font-weight: 700; color: var(--ink); line-height: 1.3; }
   .l-ways3 ul { margin: .8rem 0 0; padding: 0 1.1rem 0 2.1rem; }
   .l-ways3 li { font-size: 1.02rem; line-height: 1.38; color: var(--text); margin-bottom: .35rem; }
@@ -1425,6 +1425,26 @@
   .slide.l-section .sec-step span { display: block; font-size: .86rem; line-height: 1.3; color: var(--div-fg); opacity: .6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .slide.l-section .sec-step.on span { opacity: 1; font-weight: 700; }
   .slide.l-section .logo { filter: brightness(0) invert(1); opacity: .8; }
+
+  /* picture layouts (Slide Builder): the picture sits in an editable box, so replacing it saves like any edit */
+  .slide.l-picture, .slide.l-pictures { padding: 2.6rem 3.4rem 3.2rem; }
+  .slide.l-picture .h-title, .slide.l-pictures .h-title { font-size: 2.1rem; margin: 0 0 1.4rem; }
+  .slide.l-picture .pic-row { display: flex; gap: 2.4rem; flex: 1; min-height: 0; }
+  .slide.l-picture .pic-row.right { flex-direction: row-reverse; }
+  .slide.l-picture .pic { flex: 0 0 56%; }
+  .slide.l-picture .pic-text { flex: 1; display: flex; flex-direction: column; justify-content: center; }
+  .slide:is(.l-picture, .l-pictures, .l-photofull) .pic { position: relative; border-radius: 6px; overflow: hidden; background: var(--paper); min-height: 0; outline: none; caret-color: transparent; cursor: pointer; }
+  .slide:is(.l-picture, .l-pictures, .l-photofull) .pic img { display: block; width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
+  .slide.l-pictures .pics-row { display: flex; gap: 1.8rem; flex: 1; min-height: 0; }
+  .slide.l-pictures .pics-col { flex: 1; display: flex; flex-direction: column; gap: .8rem; min-height: 0; }
+  .slide.l-pictures .pics-col .pic { flex: 1; }
+  .slide.l-pictures .pic-cap { font-size: 1.05rem; line-height: 1.4; color: var(--text); }
+  .slide.l-photofull { padding: 0; }
+  .slide.l-photofull .pic.full { position: absolute; inset: 0; border-radius: 0; }
+  .slide.l-photofull .pf-band { position: absolute; left: 0; right: 0; bottom: 0; padding: 1.6rem 3.4rem 3rem; background: rgba(20,18,17,.74); }
+  .slide.l-photofull .pf-band .h-title { color: #fff; font-size: 2.2rem; margin: 0; max-width: 30ch; }
+  .slide.l-photofull .pf-sub { color: rgba(255,255,255,.86); font-size: 1.1rem; margin-top: .5rem; }
+  .slide.l-photofull .logo { filter: brightness(0) invert(1); opacity: .85; z-index: 2; }
 </style>
 <!--{{THEME}}-->
 </head>
@@ -1498,7 +1518,7 @@ function waysFig(k) {
   const f = flows[k]; if (!f) return '';
   const X = [8, 94, 180], W = 72, Y = 10, H = 40;
   const pill = ([a, on, b2], i) => `<rect x="${X[i]}" y="${Y}" width="${W}" height="${H}" rx="20" fill="${on ? G : '#fff'}" stroke="${on ? G : A}" stroke-width="1.8"/>` +
-    (b2 ? `<text x="${X[i] + W / 2}" y="${Y + 18}" text-anchor="middle" font-size="12" font-weight="700" fill="${on ? '#fff' : D}">${a}</text><text x="${X[i] + W / 2}" y="${Y + 32}" text-anchor="middle" font-size="12" font-weight="700" fill="${on ? '#fff' : D}">${b2}</text>`
+    (b2 ? `<text x="${X[i] + W / 2}" y="${Y + 18}" text-anchor="middle" font-size="13" font-weight="700" fill="${on ? '#fff' : D}">${a}</text><text x="${X[i] + W / 2}" y="${Y + 32}" text-anchor="middle" font-size="13" font-weight="700" fill="${on ? '#fff' : D}">${b2}</text>`
         : `<text x="${X[i] + W / 2}" y="${Y + 25}" text-anchor="middle" font-size="13" font-weight="700" fill="${on ? '#fff' : D}">${a}</text>`);
   const arrow = (x) => `<line x1="${x}" y1="${Y + H / 2}" x2="${x + 10}" y2="${Y + H / 2}" stroke="${D}" stroke-width="1.8"/><polygon points="${x + 14},${Y + H / 2} ${x + 8},${Y + H / 2 - 4} ${x + 8},${Y + H / 2 + 4}" fill="${D}"/>`;
   const back = k === 'cycle' ? `<path d="M216 ${Y + H} V${Y + H + 14} Q216 ${Y + H + 20} 210 ${Y + H + 20} H50 Q44 ${Y + H + 20} 44 ${Y + H + 14} V${Y + H + 6}" fill="none" stroke="${G}" stroke-width="1.8" stroke-dasharray="4 3"/><polygon points="44,${Y + H + 1} 40,${Y + H + 8} 48,${Y + H + 8}" fill="${G}"/>` : '';
@@ -1511,14 +1531,14 @@ function ruleFig(k) {
     <rect x="4" y="30" width="86" height="34" rx="17" fill="#fff" stroke="${G}" stroke-width="2"/><text x="47" y="52" text-anchor="middle" font-size="14" font-weight="700" fill="${D}">1 prompt</text>
     <text x="118" y="53" text-anchor="middle" font-size="14" font-weight="700" fill="${T}">vs.</text>
     ${[0,1,2,3].map((j) => `<rect x="${182 - j * 5}" y="${2 + j * 5}" width="56" height="70" rx="3" fill="#fff" stroke="${A}" stroke-width="1.5"/>`).join('')}
-    <rect x="162" y="22" width="56" height="70" rx="3" fill="#fff" stroke="${D}" stroke-width="1.5"/><text x="190" y="54" text-anchor="middle" font-size="20" font-weight="700" fill="${D}">30</text><text x="190" y="72" text-anchor="middle" font-size="11" fill="${T}">pages</text></svg>`;
+    <rect x="162" y="22" width="56" height="70" rx="3" fill="#fff" stroke="${D}" stroke-width="1.5"/><text x="190" y="54" text-anchor="middle" font-size="20" font-weight="700" fill="${D}">30</text><text x="190" y="72" text-anchor="middle" font-size="13" fill="${T}">pages</text></svg>`;
   if (k === 'time') return `<svg viewBox="0 0 260 96" ${F}>
     <text x="0" y="22" font-size="12.5" font-weight="700" fill="${D}">Thinking</text><rect x="92" y="10" width="164" height="16" rx="3" fill="${D}"/>
     <text x="0" y="52" font-size="12.5" font-weight="700" fill="${D}">AI as critic</text><rect x="92" y="40" width="124" height="16" rx="3" fill="${G}"/>
     <text x="0" y="82" font-size="12.5" font-weight="700" fill="${D}">Creating</text><rect x="92" y="70" width="40" height="16" rx="3" fill="${A}"/></svg>`;
   if (k === 'loop') {
     const head = (x, y, dir) => { const d = { r: [[x, y], [x - 7, y - 4.5], [x - 7, y + 4.5]], u: [[x, y], [x - 4.5, y + 7], [x + 4.5, y + 7]] }[dir]; return `<polygon points="${d.map((q) => q.join(',')).join(' ')}" fill="${G}"/>`; };
-    const box = (x, a, b2, on) => `<rect x="${x}" y="6" width="70" height="40" rx="6" fill="${on ? G : '#fff'}" stroke="${on ? G : A}" stroke-width="1.5"/><text x="${x + 35}" y="23" text-anchor="middle" font-size="11.5" font-weight="700" fill="${on ? '#fff' : D}">${a}</text><text x="${x + 35}" y="37" text-anchor="middle" font-size="11.5" font-weight="700" fill="${on ? '#fff' : D}">${b2}</text>`;
+    const box = (x, a, b2, on) => `<rect x="${x}" y="6" width="70" height="40" rx="6" fill="${on ? G : '#fff'}" stroke="${on ? G : A}" stroke-width="1.5"/><text x="${x + 35}" y="23" text-anchor="middle" font-size="13" font-weight="700" fill="${on ? '#fff' : D}">${a}</text><text x="${x + 35}" y="37" text-anchor="middle" font-size="13" font-weight="700" fill="${on ? '#fff' : D}">${b2}</text>`;
     return `<svg viewBox="0 0 260 90" ${F}>${box(2, 'Do the', 'work')}${box(95, 'AI sums up', 'the process', true)}${box(188, 'Better next', 'time')}
       <line x1="72" y1="26" x2="87" y2="26" stroke="${G}" stroke-width="2"/>${head(94, 26, 'r')}
       <line x1="165" y1="26" x2="180" y2="26" stroke="${G}" stroke-width="2"/>${head(187, 26, 'r')}
@@ -1530,7 +1550,7 @@ function ruleFig(k) {
 /* ================= versions ================= */
 const inCut  = (id) => !LIBRARY[id].alt && !LIBRARY[id].fac && !LIBRARY[id].only;   // only: a slide that belongs to a companion piece (in:[...]) alone
 const byCat  = (c) => Object.keys(LIBRARY).filter((id) => LIBRARY[id].cat === c && inCut(id));
-const allCat = (c) => Object.keys(LIBRARY).filter((id) => LIBRARY[id].cat === c && !LIBRARY[id].fac);
+const allCat = (c) => Object.keys(LIBRARY).filter((id) => LIBRARY[id].cat === c && !LIBRARY[id].fac && !LIBRARY[id].lib);   // lib: the basic layouts behind Add a slide
 const FAC_EXTRA = [];
 const facPack = () => Object.keys(LIBRARY).filter((id) => {
   const b = LIBRARY[id];
@@ -1685,7 +1705,7 @@ function build(id) {
   c.innerHTML = (b.pp ? `<button class="cbtn orig${ORIG.has(id) ? ' on' : ''}" data-a="orig" title="Switch between the editable rebuild and the original image">${ORIG.has(id) ? 'editable' : 'original'}</button>` : '') + `<button class="cbtn" data-a="up" title="Move up">&uarr;</button><button class="cbtn" data-a="down" title="Move down">&darr;</button><button class="cbtn rm" data-a="rm" title="Remove">&#10005;</button>`;
   s.appendChild(c);
   if (b.prop) s.appendChild(el('span','slide-tag prop', 'Proposed' + (b.replaces ? ' · would replace ' + b.replaces : '')));
-  else if (b.alt) s.appendChild(el('span','slide-tag','Extra · not in this version'));
+  else if (b.alt && !b.lib && !ADDED.has(id)) s.appendChild(el('span','slide-tag','Extra · not in this version'));
   if (b.v2) s.appendChild(el('span','slide-tag v2','Version 2 — remade'));
   if (b.fac) s.appendChild(el('span','slide-tag fac','Facilitator copy — do not project'));
 
@@ -2767,9 +2787,9 @@ function build(id) {
       s.appendChild(ed('h2','h-title', b.title));
       const row = el('div','row');
       const step = (n, lab, inner) => { const c = el('div','stp'); const box = el('div','box'); box.appendChild(inner); c.appendChild(box); if (lab) c.appendChild(ed('div','cap', '<b>' + n + '</b>' + lab)); return c; };
-      const pr = el('div','prompt'); pr.appendChild(ed('div','pt', b.prompt)); pr.appendChild(el('div','att', '<span class="ft xl">XLSX</span>' + b.file)); pr.appendChild(el('div','go', '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M6 11l6-6 6 6"/></svg>'));
+      const pr = el('div','prompt'); pr.appendChild(ed('div','pt', b.prompt)); pr.appendChild(el('div','att', '<span aria-hidden="true" class="ft xl">XLSX</span>' + b.file)); pr.appendChild(el('div','go', '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M6 11l6-6 6 6"/></svg>'));
       const dk = el('div','deck'); [2, 1, 0].forEach((i) => { const pg = el('div','pg p' + i); if (!i) pg.innerHTML = `<div class="dt">${b.deckTitle}</div><div class="bars"><i></i><i></i><i></i><i></i><i></i></div>`; dk.appendChild(pg); }); dk.appendChild(ed('div','cnt', b.deckCount));
-      const em = el('div','mail'); em.innerHTML = `<div class="mh"><span>To</span>${b.mail.to}</div><div class="mh"><span>Subject</span>${b.mail.subj}</div>`; em.appendChild(ed('div','mb', b.mail.body)); em.appendChild(el('div','att', '<span class="ft pp">PPTX</span>' + b.mail.file)); em.appendChild(el('div','sendbtn', 'Send'));
+      const em = el('div','mail'); em.innerHTML = `<div class="mh"><span>To</span>${b.mail.to}</div><div class="mh"><span>Subject</span>${b.mail.subj}</div>`; em.appendChild(ed('div','mb', b.mail.body)); em.appendChild(el('div','att', '<span aria-hidden="true" class="ft pp">PPTX</span>' + b.mail.file)); em.appendChild(el('div','sendbtn', 'Send'));
       [[pr, 0], [dk, 1], [em, 2]].forEach(([n, i]) => { if (i) row.appendChild(el('div','arw', '→')); row.appendChild(step(i + 1, (b.steps || [])[i], n)); });
       s.appendChild(row); s.appendChild(logoImg()); break;
     }
@@ -2917,6 +2937,24 @@ function build(id) {
         d.appendChild(meta); g.appendChild(d);
       });
       s.appendChild(g); s.appendChild(logoImg()); break;
+    }
+    case 'picture': {   // Slide Builder: a picture with the point beside it (click the picture to replace it)
+      s.appendChild(ed('h2','h-title', b.title));
+      const row = el('div','pic-row' + (b.right ? ' right' : ''));
+      row.appendChild(ed('div','pic', `<img src="${b.img || 'img/picture.svg'}" alt="">`));
+      const tx = el('div','pic-text'); (b.body || []).forEach((l) => tx.appendChild(ed('p','body-p', md(l)))); row.appendChild(tx);
+      s.appendChild(row); if (b.src) s.appendChild(ed('div','src', b.src)); s.appendChild(logoImg()); break;
+    }
+    case 'pictures': {   // Slide Builder: two pictures to compare, each with a caption
+      s.appendChild(ed('h2','h-title', b.title));
+      const row = el('div','pics-row');
+      (b.pics || []).forEach((x) => { const c = el('div','pics-col'); c.appendChild(ed('div','pic', `<img src="${x.img || 'img/picture.svg'}" alt="">`)); c.appendChild(ed('div','pic-cap', x.cap || '')); row.appendChild(c); });
+      s.appendChild(row); if (b.src) s.appendChild(ed('div','src', b.src)); s.appendChild(logoImg()); break;
+    }
+    case 'photofull': {   // Slide Builder: a full-screen photo with the point on it
+      s.appendChild(ed('div','pic full', `<img src="${b.img || 'img/photo.svg'}" alt="">`));
+      const band = el('div','pf-band'); band.appendChild(ed('h2','h-title', b.title)); if (b.sub) band.appendChild(ed('div','pf-sub', b.sub)); s.appendChild(band);
+      s.appendChild(logoImg()); break;
     }
     case 'closing': {
       s.appendChild(logoImg());

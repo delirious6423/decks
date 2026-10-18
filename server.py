@@ -52,6 +52,12 @@ def find_deck(slug):
     return None
 
 
+def visible_deck(slug):
+    """A deck the page may see: with Client work hidden, client decks don't exist (live on camera)."""
+    d = find_deck(slug)
+    return None if d and d.get('client') and settings().get('hideClients') else d
+
+
 def sb_dir(deck):
     p = deck['path'] / '.slidebuilder'
     p.mkdir(exist_ok=True)
@@ -113,6 +119,43 @@ def empty_review():
 
 # ---------- what the dashboard and Claude need to know ----------
 
+SAVES = {}   # slug -> the last save: when, and which tab made it (so other tabs know to catch up)
+
+
+def merge3(base, mine, theirs):
+    """Keep what another tab saved and apply only what this tab changed since it loaded (base)."""
+    if not (isinstance(base, dict) and isinstance(mine, dict) and isinstance(theirs, dict)):
+        return mine
+    out = dict(theirs)
+    for k in set(base) | set(mine):
+        if k in mine and mine.get(k) == base.get(k) and k in base:
+            continue                                   # this tab left it alone
+        if k not in mine:
+            out.pop(k, None)                           # this tab deleted it
+        elif k in theirs and k in base:
+            out[k] = merge3(base[k], mine[k], theirs[k])
+        else:
+            out[k] = mine[k]
+    return out
+
+
+def merge_saved(base, mine, theirs):
+    """Three-way merge of one saved key (JSON text); anything that is not a JSON object: this tab wins."""
+    try:
+        b, m, t = (json.loads(x) if x is not None else {} for x in (base, mine, theirs))
+    except (TypeError, json.JSONDecodeError):
+        return mine
+    if not (isinstance(b, dict) and isinstance(m, dict) and isinstance(t, dict)):
+        return mine
+    return json.dumps(merge3(b, m, t), ensure_ascii=False, separators=(',', ':'))
+
+
+def pulse_of(deck):
+    sb = sb_dir(deck)
+    return {'file': mtime(deck['path'] / deck['entry']), 'review': mtime(sb / 'review.json'),
+            'state': mtime(sb / 'state.json'), 'shell': static_version(), 'saved': SAVES.get(deck['slug'])}
+
+
 def comments_from_state(state):
     """Every non-empty comment in a deck's saved state: {slide: [{key, text}]}.
 
@@ -158,7 +201,7 @@ def _open_comments(deck):
                 reply = None  # the comment changed after Claude replied
             rows.append({
                 'slide': slide, 'key': it['key'], 'text': text,
-                'state': meta.get('state', 'ready') if meta.get('text') == text else 'ready',
+                'state': meta.get('state', 'ready') if meta.get('text') == text or meta.get('follow') else 'ready',   # a held comment stays held while you keep typing
                 'reply': reply,
             })
     return rows
@@ -267,8 +310,9 @@ def deck_summary(deck):
         v['open'] = sum(1 for r in rows if r['key'].endswith('_' + v['key']) and (not r['reply'] or r['reply'].get('status') not in ('done', 'skipped')))
     return {
         'slug': deck['slug'], 'name': deck['name'], 'group': deck.get('group', 'active'), 'client': bool(deck.get('client')),
-        'clientVersions': deck.get('clientVersions', []),
-        'kind': deck.get('kind'), 'delivered': deck.get('delivered'), 'pieces': deck.get('pieces') or [], 'prompt': deck.get('prompt'),
+        'kind': deck.get('kind'), 'delivered': deck.get('delivered'), 'hidden': bool(deck.get('hidden')),
+        'trashes': (lambda r: str(r).replace(str(Path.home()), '~', 1) if r else None)(newdeck.made_root(deck)),   # what Delete would move to the Trash
+        'pieces': deck.get('pieces') or [], 'prompt': deck.get('prompt'),
         'folder': deck['folder'], 'url': f"/d/{deck['slug']}/{deck['entry']}",
         'slides': slide_count(deck),
         'open': sum(1 for r in rows if not r['reply'] or r['reply'].get('status') not in ('done', 'skipped')),
@@ -294,7 +338,7 @@ def apply_review_op(deck, op):
             r.setdefault(k, v)
         kind, slide, now = op.get('op'), op.get('slide'), time.time()
         if kind == 'comment-state':            # page: draft or ready
-            r['comments'][slide] = {'state': op['state'], 'text': op.get('text', ''), 'at': now}
+            r['comments'][slide] = {'state': op['state'], 'text': op.get('text', ''), 'at': now, 'follow': bool(op.get('follow'))}
         elif kind == 'reply':                  # Claude: done / question / skipped / working
             r['replies'][slide] = {'status': op['status'], 'text': op.get('text', ''),
                                    'forText': op.get('forText', ''), 'round': op.get('round'), 'at': now}
@@ -313,7 +357,7 @@ def apply_review_op(deck, op):
             number = (r['rounds'][-1]['number'] + 1) if r['rounds'] else 1
             r['rounds'].append({'number': op.get('number') or number, 'summary': op.get('summary', ''),
                                 'export': op.get('export'), 'changed': list((op.get('changed') or {}).keys()), 'at': now})
-            r['changed'] = {s: {'note': n, 'round': op.get('number') or number} for s, n in (op.get('changed') or {}).items()}
+            r['changed'].update({s: {'note': n, 'round': op.get('number') or number} for s, n in (op.get('changed') or {}).items()})   # earlier unseen changes stay until marked seen
             r['claude'] = None
         elif kind == 'seen':                   # page: clear a changed badge
             for s in op.get('slides') or ([slide] if slide else []):
@@ -324,24 +368,87 @@ def apply_review_op(deck, op):
         return r
 
 
+# ---------- "Save a copy": one file that works on its own ----------
+
+IMG_EXT = r'(?:png|jpe?g|gif|svg|webp)'
+MIME = {'png': 'image/png', 'jpg': 'image/jpeg', 'jpeg': 'image/jpeg', 'gif': 'image/gif', 'svg': 'image/svg+xml', 'webp': 'image/webp'}
+# Runs first in the copy: any picture path the deck uses (in its markup, its styles, or set from code) is
+# answered from the pictures embedded below, so the file needs nothing next to it.
+ASSET_JS = r"""(function(){var A=window.__SB_ASSETS||{};
+function key(u){if(typeof u!=='string'||!u||u.slice(0,5)==='data:')return null;var s=u.split('#')[0].split('?')[0].replace(/^\.\//,'');try{s=decodeURI(s)}catch(e){}return A[s]?s:null}
+function fix(u){var k=key(u);return k?A[k]:u}
+function css(t){return t&&t.indexOf('url(')>=0?t.replace(/url\((['"]?)([^'")]+)\1\)/g,function(m,q,u){var k=key(u);return k?'url("'+A[k]+'")':m}):t}
+var d=Object.getOwnPropertyDescriptor(HTMLImageElement.prototype,'src');
+Object.defineProperty(HTMLImageElement.prototype,'src',{configurable:true,enumerable:true,get:function(){return d.get.call(this)},set:function(v){d.set.call(this,fix(String(v)))}});
+var sa=Element.prototype.setAttribute;
+Element.prototype.setAttribute=function(n,v){var l=String(n).toLowerCase();if(l==='src'||l==='href'||l==='xlink:href'||l==='poster')v=fix(String(v));else if(l==='style')v=css(String(v));return sa.call(this,n,v)};
+function scan(el){if(!el||el.nodeType!==1)return;[el].concat([].slice.call(el.querySelectorAll('[src],[href],[style]'))).forEach(function(n){['src','href','xlink:href'].forEach(function(a){var v=n.getAttribute(a);if(v){var f=fix(v);if(f!==v)sa.call(n,a,f)}});var st=n.getAttribute('style');if(st){var c=css(st);if(c!==st)sa.call(n,'style',c)}})}
+new MutationObserver(function(ms){ms.forEach(function(m){if(m.type==='attributes')scan(m.target);else m.addedNodes.forEach(scan)})}).observe(document.documentElement,{subtree:true,childList:true,attributes:true,attributeFilter:['src','href','style']});
+document.addEventListener('DOMContentLoaded',function(){scan(document.documentElement)});})();"""
+
+
+def bundle_copy(deck, html):
+    """The deck's own "Save a copy" output, made self-contained: its local scripts inlined and
+    every picture it refers to embedded (paths built in code, like img/ct-${n}.jpg, included)."""
+    import base64
+    root = deck['path'].resolve()
+
+    def inside(rel):
+        rel = rel.split('?')[0].split('#')[0]
+        if not rel or rel.startswith(('/', 'http:', 'https:', 'data:')) or '..' in rel.split('/'):
+            return None
+        f = (root / (rel[2:] if rel.startswith('./') else rel)).resolve()
+        return f if root in f.parents and f.is_file() else None
+
+    def script(m):
+        f = inside(m.group(2))
+        if not f or f.suffix.lower() != '.js':
+            return m.group(0)
+        code = f.read_text(encoding='utf-8').replace('</script', '<\\/script')
+        return f'<script{m.group(1)}{m.group(3)}>{code}</script>'
+    html = re.sub(r'<script\b([^>]*?)\s+src="([^"]+)"([^>]*)>\s*</script>', script, html)
+
+    found = set()
+    for rel in re.findall(r'(?<=["\'(\s=`])(?:\./)?([\w%-][\w%./-]*\.' + IMG_EXT + r')(?=["\')\s?#`])', html):
+        if inside(rel):
+            found.add(rel)
+    for pre, post in re.findall(r'`((?:[\w-]+/)*[\w.-]*)\$\{[^}`]*\}([\w.-]*\.' + IMG_EXT + r')`', html):
+        folder = root / os.path.dirname(pre)
+        if pre and folder.is_dir() and (folder.resolve() == root or root in folder.resolve().parents):
+            for f in folder.glob(os.path.basename(pre) + '*' + post):
+                found.add(str(f.relative_to(root)))
+    assets = {}
+    for rel in sorted(found):
+        f = inside(rel)
+        ext = f.suffix.lower().lstrip('.')
+        assets[rel] = f'data:{MIME.get(ext, "application/octet-stream")};base64,' + base64.b64encode(f.read_bytes()).decode()
+    head = '<script>window.__SB_ASSETS=' + json.dumps(assets).replace('</', '<\\/') + ';' + ASSET_JS + '</script>'
+    m = re.search(r'<head[^>]*>', html, re.I)
+    html = html[:m.end()] + head + html[m.end():] if m else head + html
+    return html, len(assets)
+
+
 # ---------- HTTP ----------
 
 BOOT_TAG = '<script id="sb-boot-data">window.__SB_BOOT={boot};</script><script id="sb-boot" src="/_sb/boot.js?v={v}"></script>'
 SHELL_TAG = ('<script id="sb-shell" src="/_sb/shell.js?v={v}" defer></script>'   # styles come from boot.js, before first paint
              '<script id="sb-guides" src="/_sb/guides.js?v={v}" defer></script>'
-             '<script id="sb-addslide" src="/_sb/addslide.js?v={v}" defer></script>')
+             '<script id="sb-addslide" src="/_sb/addslide.js?v={v}" defer></script>'
+             '<script id="sb-pictures" src="/_sb/pictures.js?v={v}" defer></script>'
+             '<script id="sb-clientcopy" src="/_sb/clientcopy.js?v={v}" defer></script>')
 
 
 def static_version():
     return int(max((mtime(p) for p in STATIC.glob('*')), default=0))
 
 
-def inject(html, deck, page):
+def inject(html, deck, page, snap=None):
     state = read_json(sb_dir(deck) / 'state.json', {'keys': {}, 'savedAt': 0})
     st = settings()
     boot = {'slug': deck['slug'], 'name': deck['name'], 'page': page, 'prefixes': deck.get('prefixes', []),
             'state': state, 'entry': deck['entry'], 'folder': deck['folder'], 'app': sbconfig.tilde(APP),
-            'hideVersions': deck.get('clientVersions', []) if st.get('hideClients') else [], 'v': static_version()}
+            'hideVersions': deck.get('clientVersions', []) if st.get('hideClients') else [], 'v': static_version(),
+            'pulse': snap or pulse_of(deck)}
     boot_json = json.dumps(boot, ensure_ascii=False).replace('</', '<\\/')
     v = static_version()
     head = BOOT_TAG.format(boot=boot_json, v=v)
@@ -356,7 +463,8 @@ class Handler(BaseHTTPRequestHandler):
     server_version = 'SlideBuilder/1.0'
 
     def log_message(self, fmt, *args):
-        if not self.path.startswith('/api/decks/') or '/pulse' not in self.path:
+        p = getattr(self, 'path', '') or ''   # unset when the request line itself was malformed
+        if not p.startswith('/api/decks/') or '/pulse' not in p:
             super().log_message(fmt, *args)
 
     # -- helpers
@@ -412,7 +520,7 @@ class Handler(BaseHTTPRequestHandler):
             return self.json(200, {'templates': [{k: t.get(k) for k in ('id', 'name', 'description', 'kind', 'folderPrefix')} for t in newdeck.list_templates()]})
         m = re.match(r'^/api/decks/([a-z0-9-]+)(?:/([a-z-]+))?$', path)
         if m:
-            deck = find_deck(m.group(1))
+            deck = visible_deck(m.group(1))
             if not deck:
                 return self.json(404, {'error': 'no such deck'})
             what = m.group(2)
@@ -427,22 +535,26 @@ class Handler(BaseHTTPRequestHandler):
             if what == 'thumb':
                 return self.serve_file(sb_dir(deck) / 'thumb.png')
             if what == 'pulse':
-                sb = sb_dir(deck)
-                return self.json(200, {'file': mtime(deck['path'] / deck['entry']), 'review': mtime(sb / 'review.json'),
-                                       'state': mtime(sb / 'state.json'), 'shell': static_version()})
+                return self.json(200, pulse_of(deck))
             return self.json(404, {'error': 'unknown'})
         m = re.match(r'^/d/([a-z0-9-]+)/(.*)$', path)
         if m:
-            deck = find_deck(m.group(1))
+            deck = visible_deck(m.group(1))
             if not deck:
                 return self.send(404, 'No such deck')
             rel = m.group(2) or deck['entry']
-            target = (deck['path'] / rel).resolve()
-            if deck['path'] not in target.parents and target != deck['path']:
-                return self.send(403, 'Outside the deck folder')
-            if target.suffix.lower() == '.html' and target.is_file() and 'raw' not in q:
-                html = target.read_text(encoding='utf-8')
-                return self.send(200, inject(html, deck, rel), 'text/html; charset=utf-8')
+            if any(part.startswith('.') for part in rel.split('/')) or '\x00' in rel or len(rel) > 400:
+                return self.send(404, 'Not found')   # no dotfiles (.git, .slidebuilder), no odd paths
+            try:
+                target = (deck['path'] / rel).resolve()
+                if deck['path'] not in target.parents and target != deck['path']:
+                    return self.send(403, 'Outside the deck folder')
+                if target.suffix.lower() == '.html' and target.is_file() and 'raw' not in q:
+                    snap = pulse_of(deck)   # before reading, so a change made while serving still counts as new
+                    html = target.read_text(encoding='utf-8')
+                    return self.send(200, inject(html, deck, rel, snap), 'text/html; charset=utf-8')
+            except (OSError, ValueError):
+                return self.send(404, 'Not found')
             return self.serve_file(target, cache=target.suffix.lower() in ('.png', '.jpg', '.jpeg', '.svg', '.woff2'))
         if re.match(r'^/d/([a-z0-9-]+)$', path):
             return self.send(302, extra={'Location': path + '/'})
@@ -450,22 +562,28 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_PUT(self):
         m = re.match(r'^/api/decks/([a-z0-9-]+)/state$', urlparse(self.path).path)
-        deck = find_deck(m.group(1)) if m else None
+        deck = visible_deck(m.group(1)) if m else None
         if not deck:
             return self.json(404, {'error': 'no such deck'})
         body = self.body()
         path = sb_dir(deck) / 'state.json'
+        bases = body.get('base') if isinstance(body.get('base'), dict) else {}
+        merged = {}
         with LOCK:
             st = read_json(path, {'keys': {}, 'savedAt': 0})
             keys = st.setdefault('keys', {})
             for k, v in (body.get('set') or {}).items():
                 if any(k.startswith(p) for p in deck.get('prefixes', [])):
-                    keys[k] = v
+                    if k in bases and k in keys and keys[k] != bases[k]:
+                        keys[k] = merged[k] = merge_saved(bases[k], v, keys[k])   # another tab saved this key since
+                    else:
+                        keys[k] = v
             for k in body.get('remove') or []:
                 keys.pop(k, None)
             st['savedAt'] = time.time()
             write_json(path, st)
-        self.json(200, {'savedAt': st['savedAt']})
+            SAVES[deck['slug']] = {'at': st['savedAt'], 'by': str(body.get('tab') or '')[:40]}
+        self.json(200, {'savedAt': st['savedAt'], 'merged': merged})
 
     def do_POST(self):
         if urlparse(self.path).path == '/api/settings':
@@ -480,15 +598,17 @@ class Handler(BaseHTTPRequestHandler):
         if urlparse(self.path).path == '/api/new-deck':
             try:
                 body = self.body()
-                with LOCK:
-                    deck = newdeck.create_deck(body.get('name'), body.get('template') or 'blank', body.get('brief') or {}, body.get('pieces') or [], body.get('logo'))
+                if not isinstance(body, dict) or not isinstance(body.get('name', ''), str) or not isinstance(body.get('brief') or {}, dict) \
+                        or not isinstance(body.get('pieces') or [], list) or not isinstance(body.get('logo') or {}, dict):
+                    return self.json(400, {'error': 'That request didn’t look right.'})
+                deck = newdeck.create_deck(body.get('name'), str(body.get('template') or 'blank'), body.get('brief') or {}, body.get('pieces') or [], body.get('logo'))   # newdeck locks decks.json itself, briefly
             except (ValueError, json.JSONDecodeError) as e:
                 return self.json(400, {'error': str(e)})
             deck['path'] = f'/d/{deck["slug"]}/{deck["entry"]}'
             make_thumb(deck)
             return self.json(200, deck)
         m = re.match(r'^/api/decks/([a-z0-9-]+)/([a-z-]+)$', urlparse(self.path).path)
-        deck = find_deck(m.group(1)) if m else None
+        deck = visible_deck(m.group(1)) if m else None
         if not deck:
             return self.json(404, {'error': 'no such deck'})
         what = m.group(2)
@@ -501,6 +621,34 @@ class Handler(BaseHTTPRequestHandler):
                 return self.json(200, apply_review_op(deck, body))
             except (KeyError, ValueError) as e:
                 return self.json(400, {'error': str(e)})
+        if what == 'manage':   # dashboard: hide, show, or delete a deck
+            try:
+                return self.json(200, newdeck.manage_deck(deck['slug'], str(body.get('op'))))
+            except (KeyError, ValueError) as e:
+                return self.json(400, {'error': str(e)})
+            except OSError as e:
+                return self.json(500, {'error': f'Could not move the folder to the Trash: {e}'})
+        if what == 'bundle':
+            html = body.get('html')
+            if not isinstance(html, str) or not html.strip():
+                return self.json(400, {'error': 'no html'})
+            out, n = bundle_copy(deck, html)
+            return self.send(200, out, 'text/html; charset=utf-8', extra={'X-SB-Pictures': str(n)})
+        if what == 'upload':
+            # a picture dropped onto a slide: saved in the deck's folder, so the deck and its PDF keep it
+            import base64, hashlib
+            m = re.match(r'data:image/(png|jpeg|jpg|gif|webp|svg\+xml);base64,(.*)$', str(body.get('data', '')), re.S)
+            if not m:
+                return self.json(400, {'error': 'Pictures have to be PNG, JPG, GIF, WebP, or SVG.'})
+            raw = base64.b64decode(m.group(2))
+            if len(raw) > 15_000_000:
+                return self.json(400, {'error': 'That picture is over 15 MB. Try a smaller one.'})
+            ext = {'jpeg': 'jpg', 'svg+xml': 'svg'}.get(m.group(1), m.group(1))
+            name = hashlib.sha1(raw).hexdigest()[:12] + '.' + ext
+            folder = deck['path'] / 'img' / 'uploads'
+            folder.mkdir(parents=True, exist_ok=True)
+            (folder / name).write_bytes(raw)
+            return self.json(200, {'path': f'img/uploads/{name}'})
         self.json(404, {'error': 'unknown'})
 
 

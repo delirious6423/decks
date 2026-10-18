@@ -22,6 +22,7 @@ const args = process.argv.slice(2);
 const cmd = args.shift();
 const vi = args.indexOf('--version'); let version = null;
 if (vi >= 0) { version = args[vi + 1]; args.splice(vi, 2); }
+const wi = args.indexOf('--with-edits'); const withEdits = wi >= 0; if (withEdits) args.splice(wi, 1);   // export what the browser shows, saved edits included
 
 function chrome() {
   const env = process.env.SB_CHROME;
@@ -150,7 +151,7 @@ async function main() {
   }
   if (cmd === 'export') {
     const out = args.shift();
-    const { browser, page, errors } = await open(slug);
+    const { browser, page, errors } = await open(slug, 1600, withEdits);
     await page.emulateMedia({ media: 'print' }); await page.waitForTimeout(600);
     await page.pdf({ path: out, preferCSSPageSize: true, printBackground: true });
     errors.forEach((e) => console.log('PAGE ERROR', e));

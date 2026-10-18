@@ -23,6 +23,7 @@
   .btn.red:hover { background: #8E1F29; }
   main { max-width: 1180px; margin: 0 auto; padding: 18px 22px 60px; display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr); gap: 26px; }
   @media (max-width: 900px) { main { grid-template-columns: minmax(0, 1fr); } }
+  @media (max-width: 600px) { .deck { grid-template-columns: minmax(0, 1fr); } .acts { flex-wrap: wrap; } header { gap: 8px; padding: 0 12px; } header .addr, header .app { display: none; } main { padding: 12px 12px 40px; } }
   h2 { font-size: 11.5px; letter-spacing: .07em; text-transform: uppercase; color: var(--faint); font-weight: 600; margin: 18px 0 8px; }
   .deck { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 16px; background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 14px; margin-bottom: 12px; }
   .thumb { aspect-ratio: 16/9; background: var(--slide); border: 1px solid var(--line); border-radius: 5px; overflow: hidden; display: block; position: relative; }
@@ -41,6 +42,28 @@
   .row .t { font-weight: 600; }
   .row .r { font-size: 12.5px; color: var(--mute); white-space: nowrap; }
   .row.muted .t, .row.muted .r { color: var(--faint); font-weight: 500; }
+  .dmenu { position: relative; display: inline-block; margin-left: auto; }
+  .dmenu > .btn { padding: 6px 10px; color: var(--mute); }
+  .dmenu-box { display: none; position: absolute; right: 0; top: calc(100% + 4px); z-index: 6; min-width: 200px; background: #fff; border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 10px 28px rgba(35,31,32,.14); padding: 4px; }
+  .dmenu.open .dmenu-box { display: block; }
+  .dmenu-box button { display: block; width: 100%; text-align: left; font: inherit; font-size: 13px; border: 0; background: none; padding: 8px 10px; border-radius: 7px; cursor: pointer; color: var(--ink); }
+  .dmenu-box button:hover { background: var(--paper); }
+  .dmenu-box button.danger { color: var(--red); }
+  .rowwrap { position: relative; }
+  .rowwrap .row-x { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); opacity: 0; font: inherit; font-size: 12px; border: 1px solid var(--line); border-radius: 7px; background: #fff; color: var(--mute); padding: 3px 9px; cursor: pointer; }
+  .rowwrap:hover .row-x, .rowwrap .row-x:focus { opacity: 1; }
+  .rowwrap:hover .row .r { visibility: hidden; }
+  #hidden-box { margin-top: 22px; }
+  #hidden-box summary { cursor: pointer; font-size: 11.5px; letter-spacing: .07em; text-transform: uppercase; color: var(--faint); font-weight: 600; list-style: none; }
+  #hidden-box summary::-webkit-details-marker { display: none; }
+  #hidden-box summary::before { content: '▸ '; }
+  #hidden-box[open] summary::before { content: '▾ '; }
+  .hrow { display: flex; align-items: center; gap: 8px; padding: 8px 10px 8px 14px; background: #fff; border: 1px solid var(--line); border-radius: 10px; margin-top: 6px; }
+  .hrow .t { flex: 1; min-width: 0; color: var(--mute); }
+  .hrow .t small { display: block; color: var(--faint); font-size: 12px; }
+  .del-what { font-size: 13.5px; color: var(--mute); margin: 10px 0 18px; line-height: 1.55; }
+  .del-what code { font-size: 12.5px; background: var(--paper); padding: 1px 5px; border-radius: 4px; }
+  .del-acts { display: flex; justify-content: flex-end; gap: 8px; }
   .round { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; margin-bottom: 6px; }
   .round b { font-size: 13px; }
   .round .meta { margin-top: 2px; }
@@ -157,6 +180,13 @@
     <div class="nd-done" id="nd-done"></div>
   </div>
 </div>
+<div class="nd-back" id="del-back" role="dialog" aria-modal="true" aria-labelledby="del-title">
+  <div class="nd" style="width:460px">
+    <div class="nd-head"><h3 id="del-title">Delete this deck?</h3><button class="nd-x" id="del-x" aria-label="Close">×</button></div>
+    <div class="del-what" id="del-what"></div>
+    <div class="del-acts"><button class="btn" id="del-hide">Hide it instead</button><button class="btn" id="del-no">Cancel</button><button class="btn red" id="del-yes">Delete</button></div>
+  </div>
+</div>
 <main>
   <div class="howto" id="howto" hidden>
     <div class="st"><i>1</i><div><b>Start a deck.</b> Click New deck, answer a few questions, and paste the prompt it copies into Claude Code or Codex.</div></div>
@@ -168,6 +198,7 @@
     <h2>Active</h2><div id="active"><div class="empty">Loading…</div></div>
     <h2 hidden>Pitch decks</h2><div id="pitch"></div>
     <h2 hidden>Delivered</h2><div id="delivered"></div>
+    <details id="hidden-box" hidden><summary id="hidden-sum">Hidden</summary><div id="hidden"></div></details>
   </section>
   <aside>
     <h2>Recent rounds</h2><div id="rounds"><div class="empty">No rounds yet.</div></div>
@@ -244,7 +275,9 @@ function askPrompt() {   // for when Claude should set it up as well
   return [`New slide builder deck “${n}” from the ${t.name} template${b.length ? ', ' + b.length : ''}${b.audience ? ', for ' + b.audience : ''}.`,
     shape ? `Brief: ${shape}.` : '', b.knows ? `What they know and care about: ${b.knows}` : '',
     ps.length > 1 ? `Build these together, each as a version in the deck: ${ps.map((pc, i) => pc.name + (i ? '' : ' (the main one, first)')).join(', ')}.` : '',
-    `Set it up with sb new (pass the brief), then build a first draft${b.notes ? ' from my notes below' : ''}.`, b.point ? `The one point: ${b.point}` : '',
+    'Set it up with: ' + ['./sb new ' + JSON.stringify(n), '--template ' + tplId(), b.style && '--style ' + b.style, b.titles && b.titles !== 'Sans serif' && '--titles ' + JSON.stringify(b.titles),
+      ps.length ? '--pieces ' + JSON.stringify(ps.map((pc) => pc.name + (pc.desc ? ': ' + pc.desc : '')).join('; ')) : '', b.audience && '--audience ' + JSON.stringify(b.audience)].filter(Boolean).join(' ')
+      + `, then build a first draft${b.notes ? ' from my notes below' : ''}.` + ($('nd-logo').files[0] ? ' Ask me for my logo file and pass it with --logo.' : ''), b.point ? `The one point: ${b.point}` : '',
     'Titles are plain sentences, two lines max, everything passes Checks › Guides, and mark any wording you drafted for me in the notes.',
     b.notes ? '\n\nMy notes:\n' + b.notes : ''].filter(Boolean).join(' ').replace(/ \n/g, '\n');
 }
@@ -288,6 +321,8 @@ $('nd-go').addEventListener('click', async () => {
   if (ok) setTimeout(() => { if ($('nd-back').classList.contains('on')) location.href = d.path; }, 2200);
 });
 
+const menu = (d) => `<span class="dmenu"><button class="btn" data-menu aria-label="More for ${esc(d.name)}" title="Hide or delete">⋯</button><div class="dmenu-box">
+  <button data-op="hide" data-slug="${esc(d.slug)}">Hide from the dashboard</button><button class="danger" data-op="ask-delete" data-slug="${esc(d.slug)}">Delete…</button></div></span>`;
 function card(d) {
   const r = d.rounds && d.rounds.length ? d.rounds[d.rounds.length - 1] : null;
   const pills = [d.open ? `<span class="pill amber">${d.open} open comment${d.open === 1 ? '' : 's'}</span>` : '<span class="pill green">No open comments</span>',
@@ -300,7 +335,7 @@ function card(d) {
     <div class="meta">${esc(decksDir && d.folder.startsWith(decksDir + '/') ? d.folder.slice(decksDir.length + 1) : d.folder)}${d.slides ? ` · ${d.slides} slides` : ''}${r ? ` · round ${r.number}` : ''} · edited ${ago(d.fileAt)}</div>
     ${(d.pieces || []).length ? `<div class="vers">Versions: ${d.pieces.map((v) => `<a href="${d.url}#v=${encodeURIComponent(v.id)}">${esc(v.name)}</a>`).join(' · ')}</div>` : ''}
     ${live}<div class="pills">${pills}</div>
-    <div class="acts"><a class="btn red" href="${d.url}">Open</a>${d.export ? `<a class="btn" href="${d.export.url}" target="_blank">${pdfLabel(d.export)}</a>` : ''}<a class="btn" href="${d.url}" onclick="localStorage.setItem('__sb_ui', JSON.stringify(Object.assign(JSON.parse(localStorage.getItem('__sb_ui')||'{}'),{view:'scroll'})))">Scroll view</a></div>
+    <div class="acts"><a class="btn red" href="${d.url}">Open</a>${d.export ? `<a class="btn" href="${d.export.url}" target="_blank">${pdfLabel(d.export)}</a>` : ''}<a class="btn" href="${d.url}" onclick="localStorage.setItem('__sb_ui', JSON.stringify(Object.assign(JSON.parse(localStorage.getItem('__sb_ui')||'{}'),{view:'scroll'})))">Scroll view</a>${menu(d)}</div>
   </div></div>`;
 }
 const row = (href, t, r, muted) => `<a class="row${muted ? ' muted' : ''}" href="${href}"><span class="t">${esc(t)}</span><span class="r">${esc(r)}</span></a>`;
@@ -310,21 +345,61 @@ document.getElementById('clients').addEventListener('click', async () => {
   const r = await fetch('/api/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ hideClients: !hideClients }) });
   if (r.ok) load();
 });
+let decks = [];
 async function load() {
+  if (document.querySelector('.dmenu.open') || document.getElementById('del-back').classList.contains('on')) return;   // not under an open menu
   let data; try { data = await (await fetch('/api/decks', { cache: 'no-store' })).json(); } catch (e) { document.getElementById('active').innerHTML = '<div class="empty">The server is not responding.</div>'; return; }
   hideClients = !!(data.settings && data.settings.hideClients); decksDir = data.decksDir || '';
   const cb = document.getElementById('clients'); cb.classList.toggle('on', hideClients); cb.textContent = hideClients ? 'Client work hidden' : 'Hide client work';
-  const by = (g) => data.decks.filter((d) => d.group === g && !(hideClients && d.client));
+  decks = data.decks;
+  const by = (g) => data.decks.filter((d) => d.group === g && !d.hidden && !(hideClients && d.client));
   document.getElementById('active').innerHTML = by('active').filter((d) => d.kind !== 'pitch').map(card).join('') || '<div class="empty">No active decks.</div>';
   document.getElementById('pitch').innerHTML = by('active').concat(by('pitch')).filter((d) => d.kind === 'pitch').map((d) =>
-    (d.versions.length ? d.versions : [{ name: d.name, url: d.url, open: d.open }]).map((v) => row(v.url, v.name, (v.slides ? v.slides + ' slides' : '') + (v.open ? ` · ${v.open} open comment${v.open === 1 ? '' : 's'}` : ''))).join('')).join('');
-  document.getElementById('delivered').innerHTML = by('delivered').map((d) => row(d.url, d.name, (d.delivered ? d.delivered + ' · ' : '') + 'frozen', true)).join('');
+    (d.versions.length ? d.versions : [{ name: d.name, url: d.url, open: d.open }]).map((v) => row(v.url, v.name, (v.slides ? v.slides + ' slides' : '') + (v.open ? ` · ${v.open} open comment${v.open === 1 ? '' : 's'}` : ''))).join('')).join('') || '<div class="empty">None.</div>';
+  document.getElementById('delivered').innerHTML = by('delivered').map((d) => `<div class="rowwrap">${row(d.url, d.name, (d.delivered ? d.delivered + ' · ' : '') + 'frozen', true)}<button class="row-x" data-op="hide" data-slug="${esc(d.slug)}" title="Hide from the dashboard">Hide</button></div>`).join('');
   ['pitch', 'delivered'].forEach((id) => { const box = document.getElementById(id); box.previousElementSibling.hidden = !box.innerHTML; });   // a heading only when there is something under it
-  const rounds = data.decks.flatMap((d) => (d.rounds || []).map((r) => Object.assign({ deck: d.name, url: d.url }, r))).sort((a, b) => b.at - a.at).slice(0, 6);
+  const hid = data.decks.filter((d) => d.hidden && !(hideClients && d.client));
+  document.getElementById('hidden-box').hidden = !hid.length;
+  document.getElementById('hidden-sum').textContent = `Hidden · ${hid.length}`;
+  document.getElementById('hidden').innerHTML = hid.map((d) => `<div class="hrow"><span class="t">${esc(d.name)}<small>${esc(decksDir && d.folder.startsWith(decksDir + '/') ? d.folder.slice(decksDir.length + 1) : d.folder)}</small></span>
+    <a class="btn" href="${d.url}">Open</a><button class="btn" data-op="show" data-slug="${esc(d.slug)}">Show</button><button class="btn" data-op="ask-delete" data-slug="${esc(d.slug)}">Delete…</button></div>`).join('');
+  const rounds = data.decks.filter((d) => !d.hidden).flatMap((d) => (d.rounds || []).map((r) => Object.assign({ deck: d.name, url: d.url }, r))).sort((a, b) => b.at - a.at).slice(0, 6);
   if (rounds.length) document.getElementById('rounds').innerHTML = rounds.map((r) => `<a class="round" href="${r.url}" style="display:block"><b>Round ${r.number} · ${esc(r.deck)}</b><div class="meta">${esc(r.summary || '')}${r.export ? ' · ' + esc(r.export) : ''} · ${ago(r.at)}</div></a>`).join('');
   const commits = data.decks.filter((d) => d.git); const dirty = commits.filter((d) => d.git.uncommitted).length;
   document.getElementById('server').innerHTML = `Running since ${new Date(data.started * 1000).toLocaleString(undefined, { weekday: 'short', hour: 'numeric', minute: '2-digit' })}<br>Comments and edits save to disk, next to each deck<br>${commits.length ? `Version history: ${commits.length} of ${data.decks.length} decks${dirty ? ` · ${dirty} with unsaved changes` : ', all committed'}` : 'Version history: not set up'}`;
 }
+// ---------- hide, show, delete ----------
+const manage = async (slug, op) => { const r = await fetch(`/api/decks/${encodeURIComponent(slug)}/manage`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ op }) });
+  const j = await r.json().catch(() => ({})); if (!r.ok) alert(j.error || 'That didn’t work.'); return r.ok ? j : null; };
+let delSlug = null;
+const closeDel = () => { document.getElementById('del-back').classList.remove('on'); delSlug = null; };
+function askDelete(d) {
+  delSlug = d.slug;
+  document.getElementById('del-title').textContent = `Delete “${d.name}”?`;
+  document.getElementById('del-what').innerHTML = d.trashes
+    ? `Its folder, <code>${esc(d.trashes)}</code>, moves to the Trash, and the deck leaves the Slide Builder. You can put it back from the Trash.`
+    : `It leaves the Slide Builder. Its files stay where they are, in <code>${esc(d.folder)}</code>: this deck lives in a folder of your own, so nothing is moved or deleted.`;
+  document.getElementById('del-yes').textContent = d.trashes ? 'Move to Trash' : 'Remove from Slide Builder';
+  document.getElementById('del-hide').hidden = !!d.hidden;
+  document.getElementById('del-back').classList.add('on'); document.getElementById('del-no').focus();
+}
+document.addEventListener('click', async (e) => {
+  const m = e.target.closest('[data-menu]');
+  document.querySelectorAll('.dmenu.open').forEach((x) => { if (!m || x !== m.parentElement) x.classList.remove('open'); });
+  if (m) { m.parentElement.classList.toggle('open'); return; }
+  const b = e.target.closest('[data-op]'); if (!b) return;
+  e.preventDefault();
+  const d = decks.find((x) => x.slug === b.dataset.slug); if (!d) return;
+  if (b.dataset.op === 'ask-delete') return askDelete(d);
+  if (await manage(d.slug, b.dataset.op)) load();
+});
+document.getElementById('del-yes').addEventListener('click', async () => { const s = delSlug; if (!s) return; const r = await manage(s, 'delete'); closeDel(); if (r) load(); });
+document.getElementById('del-hide').addEventListener('click', async () => { const s = delSlug; closeDel(); if (s && await manage(s, 'hide')) load(); });
+document.getElementById('del-no').addEventListener('click', closeDel);
+document.getElementById('del-x').addEventListener('click', closeDel);
+document.getElementById('del-back').addEventListener('click', (e) => { if (e.target.id === 'del-back') closeDel(); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeDel(); document.querySelectorAll('.dmenu.open').forEach((x) => x.classList.remove('open')); } });
+
 load(); setInterval(load, 5000);
 </script>
 </body>

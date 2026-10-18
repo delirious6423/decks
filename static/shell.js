@@ -45,16 +45,21 @@
     try { if (typeof fitSlides === 'function') fitSlides(); else window.dispatchEvent(new Event('resize')); } catch (e) { window.dispatchEvent(new Event('resize')); } }; // eslint-disable-line no-undef
   const presenting = () => { try { return !!showing; } catch (e) { return false; } };   // eslint-disable-line no-undef
   const sideSelect = $('.sidebar select');
+  // with Client work hidden: the slides only hidden (client) versions use, so no list, shelf, or picker shows them
+  const clientOnly = (() => { try { const hv = new Set(SB.hideVersions || []); if (!hv.size || typeof PITCHES === 'undefined') return new Set();   // eslint-disable-line no-undef
+    const vis = new Set(), hid = new Set(); Object.entries(PITCHES).forEach(([k, pv]) => (pv.blocks || []).forEach((x) => (hv.has(k) ? hid : vis).add(x)));   // eslint-disable-line no-undef
+    return new Set([...hid].filter((x) => !vis.has(x))); } catch (e) { return new Set(); } })();
 
   // ---------- review state from the server ----------
   let review = { comments: {}, replies: {}, changed: {}, rounds: [], claude: null };
   let filter = 'all', cur = null;
   const info = (id) => {
     const text = commentOf(id), rep = review.replies[id], ch = review.changed[id];
-    const fresh = !!rep && (!text || rep.forText === text || !rep.forText);
+    const fresh = !!rep && (text ? rep.forText === text : !rep.forText);   // same rule as the server: a reply belongs to the exact comment it answered
     const st = fresh ? rep.status : null, meta = review.comments[id] || {};
-    return { text, rep, fresh, st, ch, hold: meta.state === 'draft' && meta.text === text,
-      open: !!text && st !== 'done' && st !== 'skipped', question: st === 'question', replied: fresh && st !== 'working', changed: !!ch };
+    const hold = !!text && meta.state === 'draft' && (meta.text === text || !!meta.follow);   // a held comment stays held while you keep typing
+    return { text, rep, fresh, st, ch, hold,
+      open: !!text && !hold && st !== 'done' && st !== 'skipped', question: st === 'question', replied: fresh && st !== 'working', changed: !!ch };
   };
   const FILTERS = [['all', 'All'], ['open', 'Open'], ['replied', 'Replied'], ['questions', 'Questions'], ['changed', 'Changed']];
   const pass = (id, f = filter) => { if (f === 'all') return true; const i = info(id); return (f === 'open' && i.open) || (f === 'replied' && i.replied) || (f === 'questions' && i.question) || (f === 'changed' && i.changed); };
@@ -95,7 +100,7 @@
   const proxy = (sel, label) => { const t = $(sel); if (!t) return; const b = h('button', null, esc(label)); b.addEventListener('click', () => { more.classList.remove('open'); t.click(); }); moreBox.appendChild(b); };
   proxy('#presenter-btn', 'Presenter view');
   proxy('#export-btn', 'Export PDF (print)');
-  proxy('#save-copy', 'Save a copy with my edits');
+  proxy('#save-copy', 'Editable copy: with notes and comments');
   proxy('#copy-edits', 'Copy edits');
   proxy('#notes-toggle', 'Show facilitator notes (scroll view)');
   const help = h('div'); help.id = 'sb-help';
@@ -104,7 +109,7 @@
     <li>Write a comment for a slide, then say <b>process changes</b> to Claude. Tick “Still drafting” to hold one back.</li>
     <li>Claude replies under your comment. <b>Looks good</b> clears it; <b>Reopen</b> sends it back.</li>
     <li>In the left bar, × leaves a slide out of this version; add slides back from “Not in this version”.</li>
-    <li>Present, PDF export, and “Save a copy” (the file to send a client) are in this ⋯ menu and the top bar.</li></ul>
+    <li>Presenting and PDF export are in this ⋯ menu and the top bar, when the deck has them. <b>Client copy</b> is the file to send a client: this version’s slides and nothing else.</li></ul>
     <h4 style="margin-top:14px">Keyboard shortcuts</h4>
     <table class="sb-keys">
       <tr><td><kbd>F</kbd> <kbd>S</kbd> <kbd>G</kbd> <kbd>C</kbd></td><td>Focus, Scroll, Sorter, Checks</td></tr>
@@ -120,7 +125,7 @@
   document.body.appendChild(help);
   { const b = h('button', null, 'How this works and shortcuts (?)'); b.addEventListener('click', (e) => { e.stopPropagation(); more.classList.remove('open'); help.classList.toggle('on'); }); moreBox.prepend(b); }
   document.addEventListener('click', (e) => { if (!help.contains(e.target)) help.classList.remove('on'); });
-  { const b = h('button', null, 'Open the plain deck file'); b.addEventListener('click', () => { window.open(location.pathname + '?raw=1', '_blank'); }); moreBox.appendChild(b); }
+  if (!(SB.hideVersions || []).length) { const b = h('button', null, 'Open the plain deck file'); b.addEventListener('click', () => { window.open(location.pathname + '?raw=1', '_blank'); }); moreBox.appendChild(b); }
   more.firstElementChild.addEventListener('click', (e) => { e.stopPropagation(); more.classList.toggle('open'); });
   document.addEventListener('click', () => more.classList.remove('open'));
   const pres = $('#sb-present');
@@ -147,7 +152,7 @@
   fetch(api('')).then((r) => r.json()).then((d) => {   // a deck just made from the New deck form: say what's next
     const key = '__sb_next_' + SB.slug; let gone = false; try { gone = localStorage.getItem(key) === '1'; } catch (e) {}
     if (!d || !d.prompt || (d.rounds || []).length || gone) return;
-    const nb = h('div'); nb.id = 'sb-next';
+    const nb = h('div'); nb.id = 'sb-nextstep';
     nb.innerHTML = '<span><b>Next:</b> paste your prompt into Claude Code or Codex, and it builds the first draft from your brief. You’ll see its progress up here.</span><span><button class="sb-btn" data-c>Copy prompt</button> <button class="sb-btn icon" data-x aria-label="Dismiss">×</button></span>';
     nb.querySelector('[data-c]').addEventListener('click', async () => { say((await copyText(d.prompt)) ? '<b>Prompt copied.</b> Paste it into Claude Code or Codex.' : 'Couldn’t copy the prompt.'); });
     nb.querySelector('[data-x]').addEventListener('click', () => { nb.remove(); document.body.classList.remove('sb-has-next'); size(); try { localStorage.setItem(key, '1'); } catch (e) {} });
@@ -181,6 +186,8 @@
   const panel = h('aside'); panel.id = 'sb-panel';
   panel.innerHTML = '<div class="sb-colhead"><span>Notes</span><button data-hide="right" title="Hide ( ] )">»</button></div><div class="sb-scroll" id="sb-panel-body"></div>';
   document.body.append(film, panel);
+  // the filters and Looks good act on the slide list, so they live with it (and keep the top bar short)
+  { const ch = $('#sb-chips'), rs = $('#sb-resolve'), tools = h('div', 'sb-filmtools'); film.querySelector('.sb-colhead').after(tools); tools.append(ch, rs); }
   const sorter = h('div'); sorter.id = 'sb-sorter';
   deck.before(sorter);
   const checks = h('div'); checks.id = 'sb-checks';
@@ -251,7 +258,7 @@
       list.appendChild(b);
       thumbs.observe(b.querySelector('.sb-thumb'));
     });
-    const out = [...document.querySelectorAll('#block-list input[data-id]')].filter((i) => !i.checked && lib()[i.dataset.id]);
+    const out = [...document.querySelectorAll('#block-list input[data-id]')].filter((i) => !i.checked && lib()[i.dataset.id] && !lib()[i.dataset.id].lib && !clientOnly.has(i.dataset.id));
     if (out.length && filter === 'all') {
       const ex = h('details', 'sb-extras'); ex.open = !!ui.extrasOpen;
       ex.innerHTML = `<summary>Not in this version · ${out.length}</summary>`;
@@ -330,7 +337,7 @@
         const order = ids.filter((x) => x !== dragId); order.splice(order.indexOf(id) + (after ? 1 : 0), 0, dragId); cur = dragId; saveOrder(order); });
       grid.appendChild(c); lazy.observe(c.querySelector('.sb-tb'));
     });
-    const out = [...document.querySelectorAll('#block-list input[data-id]')].filter((i) => !i.checked && lib()[i.dataset.id]);
+    const out = [...document.querySelectorAll('#block-list input[data-id]')].filter((i) => !i.checked && lib()[i.dataset.id] && !lib()[i.dataset.id].lib && !clientOnly.has(i.dataset.id));
     if (out.length) {
       const shelf = h('div', 'sb-shelf', `<h4>Not in this version · ${out.length}</h4><div class="sb-grid"></div>`);
       const g2 = shelf.querySelector('.sb-grid');
@@ -389,9 +396,9 @@
     const tally = timed ? Object.values(tenLog(mode)) : [], fails = tally.filter((x) => x === 'fail').length;
     const concept = {
       five: ['Check whether you can quickly grasp the slide in 5 seconds.', 'Even better: show it to someone who hasn’t seen the slide. See if they can grok it.'],
-      ten: ['A slightly longer check.', 'The ten-second test is best practice for a deck people will read: they may have a little more time, and the goal is still to capture their attention in 10 seconds.'],
-      horizontal: ['The principle of “horizontal flow” is the idea that your slides should tell a coherent story.', 'A good way to test this is to read the titles in order to see if they make sense.'],
-      vertical: ['The title is the takeaway. The body proves it.', 'Read the title, say what the slide must show, then reveal it and check.'],
+      ten: ['A slightly longer check.', 'The <a href="https://strategyu.co/ten-second-test/" target="_blank" rel="noopener">ten-second test</a> is best practice for a deck people will read: they may have a little more time, and the goal is still to capture their attention in 10 seconds.'],
+      horizontal: ['The principle of “<a href="https://strategyu.co/persuasive-powerpoint-storytelling-principles-of-flow/#:~:text=%232%20Horizontal%20Flow" target="_blank" rel="noopener">horizontal flow</a>” is the idea that your slides should tell a coherent story.', 'A good way to test this is to read the titles in order to see if they make sense.'],
+      vertical: ['The principle of “<a href="https://strategyu.co/persuasive-powerpoint-storytelling-principles-of-flow/#:~:text=%231%20Vertical%20Flow" target="_blank" rel="noopener">vertical flow</a>” is that the title is the takeaway and the body proves it.', 'Read the title, say what the slide must show, then reveal it and check.'],
       guides: ['Here are some basic principles for spacing, margins, titles, and text.', 'These are guidelines, not rules. They’re meant to help you make a more professional presentation.'] };
     const status = {
       five: tally.length ? `${tally.length} checked${fails ? `, ${fails} missed (left as comments for Claude)` : ''}.` : '',
@@ -515,7 +522,7 @@
     document.body.classList.toggle('sb-scroll', v === 'scroll');
     document.body.classList.toggle('sb-sorter', v === 'sorter');
     document.body.classList.toggle('sb-checks', v === 'checks');
-    if (v !== 'checks') { under.classList.remove('sb-timed-on'); document.body.classList.remove('sb-story', 'sb-test', 'sb-vflow', 'sb-ten', 'sb-gcheck'); clearTimeout(tenTimer); document.querySelectorAll('.slide.sb-cover').forEach((x) => x.classList.remove('sb-cover')); const hl = under.parentNode && under.parentNode.querySelector('.sb-hint-line'); if (hl) hl.style.display = 'none'; }
+    if (v !== 'checks') { under.classList.remove('sb-timed-on'); document.body.classList.remove('sb-story', 'sb-test', 'sb-vflow', 'sb-ten', 'sb-gcheck'); clearTimeout(tenTimer); document.querySelectorAll('.slide.sb-cover').forEach((x) => x.classList.remove('sb-cover')); document.querySelectorAll('.sb-count').forEach((x) => x.remove()); const hl = under.parentNode && under.parentNode.querySelector('.sb-hint-line'); if (hl) hl.style.display = 'none'; }
     if (v === 'checks') { if (!cur || !wrapOf(cur)) cur = (wraps()[0] || {}).dataset?.id; renderChecks(); go(cur, true); if (isTimed()) tenReady(); window.scrollTo(0, 0); sideState(); return; }
     if (document.body.classList.contains('view-sorter') && $('[data-view="slides"]')) $('[data-view="slides"]').click();
     if (v === 'sorter') { wraps().forEach((w) => w.classList.remove('sb-active')); renderSorter(); window.scrollTo(0, 0); sideState(); return; }
@@ -561,6 +568,7 @@
   function go(id, force, fromScroll) {
     if (!id || !wrapOf(id)) return;
     const changedSlide = id !== cur; cur = id;
+    if (changedSlide) { const x = $('#sb-edge'); if (x) x.classList.remove('on'); }   // the end-of-filter hint belongs to the slide it was shown on
     if (ui.view === 'focus') { wraps().forEach((w) => w.classList.toggle('sb-active', w.dataset.id === id)); size(); window.scrollTo(0, 0); }
     else if (ui.view === 'checks') { wraps().forEach((w) => w.classList.toggle('sb-active', w.dataset.id === id)); size(); window.scrollTo(0, 0);
       let hl = under.querySelector('.sb-hint-line'); if (!hl) { hl = h('div', 'sb-hint-line'); under.after(hl); }
@@ -573,6 +581,7 @@
     $('#sb-film-list').querySelectorAll('.sb-fi').forEach((b) => b.classList.toggle('on', b.dataset.id === id));
     const on = $('#sb-film-list .sb-fi.on'); if (on) on.scrollIntoView({ block: 'nearest' });
     if ((changedSlide || force) && (ui.view === 'focus' || ui.view === 'scroll')) renderPanel();
+    window.dispatchEvent(new CustomEvent('sb:slide', { detail: id }));   // for guides and anything else that draws on the slide in view
   }
   // scroll view: the left bar follows the slide you are looking at
   let tracking = true;
@@ -609,11 +618,12 @@
       const fb = w.querySelector('textarea.fb'); if (!fb) return;
       const hold = holdRow(w); hold.querySelector('input').checked = i.hold;
       let rp = w.querySelector('.sb-reply');
-      if (i.rep) {
+      if (i.rep && (i.fresh || i.text)) {   // a reply to a comment saved in another version stays with that version
         if (!rp) { rp = h('div', 'sb-reply'); hold.after(rp); }
-        const label = { done: 'Claude · Done', question: 'Claude · Question', skipped: 'Claude · Skipped', working: 'Claude · Working…' }[i.rep.status] || 'Claude';
-        rp.className = 'sb-reply ' + i.rep.status;
-        rp.innerHTML = `<span class="sb-who">${label}</span><span class="sb-txt">${esc(i.rep.text)}</span>${i.rep.status === 'working' ? '' : '<button class="sb-btn" data-act="resolve">Looks good</button><button class="sb-btn" data-act="reopen">Reopen</button>'}`;
+        const label = !i.fresh ? 'Claude · Earlier reply' : { done: 'Claude · Done', question: 'Claude · Question', skipped: 'Claude · Skipped', working: 'Claude · Working…' }[i.rep.status] || 'Claude';
+        rp.className = 'sb-reply ' + (i.fresh ? i.rep.status : 'stale');
+        rp.title = i.fresh ? '' : 'Claude wrote this before your current comment. It will reply to the new one next round.';
+        rp.innerHTML = `<span class="sb-who">${label}</span><span class="sb-txt">${esc(i.rep.text)}</span>${i.rep.status === 'working' || !i.fresh ? '' : '<button class="sb-btn" data-act="resolve">Looks good</button><button class="sb-btn" data-act="reopen">Reopen</button>'}`;
       } else if (rp) rp.remove();
     });
   }
@@ -626,19 +636,22 @@
   deck.addEventListener('change', (e) => {
     const box = e.target.closest('.sb-hold input'), w = box && box.closest('#deck > [data-id]'); if (!w) return;
     const id = w.dataset.id;
-    post({ op: 'comment-state', slide: id, state: box.checked ? 'draft' : 'ready', text: commentOf(id) }).then(setReview);
+    post({ op: 'comment-state', slide: id, state: box.checked ? 'draft' : 'ready', text: commentOf(id), follow: box.checked }).then(setReview);
   });
+  const released = new Set();
+  const releaseEmpty = debounce(() => { released.forEach((id) => { const m = review.comments[id]; if (m && m.state === 'draft' && !commentOf(id)) post({ op: 'comment-state', slide: id, state: 'ready', text: '' }).then(setReview); }); released.clear(); }, 600);
   function counts() {
     const ids = wraps().map((w) => w.dataset.id);
     const n = { all: ids.length };
     FILTERS.slice(1).forEach(([f]) => { n[f] = ids.filter((id) => pass(id, f)).length; });
     $('#sb-chips').innerHTML = FILTERS.map(([f, l]) => (f === 'all' || n[f] || f === filter) ? `<button class="sb-chip${f === filter ? ' on' : ''}" data-f="${f}">${l} <b>${n[f]}</b></button>` : '').join('');
-    const askN = $('#sb-ask-n'); if (askN) { askN.textContent = n.open ? String(n.open) : ''; askN.classList.toggle('on', n.open > 0); }
+    const ask = ids.filter((id) => { const i = info(id); return i.open && !i.question; }).length;
+    const askN = $('#sb-ask-n'); if (askN) { askN.textContent = ask ? String(ask) : ''; askN.classList.toggle('on', ask > 0); }
     const done = ids.filter((id) => { const i = info(id); return i.st === 'done' && i.text; });
     const rb = $('#sb-resolve'); rb.hidden = done.length < 2; rb.textContent = `Looks good: all ${done.length} done`;
     rb.onclick = async () => { rb.disabled = true; for (const id of done) { const r = await post({ op: 'resolve', slide: id }); setComment(id, ''); review = r; } rb.disabled = false; refresh(); };
   }
-  $('#sb-chips').addEventListener('click', (e) => { const b = e.target.closest('[data-f]'); if (!b) return; filter = b.dataset.f; refresh(); if (!pass(cur)) { const v = visible(); if (v.length) go(v[0]); } });
+  $('#sb-chips').addEventListener('click', (e) => { const b = e.target.closest('[data-f]'); if (!b) return; filter = b.dataset.f; refresh(); const x = $('#sb-edge'); if (x) x.classList.remove('on'); if (!pass(cur)) { const v = visible(); if (v.length) go(v[0]); } else go(cur); });   // go() also refreshes the position line
 
   function claudeLine() {
     const c = review.claude, el = $('#sb-claude');
@@ -653,10 +666,10 @@
   // comments typed under a slide; edits on a slide refresh its thumbnail
   const staleThumbs = new Set();
   const refillThumbs = debounce(() => { staleThumbs.forEach((id) => { const box = $(`#sb-film-list .sb-thumb[data-id="${CSS.escape(id)}"]`); if (box && box.firstChild) fillThumb(box); }); staleThumbs.clear(); }, 700);
-  const afterComment = debounce(() => { counts(); renderFilm(); if (ui.view === 'focus') size(); }, 300);
+  const afterComment = debounce(() => { counts(); decorate(); renderFilm(); if (ui.view === 'focus') size(); }, 300);   // decorate: a reply written before this comment becomes an earlier reply
   deck.addEventListener('input', (e) => {
     const t = e.target, w = t.closest && t.closest('#deck > [data-id]'); if (!w) return;
-    if (t.matches('textarea.fb')) { holdRow(w); afterComment(); }
+    if (t.matches('textarea.fb')) { holdRow(w); afterComment(); if (!t.value.trim()) { released.add(w.dataset.id); releaseEmpty(); } }
     else if (t.isContentEditable) { staleThumbs.add(w.dataset.id); refillThumbs(); }
   });
 
@@ -691,28 +704,60 @@
     else if (e.key === ']') toggleSide('right');
   });
 
+  // ---------- "Save a copy": one file that works on its own ----------
+  // The deck builds its copy and downloads it; the shell catches that download, has the server embed the
+  // pictures and scripts the file points to, and saves it under the deck's name instead of "workshop.html".
+  const fileName = () => (SB.name || 'deck').replace(/[\\/:*?"<>|]+/g, '-').trim() + ' (editable).html';
+  const saveDl = (blob, name) => { const u = URL.createObjectURL(blob), a = document.createElement('a'); a.href = u; a.download = name; document.body.appendChild(a); anchorClick.call(a); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 4000); };
+  const anchorClick = HTMLAnchorElement.prototype.click;
+  let grab = null;
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest || !e.target.closest('#save-copy')) return;
+    const mk = URL.createObjectURL;
+    grab = { blob: null, restore: () => { URL.createObjectURL = mk; HTMLAnchorElement.prototype.click = anchorClick; } };
+    URL.createObjectURL = function (b) { if (grab && !grab.blob && b instanceof Blob) { grab.blob = b; return 'about:blank#sb-copy'; } return mk.call(URL, b); };
+    HTMLAnchorElement.prototype.click = function () { if (this.download && this.href.endsWith('#sb-copy')) return; return anchorClick.call(this); };
+  }, true);
+  document.addEventListener('click', async (e) => {
+    if (!grab || !e.target.closest || !e.target.closest('#save-copy')) return;
+    const g = grab; grab = null; g.restore();
+    if (!g.blob) return;
+    const flag = document.getElementById('save-flag'), say2 = (t) => { if (flag) { flag.textContent = t; flag.className = 'save-flag on'; } };
+    say2('Saving a copy with its pictures…');
+    let out = g.blob, pics = null;
+    try {
+      const r = await fetch(api('bundle'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ html: await g.blob.text() }) });
+      if (r.ok) { out = new Blob([await r.text()], { type: 'text/html' }); pics = +r.headers.get('X-SB-Pictures'); }
+    } catch (err) {}
+    saveDl(out, fileName());
+    say2(pics === null ? `✓ Saved ${fileName()}. Its pictures stay next to the deck, so send the folder with it.` : `✓ Saved ${fileName()}: one file, with its ${pics} picture${pics === 1 ? '' : 's'} inside. It opens anywhere.`);
+  });
+
   // ---------- live updates ----------
-  let base = null, pending = false;
+  let base = SB.pulse ? Object.assign({}, SB.pulse) : null, pending = false;
   const idle = () => { const a = document.activeElement; const typing = a && (a.isContentEditable || /^(INPUT|TEXTAREA)$/.test(a.tagName)); return !typing && Date.now() - lastKey > 8000; };
   function reload() { try { SB.flush(); } catch (e) {} setTimeout(() => location.reload(), 450); }
   async function pulse() {
     let p; try { p = await (await fetch(api('pulse'), { cache: 'no-store' })).json(); } catch (e) { return; }
     if (!base) { base = p; return; }
     if (p.review !== base.review) { base.review = p.review; loadReview(); }
-    if (p.file !== base.file || p.shell !== base.shell) { pending = true; }
+    if (p.file !== base.file || p.shell !== base.shell) { pending = true; banner.firstChild.textContent = 'Claude updated this deck.'; }
+    const other = p.saved && p.saved.by && p.saved.by !== SB.tab && !(base.saved && base.saved.at === p.saved.at);
+    base.saved = p.saved;
+    if (other && !SB.readonly && !pending) { pending = true; banner.firstChild.textContent = 'You saved changes in another tab.'; }   // reload to see them; nothing here is lost
     if (pending) { if (idle()) reload(); else banner.classList.add('on'); }
   }
   setInterval(pulse, 2500);
 
   // ---------- agent-friendly handle (Claude can drive the page with this) ----------
   window.SlideBuilder = {
-    go, step, setView, current: () => cur, filter: (f) => { filter = f; refresh(); }, order: (ids) => saveOrder(ids), title,
+    go, step, setView, say, current: () => cur, filter: (f) => { filter = f; refresh(); }, order: (ids) => saveOrder(ids), title, hidden: (id) => clientOnly.has(id),
     slides: () => wraps().map((w, k) => Object.assign({ n: k + 1, id: w.dataset.id, title: title(w.dataset.id) }, (({ text, st, changed, hold }) => ({ comment: text, reply: st, changed, draft: hold }))(info(w.dataset.id)))),
   };
 
   // ---------- start ----------
   const wantV = decodeURIComponent((location.hash.match(/[#&]v=([^&]+)/) || [])[1] || '');
-  if (wantV && sideSelect && [...sideSelect.options].some((o) => o.value === wantV) && sideSelect.value !== wantV) { sideSelect.value = wantV; sideSelect.dispatchEvent(new Event('change', { bubbles: true })); }
+  if (wantV && sideSelect && !(SB.hideVersions || []).includes(wantV) && [...sideSelect.options].some((o) => o.value === wantV) && sideSelect.value !== wantV) { sideSelect.value = wantV; sideSelect.dispatchEvent(new Event('change', { bubbles: true })); }
   const want = decodeURIComponent((location.hash.match(/[#&]s=([^&]+)/) || [])[1] || '');
   cur = want && wrapOf(want) ? want : null;
   hideBtn().addEventListener('click', () => setHide(!ui.hide));

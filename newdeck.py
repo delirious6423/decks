@@ -26,6 +26,8 @@ import re
 import shutil
 import subprocess
 import sys
+import threading
+import time
 from pathlib import Path
 
 import sbconfig
@@ -33,11 +35,13 @@ import sbconfig
 APP = Path(__file__).resolve().parent
 TEMPLATES = APP / 'templates'
 ENGINE = TEMPLATES / '_engine' / 'engine.html'   # the bundled engine every deck is built from
+_REG = threading.Lock()          # decks.json: read-check-reserve and write are short; building the deck happens outside
+_RESERVED = set()                # prefixes handed out to decks still being built
 GITIGNORE = '*.pdf\n*.zip\n*.pptx\n_archive/\n.DS_Store\n.slidebuilder/thumb.png\n'
 
 # ---------- themes ----------
 # Each theme sets the engine's colors (CSS variables, written into the deck as one <style> block) and
-# a color map for converted PowerPoint slides: their red source palette mapped onto the theme, text
+# a color map for converted PowerPoint slides: their Crimson palette mapped onto the theme, text
 # and fills separately, so Dark can turn dark text light and white panels dark.
 def _pp(accent, deep, tint, light, dark, gray, mid, muted, panel, line, bg='#FFFFFF', card='#FFFFFF', on_dark='#FFFFFF', text_dark=None, text_gray=None, cover=None):
     fill = {'#A22731': accent, '#A12731': accent, '#842F2F': deep, '#F6E9EA': tint, '#F3D9DC': tint, '#E8DDDD': tint,
@@ -48,34 +52,34 @@ def _pp(accent, deep, tint, light, dark, gray, mid, muted, panel, line, bg='#FFF
 
 THEMES = {
     'navy': {'name': 'Navy', 'accent': '#2E6DA4',
-             'vars': {'--char': '#1B2A3E', '--char-2': '#24364F', '--maroon': '#1F3A5F', '--maroon-deep': '#142740', '--red': '#3B82C4', '--red-deep': '#2E6DA4',
+             'vars': {'--text-mute': '#66707D', '--char': '#1B2A3E', '--char-2': '#24364F', '--maroon': '#1F3A5F', '--maroon-deep': '#142740', '--red': '#3B82C4', '--red-deep': '#2E6DA4',
                       '--paper': '#F4F6F9', '--light': '#EEF1F5', '--title-red': '#1F3A5F', '--accent': '#2E6DA4', '--lime': '#3B82C4', '--line': '#D3DAE3', '--text-light': '#5B6675'},
              'div': {'--div-accent': '#8DB5DD'},
              'pp': _pp('#2E6DA4', '#1F3A5F', '#E3ECF6', '#8DB5DD', '#1B2A3E', '#C6CFDA', '#4F5B6B', '#7D8896', '#F1F4F8', '#DDE3EA')},
     'dark': {'name': 'Dark', 'accent': '#E0505A', 'dark': True,
-             'vars': {'--char': '#141211', '--char-2': '#2B2726', '--maroon': '#2B2726', '--maroon-deep': '#141211', '--red': '#EC6670', '--red-deep': '#E0505A',
-                      '--paper': '#262322', '--light': '#1E1C1B', '--white': '#262322', '--ink': '#F3F0EE', '--text': '#E6E1DE', '--text-light': '#B5ADA9', '--text-mute': '#8E8783',
-                      '--line': '#3A3634', '--title-red': '#FFFFFF', '--accent': '#E0505A', '--lime': '#EC6670'},
+             'vars': {'--char': '#141211', '--char-2': '#2B2726', '--maroon': '#2B2726', '--maroon-deep': '#141211', '--red': '#EC6670', '--red-deep': '#E0505A', '--accent': '#E0505A', '--lime': '#EC6670'},
+             'slide': {'--paper': '#262322', '--light': '#1E1C1B', '--white': '#262322', '--ink': '#F3F0EE', '--text': '#E6E1DE', '--text-light': '#B5ADA9', '--text-mute': '#A39C98',
+                       '--line': '#3A3634', '--title-red': '#FFFFFF'},
              'div': {'--div-bg': '#141211', '--div-accent': '#E0505A'},
              'pp': _pp('#E0505A', '#B23A43', '#3D2427', '#A8474F', '#3A3533', '#57514F', '#C9C2BE', '#9A938F', '#2B2826', '#3A3634',
                        bg='#1E1C1B', card='#262322', on_dark='#FFFFFF', text_dark='#F3F0EE', text_gray='#B5ADA9', cover='#141211')},
     'minimal': {'name': 'Minimal', 'accent': '#C8102E',
-                'vars': {'--char': '#111111', '--char-2': '#222222', '--maroon': '#111111', '--maroon-deep': '#000000', '--red': '#E0293F', '--red-deep': '#C8102E',
+                'vars': {'--text-mute': '#6B6B6B', '--char': '#111111', '--char-2': '#222222', '--maroon': '#111111', '--maroon-deep': '#000000', '--red': '#E0293F', '--red-deep': '#C8102E',
                          '--paper': '#F5F5F5', '--light': '#FFFFFF', '--title-red': '#111111', '--accent': '#C8102E', '--lime': '#E0293F', '--line': '#E6E6E6', '--text-light': '#555555'},
                 'div': {'--div-bg': '#FFFFFF', '--div-fg': '#111111', '--div-accent': '#C8102E'},
                 'pp': _pp('#C8102E', '#8E0B21', '#FBE7EA', '#E8808F', '#111111', '#D6D6D6', '#555555', '#888888', '#F5F5F5', '#E6E6E6')},
     'forest': {'name': 'Forest', 'accent': '#2F7A55',
-               'vars': {'--char': '#16211C', '--char-2': '#1E2C25', '--maroon': '#1E4D3A', '--maroon-deep': '#133326', '--red': '#3C9A6B', '--red-deep': '#2F7A55',
+               'vars': {'--text-mute': '#64706A', '--char': '#16211C', '--char-2': '#1E2C25', '--maroon': '#1E4D3A', '--maroon-deep': '#133326', '--red': '#3C9A6B', '--red-deep': '#2F7A55',
                         '--paper': '#F5F8F6', '--light': '#EEF2EF', '--title-red': '#1E4D3A', '--accent': '#2F7A55', '--lime': '#3C9A6B', '--line': '#D2DCD5', '--text-light': '#56645C'},
                'div': {'--div-accent': '#9FD4B8'},
                'pp': _pp('#2F7A55', '#1E4D3A', '#E2F0E8', '#8CC3A6', '#1C2B24', '#C5CEC8', '#4F5C55', '#7E8A83', '#F1F5F2', '#DCE4DF')},
     'teal': {'name': 'Teal', 'accent': '#13838F',
-             'vars': {'--char': '#102227', '--char-2': '#173038', '--maroon': '#0F4C5C', '--maroon-deep': '#0A3540', '--red': '#1FA2AE', '--red-deep': '#13838F',
+             'vars': {'--text-mute': '#62767A', '--char': '#102227', '--char-2': '#173038', '--maroon': '#0F4C5C', '--maroon-deep': '#0A3540', '--red': '#1FA2AE', '--red-deep': '#13838F',
                       '--paper': '#F4F8F9', '--light': '#EDF3F4', '--title-red': '#0F4C5C', '--accent': '#13838F', '--lime': '#1FA2AE', '--line': '#CFDDE0', '--text-light': '#4C5E62'},
              'div': {'--div-accent': '#8FD6DC'},
              'pp': _pp('#13838F', '#0F4C5C', '#DDF0F2', '#7CC3CA', '#12262B', '#C3D0D2', '#4C5E62', '#7B8B8E', '#EFF5F6', '#D8E3E5')},
     'plum': {'name': 'Plum', 'accent': '#7B3F72',
-             'vars': {'--char': '#221520', '--char-2': '#2E1D2B', '--maroon': '#4A2545', '--maroon-deep': '#32182F', '--red': '#9C5292', '--red-deep': '#7B3F72',
+             'vars': {'--text-mute': '#75697A', '--char': '#221520', '--char-2': '#2E1D2B', '--maroon': '#4A2545', '--maroon-deep': '#32182F', '--red': '#9C5292', '--red-deep': '#7B3F72',
                       '--paper': '#F8F5F7', '--light': '#F3EFF2', '--title-red': '#4A2545', '--accent': '#7B3F72', '--lime': '#9C5292', '--line': '#DDD2DA', '--text-light': '#5E5260'},
              'div': {'--div-accent': '#E2B8DA'},
              'pp': _pp('#7B3F72', '#4A2545', '#F1E6EF', '#C08DB8', '#2A1C28', '#CFC6CD', '#5E5260', '#8C808A', '#F6F2F5', '#E4DCE2')},
@@ -96,7 +100,12 @@ def theme_css(key, serif=False):
     css += [f'/* Deck theme: {t["name"] if t else "engine colors"}{", serif titles" if serif else ""}. Change these to restyle the whole deck. */']
     if t:
         css.append(':root { ' + ' '.join(f'{k}: {v};' for k, v in t['vars'].items()) + ' }')
+        if t.get('slide'):   # text and background colors that belong to the slides only, not the editor around them
+            css.append('.slide, .slide-frame { ' + ' '.join(f'{k}: {v};' for k, v in t['slide'].items()) + ' }')
         css.append('.slide.l-section { ' + ' '.join(f'{k}: {v};' for k, v in t.get('div', {}).items()) + ' }')
+        bg = t.get('div', {}).get('--div-bg', '')
+        if re.fullmatch(r'#[0-9A-Fa-f]{6}', bg) and sum(int(bg[i:i + 2], 16) for i in (1, 3, 5)) > 600:
+            css.append('.slide.l-section .logo { filter: none; opacity: 1; }   /* a light divider keeps the logo in its own colors */')
         # a few layouts use fixed colors; bring them onto the theme
         css.append(f'.slide .step.accent, .slide .flow-body .step.accent {{ background: var(--maroon) !important; border-color: var(--maroon) !important; }}')
         css.append('.slide table th { background: var(--maroon) !important; }')
@@ -116,7 +125,7 @@ def theme_js(key, serif=False):
 
 
 def recolor_images(folder, key):
-    """Converted chart pictures (img/ct-*): the source reds move to the theme's accent (Dark keeps its light panels)."""
+    """Converted chart pictures: the Crimson reds move to the theme's accent (Dark keeps its light panels)."""
     t = THEMES.get(key)
     if not t:
         return 0
@@ -128,18 +137,18 @@ def recolor_images(folder, key):
     acc = np.array([int(t['accent'][i:i + 2], 16) for i in (1, 3, 5)], dtype=float)
     n = 0
     for f in sorted((folder / 'img').glob('ct-*')):
-        if f.suffix.lower() not in ('.jpg', '.jpeg', '.png'):
-            continue
+        if f.suffix.lower() not in ('.jpg', '.jpeg', '.png') or re.match(r'ct-(sp-)?\d{3}\.jpg$', f.name):
+            continue   # the full-slide PowerPoint pictures: never shown in a new deck
         im = Image.open(f); mode = im.mode
         a = np.asarray(im.convert('RGBA'), dtype=float)
         rgb = a[..., :3] / 255
         mx, mn = rgb.max(-1), rgb.min(-1)
         sat = np.where(mx > 0, (mx - mn) / np.maximum(mx, 1e-6), 0)
         r, g, b = rgb[..., 0], rgb[..., 1], rgb[..., 2]
-        red = (r >= g) & (r >= b) & (r - np.maximum(g, b) > .03) & (np.abs(g - b) < .12)   # the source reds and their pink tints
+        red = (r >= g) & (r >= b) & (r - np.maximum(g, b) > .03) & (np.abs(g - b) < .12)   # the Crimson reds and their pink tints
         if not red.any():
             continue
-        amt = np.clip(sat / .76, 0, 1)[..., None]          # how much accent is in the pixel (#A22731 is full)
+        amt = np.clip(sat / .76, 0, 1)[..., None]          # how much accent is in the pixel (Crimson #A22731 is full)
         shade = np.clip(mx / .64, 0, 1.3)[..., None]       # darker reds stay darker
         target = (1 - amt) * 255 + amt * np.clip(acc * shade, 0, 255)
         a[..., :3] = np.where(red[..., None], target, a[..., :3])
@@ -148,6 +157,11 @@ def recolor_images(folder, key):
         out.save(f, quality=88) if f.suffix.lower() in ('.jpg', '.jpeg') else out.save(f)
         n += 1
     return n
+
+
+def js_str(v):
+    """A JavaScript string literal that is also safe inside a <script> tag."""
+    return json.dumps(str(v), ensure_ascii=False).replace('</', '<\\/').replace('\u2028', '\\u2028').replace('\u2029', '\\u2029')
 
 
 # ---------- templates ----------
@@ -168,11 +182,11 @@ def template(tid):
     for t in list_templates():
         if t['id'] == tid:
             return t
-    raise ValueError(f'no template {tid!r}')
+    raise ValueError(f'No template called {tid!r}. Try one of: ' + ', '.join(t['id'] for t in list_templates()))
 
 
 def pieces_js(pieces, template_pitches):
-    """Versions for the pieces picked in the New deck form (the first is the main deck), then the template's own extra versions.
+    """Versions for the pieces the user picked (the first is the main deck), then the template's own extra versions.
     A piece other than the main one starts as one placeholder slide (only:true, in:[piece]) until Claude builds it;
     a facilitator pack is the engine's facilitator version (the agenda plus fac:true slides)."""
     main, rest = pieces[0], pieces[1:]
@@ -182,14 +196,14 @@ def pieces_js(pieces, template_pitches):
         if pc['id'] == 'facilitator':
             continue
         title = f"{pc['name']}: {pc.get('desc', '').rstrip('.')}" if pc.get('desc') else pc['name']
-        js.append(f"LIBRARY[{json.dumps(pc['id'] + '-start')}] = {{ cat: CATS[CATS.length - 1], layout: 'plain', only: true, in: [{json.dumps(pc['id'])}], "
-                  f"title: {json.dumps(title)}, body: ['Claude builds this version from the main deck and the brief.', 'Pick it from the version menu at the top to see it.'], "
+        js.append(f"LIBRARY[{js_str(pc['id'] + '-start')}] = {{ cat: CATS[CATS.length - 1], layout: 'plain', only: true, in: [{js_str(pc['id'])}], "
+                  f"title: {js_str(title)}, body: ['Claude builds this version from the main deck and the brief.', 'Pick it from the version menu at the top to see it.'], "
                   f"notes: 'Placeholder: Claude replaces this slide when it builds this version.' }};")
-    v = [f"  {json.dumps(main['id'])}: {{ name: {json.dumps(main['name'])}, default: true, blocks: (Object.values(TEMPLATE_PITCHES).find((x) => x.default) || {{}}).blocks || CATS.flatMap(byCat) }},"]
+    v = [f"  {js_str(main['id'])}: {{ name: {js_str(main['name'])}, default: true, blocks: (Object.values(TEMPLATE_PITCHES).find((x) => x.default) || {{}}).blocks || CATS.flatMap(byCat) }},"]
     for pc in rest:
-        blocks = 'facPack()' if pc['id'] == 'facilitator' else f"pieceOnly({json.dumps(pc['id'])})"
-        v.append(f"  {json.dumps(pc['id'])}: {{ name: {json.dumps(pc['name'])}, blocks: {blocks} }},")
-    ids = json.dumps([pc['id'] for pc in pieces])
+        blocks = 'facPack()' if pc['id'] == 'facilitator' else f"pieceOnly({js_str(pc['id'])})"
+        v.append(f"  {js_str(pc['id'])}: {{ name: {js_str(pc['name'])}, blocks: {blocks} }},")
+    ids = js_str([pc['id'] for pc in pieces])
     js += ['const PITCHES = Object.assign({', *v, '}, Object.fromEntries(Object.entries(TEMPLATE_PITCHES).filter(([k, x]) => !x.default && k !== \'facilitator\' && !' + ids + '.includes(k))));']
     return '\n'.join(js)
 
@@ -199,7 +213,8 @@ def assemble(tid, name, prefix, pieces=None, theme=None, serif=False, logo=None)
     t = template(tid)
     d = TEMPLATES / tid
     engine = ENGINE.read_text(encoding='utf-8')
-    content = (d / 'content.js').read_text(encoding='utf-8').replace('{{NAME_JS}}', json.dumps(name)[1:-1])
+    shown = html.escape(name, quote=False)   # slide text is HTML: the name shows as typed, never as markup
+    content = (d / 'content.js').read_text(encoding='utf-8').replace("'{{NAME_JS}}'", js_str(shown)).replace('{{NAME_JS}}', js_str(shown)[1:-1].replace("'", "\\'"))
     pitches = (d / 'pitches.js').read_text(encoding='utf-8')
     if pieces:
         pitches = pieces_js(pieces, pitches)
@@ -209,11 +224,11 @@ def assemble(tid, name, prefix, pieces=None, theme=None, serif=False, logo=None)
         content += '\n' + basics.read_text(encoding='utf-8')
     head = [theme_js(theme, serif)]
     if logo:
-        head.append(f'const LOGO = {json.dumps(logo)}, LOGO_ALT = {json.dumps(name)};')
+        head.append(f'const LOGO = {js_str(logo)}, LOGO_ALT = {js_str(name)};')
     content = '\n'.join(head) + '\n' + content
     out = (engine.replace('/*{{CONTENT}}*/', content).replace('/*{{PITCHES}}*/', pitches).replace('<!--{{THEME}}-->', theme_css(theme, serif))
            .replace('<!--{{SCRIPTS}}-->', scripts)
-           .replace('{{TITLE}}', html.escape(name)).replace('{{BRAND}}', html.escape(name))
+           .replace('{{TITLE}}', html.escape(name)).replace('{{BRAND}}', 'Strategy<span>U</span> · ' + html.escape(name))
            .replace('{{SUB}}', html.escape(t.get('sub', t['name']))).replace('{{PREFIX}}', prefix))
     assert '{{' not in out.replace('{{ ', ''), 'unfilled placeholder'
     return out
@@ -241,8 +256,13 @@ BRIEF_FIELDS = (('audience', 'Who it is for'), ('audienceType', 'Kind of audienc
                 ('density', 'Density'), ('style', 'Style'), ('titles', 'Title font'), ('notes', 'Notes and source material'))
 
 
+def tmpl_phrase(tmpl):
+    n = tmpl['name']
+    return f'the {n}' if 'template' in n.lower() else f'the {n} template'
+
+
 def prompt_for(deck, brief, tmpl, pieces=None):
-    bits = [f'New slide builder deck “{deck["name"]}” from the {tmpl["name"]} template']
+    bits = [f'New slide builder deck “{deck["name"]}” from {tmpl_phrase(tmpl)}']
     if brief.get('length'):
         bits[0] += f', {brief["length"]}'
     if brief.get('audience'):
@@ -263,6 +283,69 @@ def prompt_for(deck, brief, tmpl, pieces=None):
     return ' '.join(lines)
 
 
+def made_root(deck):
+    """The folder this app made for the deck (<decks folder>/<slug>), or None for a deck that lives in a
+    folder of the user's own: only a made one may ever go to the Trash."""
+    if not deck.get('template'):
+        return None
+    folder = Path(os.path.expanduser(deck['folder'])).resolve()
+    if folder.parent != Path(sbconfig.DECKS).expanduser().resolve() or folder.name != deck['slug']:
+        return None
+    return folder
+
+
+def to_trash(path):
+    """Move a folder to the system Trash: ~/.Trash on macOS, the freedesktop Trash on Linux, else
+    a .trash folder in the decks folder. Never deleted outright."""
+    path = Path(path)
+    stamp = time.strftime('%Y-%m-%d %H.%M.%S')
+    if sys.platform == 'darwin':
+        trash, info = Path.home() / '.Trash', None
+    elif sys.platform.startswith('linux'):
+        base = Path(os.environ.get('XDG_DATA_HOME') or Path.home() / '.local' / 'share') / 'Trash'
+        trash, info = base / 'files', base / 'info'
+    else:
+        trash, info = Path(sbconfig.DECKS).expanduser() / '.trash', None
+    trash.mkdir(parents=True, exist_ok=True)
+    dest = trash / path.name
+    if dest.exists():
+        dest = trash / f'{path.name} {stamp}'
+    shutil.move(str(path), str(dest))
+    if info:   # so the file manager can put it back
+        info.mkdir(parents=True, exist_ok=True)
+        (info / (dest.name + '.trashinfo')).write_text(
+            f'[Trash Info]\nPath={path}\nDeletionDate={time.strftime("%Y-%m-%dT%H:%M:%S")}\n', encoding='utf-8')
+    return dest
+
+
+def manage_deck(slug, op, registry_path=None):
+    """hide / show: on or off the dashboard, nothing else changes.
+    delete: leaves the registry; a deck this app made also moves its folder to the Trash
+    (never deleted outright), while a deck in a folder of the user's own keeps every file where it is."""
+    if op not in ('hide', 'show', 'delete'):
+        raise ValueError(f'unknown op {op!r}')
+    registry_path = Path(registry_path or sbconfig.REGISTRY)
+    with _REG:
+        reg = json.loads(registry_path.read_text(encoding='utf-8'))
+        d = next((x for x in reg['decks'] if x.get('slug') == slug), None)
+        if not d:
+            raise KeyError(slug)
+        trashed = None
+        if op == 'hide':
+            d['hidden'] = True
+        elif op == 'show':
+            d.pop('hidden', None)
+        else:
+            root = made_root(d)
+            if root and root.exists():
+                trashed = to_trash(root)
+            reg['decks'] = [x for x in reg['decks'] if x is not d]
+        tmp = registry_path.with_suffix('.json.tmp')
+        tmp.write_text(json.dumps(reg, indent=2, ensure_ascii=False) + '\n', encoding='utf-8')
+        os.replace(tmp, registry_path)
+    return {'slug': slug, 'op': op, 'trashed': sbconfig.tilde(trashed) if trashed else None}
+
+
 def create_deck(name, tid, brief=None, pieces=None, logo=None, registry_path=None):
     name = (name or '').strip()
     if not name:
@@ -270,64 +353,80 @@ def create_deck(name, tid, brief=None, pieces=None, logo=None, registry_path=Non
     brief = {k: str(v).strip() for k, v in (brief or {}).items() if v and str(v).strip()}
     pieces = [{'id': re.sub(r'[^a-z0-9-]', '', str(pc.get('id', '')).lower()) or f'piece{i}', 'name': str(pc.get('name', '')).strip() or 'Version',
                'desc': str(pc.get('desc', '')).strip()} for i, pc in enumerate(pieces or []) if isinstance(pc, dict)]
-    tmpl = template(tid)
-    registry_path = Path(registry_path or sbconfig.REGISTRY)
-    reg = json.loads(registry_path.read_text(encoding='utf-8')) if registry_path.exists() else {'decks': []}
-    slug = slugify(name)
-    if any(d['slug'] == slug or d['name'].strip().lower() == name.lower() for d in reg['decks']):
-        raise ValueError(f'There is already a deck called “{name}”. Try another name.')
-    folder = registry_path.parent / slug
-    if folder.exists():
-        raise ValueError(f'{folder} already exists. Try another name.')
-    prefix = new_prefix(name, [p for d in reg['decks'] for p in d.get('prefixes', [])])
-    entry = tmpl.get('entry', 'deck.html')
-
-    src = TEMPLATES / tid
-    folder.mkdir(parents=True)
-    for p in src.iterdir():
-        if p.name in ('template.json', 'content.js', 'pitches.js', 'README.md') or p.name.startswith('.'):
-            continue
-        (shutil.copytree if p.is_dir() else shutil.copy2)(p, folder / p.name)
-    theme = theme_key(brief.get('style'))
-    serif = 'serif' in brief.get('titles', '').lower() and 'sans' not in brief.get('titles', '').lower()
-    logo_path = None
-    if logo and logo.get('data'):   # the deck's own logo, from the form (a data URL)
+    logo_raw = logo_ext = None
+    if logo and logo.get('data'):   # the deck's own logo, from the form (a data URL): checked before anything is made
         import base64
-        m = re.match(r'data:image/(png|jpeg|jpg|svg\+xml|webp);base64,(.*)$', logo['data'], re.S)
+        m = re.match(r'data:image/(png|jpeg|jpg|svg\+xml|webp);base64,(.*)$', str(logo['data']), re.S)
         if not m:
             raise ValueError('The logo has to be a PNG, JPG, SVG, or WebP file.')
-        raw = base64.b64decode(m.group(2))
-        if len(raw) > 3_000_000:
+        logo_raw = base64.b64decode(m.group(2))
+        if len(logo_raw) > 3_000_000:
             raise ValueError('That logo file is over 3 MB. Try a smaller one.')
-        ext = {'jpeg': 'jpg', 'svg+xml': 'svg'}.get(m.group(1), m.group(1))
-        (folder / 'img').mkdir(exist_ok=True)
-        (folder / 'img' / f'logo.{ext}').write_bytes(raw)
-        logo_path = f'img/logo.{ext}'
-    if theme:
-        recolor_images(folder, theme)
-    (folder / entry).write_text(assemble(tid, name, prefix, pieces, theme, serif, logo_path), encoding='utf-8')
-    (folder / '.gitignore').write_text(GITIGNORE, encoding='utf-8')
+        logo_ext = {'jpeg': 'jpg', 'svg+xml': 'svg'}.get(m.group(1), m.group(1))
+    tmpl = template(tid)
+    registry_path = Path(registry_path or sbconfig.REGISTRY)
+    decks_dir = registry_path.parent
+    with _REG:
+        reg = json.loads(registry_path.read_text(encoding='utf-8')) if registry_path.exists() else {'decks': []}
+        if any(d['name'].strip().lower() == name.lower() for d in reg['decks']):
+            raise ValueError(f'There is already a deck called “{name}”. Try another name.')
+        base = slugify(name); slug, k = base, 2
+        while any(d['slug'] == slug for d in reg['decks']) or (decks_dir / slug).exists():
+            slug, k = f'{base}-{k}', k + 1   # a different name that makes the same address: number it
+        folder = decks_dir / slug
+        prefix = new_prefix(name, [p for d in reg['decks'] for p in d.get('prefixes', [])] + list(_RESERVED))
+        _RESERVED.add(prefix)
+        folder.mkdir(parents=True)   # reserves the address
+    try:   # if building fails, take back the reserved folder and prefix
+        entry = tmpl.get('entry', 'deck.html')
 
-    deck = {'slug': slug, 'name': name, 'group': 'active', 'kind': tmpl.get('kind', 'workshop'),
-            'folder': sbconfig.tilde(folder), 'entry': entry,
-            'prefixes': [prefix], 'exportName': name, 'template': tid}
-    if pieces:
-        deck['pieces'] = [{'id': pc['id'], 'name': pc['name']} for pc in pieces]
-    deck['url'] = f'http://localhost:{sbconfig.PORT}/d/{slug}/{entry}'
-    md = [f'# {name}', '', f'Started {__import__("time").strftime("%B %-d, %Y")} from the {tmpl["name"]} template.', '']
-    if pieces:
-        md += ['## What to build', '', *[f'- **{pc["name"]}**' + (f': {pc["desc"]}' if pc.get('desc') else '') + (' (the main deck)' if i == 0 else '') for i, pc in enumerate(pieces)], '']
-    for k, label in BRIEF_FIELDS:
-        if brief.get(k):
-            md += [f'## {label}', '', brief[k], '']
-    (folder / 'BRIEF.md').write_text('\n'.join(md), encoding='utf-8')
+        src = TEMPLATES / tid
+        for p in src.iterdir():
+            if p.name in ('template.json', 'content.js', 'pitches.js', 'README.md') or p.name.startswith('.'):
+                continue
+            (shutil.copytree if p.is_dir() else shutil.copy2)(p, folder / p.name)
+        shared = TEMPLATES / '_engine' / 'img'
+        if shared.exists():
+            shutil.copytree(shared, folder / 'img', dirs_exist_ok=True)
+        theme = theme_key(brief.get('style'))
+        logo_path = None
+        if logo_raw:
+            (folder / 'img').mkdir(exist_ok=True)
+            (folder / 'img' / f'logo.{logo_ext}').write_bytes(logo_raw)
+            logo_path = f'img/logo.{logo_ext}'
+        serif = 'serif' in brief.get('titles', '').lower() and 'sans' not in brief.get('titles', '').lower()
+        if theme:
+            recolor_images(folder, theme)
+        (folder / entry).write_text(assemble(tid, name, prefix, pieces, theme, serif, logo_path), encoding='utf-8')
+        (folder / '.gitignore').write_text(GITIGNORE, encoding='utf-8')
 
-    deck['prompt'] = prompt_for(deck, brief, tmpl, pieces)
-    reg['decks'].insert(0, {k: v for k, v in deck.items() if k != 'url'})
-    tmp = registry_path.with_suffix('.json.tmp')
-    tmp.write_text(json.dumps(reg, indent=2, ensure_ascii=False) + '\n', encoding='utf-8')
-    os.replace(tmp, registry_path)
+        deck = {'slug': slug, 'name': name, 'group': 'active', 'kind': tmpl.get('kind', 'workshop'),
+                'folder': sbconfig.tilde(folder), 'entry': entry,
+                'prefixes': [prefix], 'exportName': name, 'template': tid}
+        if pieces:
+            deck['pieces'] = [{'id': pc['id'], 'name': pc['name']} for pc in pieces]
+        deck['url'] = f'http://localhost:{sbconfig.PORT}/d/{slug}/{entry}'
+        md = [f'# {name}', '', f'Started {__import__("time").strftime("%B %-d, %Y")} from {tmpl_phrase(tmpl)}.', '']
+        if pieces:
+            md += ['## What to build', '', *[f'- **{pc["name"]}**' + (f': {pc["desc"]}' if pc.get('desc') else '') + (' (the main deck)' if i == 0 else '') for i, pc in enumerate(pieces)], '']
+        for k, label in BRIEF_FIELDS:
+            if brief.get(k):
+                md += [f'## {label}', '', brief[k], '']
+        (folder / 'BRIEF.md').write_text('\n'.join(md), encoding='utf-8')
 
+        deck['prompt'] = prompt_for(deck, brief, tmpl, pieces)
+        with _REG:   # re-read: other decks may have been added while this one was built
+            reg = json.loads(registry_path.read_text(encoding='utf-8')) if registry_path.exists() else {'decks': []}
+            reg['decks'].insert(0, {k: v for k, v in deck.items() if k != 'url'})
+            tmp = registry_path.with_suffix('.json.tmp')
+            tmp.write_text(json.dumps(reg, indent=2, ensure_ascii=False) + '\n', encoding='utf-8')
+            os.replace(tmp, registry_path)
+            _RESERVED.discard(prefix)
+
+    except BaseException:
+        shutil.rmtree(folder, ignore_errors=True)
+        _RESERVED.discard(prefix)
+        raise
     try:   # version history for the deck; skipped without git
         git = lambda *a: subprocess.run(['git', *a], cwd=folder, capture_output=True, text=True)
         git('init', '-q')
@@ -336,6 +435,7 @@ def create_deck(name, tid, brief=None, pieces=None, logo=None, registry_path=Non
     except OSError:
         pass
     return deck
+
 
 
 def create_demo(registry_path=None):

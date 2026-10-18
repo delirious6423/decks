@@ -11,13 +11,17 @@
   sb round <deck> --summary S [--changed slide="what changed" ...] [--export v13]
   sb shot <deck> [--version v] [--out DIR] <slide> ...
   sb audit <deck> [--version v]
-  sb export <deck> [--version v]            next numbered PDF; older ones move to _archive/
+  sb export <deck> [--version v] [--with-edits]  next numbered PDF (the deck file; --with-edits: as the browser shows it)
   sb thumb <deck>                           refresh the dashboard thumbnail
   sb commit <deck> <message>                save the deck folder to version history
   sb url <deck>
+  sb hide <deck> / sb show <deck>           take a deck off the dashboard (into Hidden), or put it back
+  sb delete <deck> --yes                    a deck the Slide Builder made: its folder goes to the Trash;
+                                            a deck in a folder of your own: leaves the registry, files stay
   sb templates                              the templates a new deck can start from
   sb new "<name>" [--template id] [--audience A] [--audience-type T] [--knows K] [--use U] [--length L]
-         [--point P] [--structure S] [--density D] [--style S] [--notes N]
+         [--point P] [--structure S] [--density D] [--style Navy|Dark|Minimal|Forest|Teal|Plum] [--titles Serif]
+         [--pieces "Main deck; CEO deck: what it is"] [--logo path.png] [--notes N]
                                             a new deck: folder, storage prefix, decks.json, git, BRIEF.md
 
 The server must be running: python3 server.py (port and decks folder: sbconfig.py).
@@ -47,6 +51,10 @@ def call(method, path, data=None):
     try:
         with urllib.request.urlopen(req, timeout=30) as r:
             return json.loads(r.read() or b'{}')
+    except urllib.error.HTTPError as e:   # the server answered: say what it said
+        try: msg = json.loads(e.read() or b'{}').get('error') or str(e)
+        except Exception: msg = str(e)
+        sys.exit(f"{msg} ({method} {path}). Try: sb decks" if e.code == 404 else msg)
     except urllib.error.URLError as e:
         sys.exit(f'Slide Builder server not reachable at {BASE} ({e}). Start it: python3 {APP / "server.py"}')
 
@@ -105,10 +113,23 @@ def main(argv):
     if cmd == 'new':
         tmpl = opt(rest, '--template', 'blank')
         brief = {k: opt(rest, '--' + f) for k, f in (('audience', 'audience'), ('audienceType', 'audience-type'), ('knows', 'knows'), ('use', 'use'), ('length', 'length'),
-                                                     ('point', 'point'), ('structure', 'structure'), ('density', 'density'), ('style', 'style'), ('notes', 'notes'))}
+                                                     ('point', 'point'), ('structure', 'structure'), ('density', 'density'), ('style', 'style'), ('titles', 'titles'), ('notes', 'notes'))}
+        # --pieces "Final presentation; CEO deck: the same story in five slides" (the first is the main deck)
+        pieces = []
+        for i, part in enumerate([x.strip() for x in (opt(rest, '--pieces') or '').split(';') if x.strip()]):
+            nm, _, desc = part.partition(':')
+            pieces.append({'id': re.sub(r'[^a-z0-9]+', '-', nm.lower()).strip('-') or f'piece{i}', 'name': nm.strip(), 'desc': desc.strip()})
+        logo = None
+        lp = opt(rest, '--logo')
+        if lp:
+            import base64, mimetypes
+            f = Path(os.path.expanduser(lp))
+            if not f.is_file():
+                sys.exit(f'no logo file at {lp}')
+            logo = {'name': f.name, 'data': f'data:{mimetypes.guess_type(f.name)[0] or "image/png"};base64,' + base64.b64encode(f.read_bytes()).decode()}
         name = ' '.join(rest).strip() or sys.exit('usage: sb new "<name>" [--template id] [--audience A] [--length L] [--point P] [--notes N]')
         req = urllib.request.Request(BASE + '/api/new-deck', method='POST', headers={'Content-Type': 'application/json'},
-                                     data=json.dumps({'name': name, 'template': tmpl, 'brief': brief}).encode())
+                                     data=json.dumps({'name': name, 'template': tmpl, 'brief': brief, 'pieces': pieces, 'logo': logo}).encode())
         try:
             with urllib.request.urlopen(req, timeout=60) as r:
                 d = json.loads(r.read())
@@ -117,6 +138,9 @@ def main(argv):
         print(f"{d['slug']}  {BASE}{d['path']}\n{d['folder']}\n\n{d['prompt']}")
         return
 
+    known = ('url', 'comments', 'edits', 'working', 'reply', 'status', 'idle', 'round', 'shot', 'audit', 'export', 'thumb', 'commit', 'hide', 'show', 'delete')
+    if cmd not in known:
+        sys.exit(f'unknown command {cmd!r}\n' + __doc__)
     slug = rest.pop(0) if rest else sys.exit('which deck? try: sb decks')
 
     if cmd == 'url':
@@ -187,13 +211,35 @@ def main(argv):
         nums = [int(m.group(1)) for p in list(path.glob('*.pdf')) + list(archive.glob('*.pdf')) if (m := pat.match(p.name))]
         n = max(nums, default=0) + 1
         out = path / f'{base} (v{n} export).pdf'
-        node('export', slug, str(out), *(['--version', version] if version else []))
+        with_edits = '--with-edits' in rest
+        if not with_edits:   # the PDF is the deck file; say so if the browser holds changes it leaves out
+            try:
+                e = json.loads(node('edits', slug, *(['--version', version] if version else [])))
+                left = [f"{len(e['edits'])} text edit{'s' * (len(e['edits']) != 1)}" if e.get('edits') else '',
+                        f"{len(e['added'])} added slide{'s' * (len(e['added']) != 1)}" if e.get('added') else '',
+                        f"{len(e['removed'])} removed slide{'s' * (len(e['removed']) != 1)}" if e.get('removed') else '',
+                        'a new slide order' if e.get('reordered') else '']
+                left = [x for x in left if x]
+                if left:
+                    print(f"Note: the PDF is the deck file. Saved in the browser and not in it: {', '.join(left)}.\n"
+                          f"      Bake them in first (./sb edits {slug}), or export what the browser shows with --with-edits.", file=sys.stderr)
+            except (SystemExit, ValueError, KeyError):
+                pass
+        node('export', slug, str(out), *(['--version', version] if version else []), *(['--with-edits'] if with_edits else []))
         archive.mkdir(exist_ok=True)
         for p in path.glob('*.pdf'):
             if pat.match(p.name) and p != out:
                 shutil.move(str(p), archive / p.name)
         node('thumb', slug, str(path / '.slidebuilder' / 'thumb.png'))
         print(out)
+    elif cmd in ('hide', 'show', 'delete'):
+        if cmd == 'delete' and '--yes' not in rest:
+            d = next((x for x in call('GET', '/api/decks')['decks'] if x['slug'] == slug), None)
+            what = f"moves {d['trashes']} to the Trash" if d and d.get('trashes') else 'removes it from the Slide Builder; its files stay where they are'
+            sys.exit(f"sb delete {slug} {what}. Run it again with --yes to go ahead.")
+        r = call('POST', f'/api/decks/{slug}/manage', {'op': cmd})
+        print({'hide': f'Hidden: {slug} (sb show {slug} brings it back).', 'show': f'Back on the dashboard: {slug}.'}.get(cmd)
+              or (f"Deleted {slug}: its folder is in the Trash ({r['trashed']})." if r.get('trashed') else f'Removed {slug} from the Slide Builder. Its files are untouched.'))
     elif cmd == 'thumb':
         _, path = folder(slug)
         print(node('thumb', slug, str(path / '.slidebuilder' / 'thumb.png')), end='')

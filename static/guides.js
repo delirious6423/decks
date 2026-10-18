@@ -12,7 +12,7 @@
   // the band, in slide pixels (slides are 1000 x 562.5)
   const BAND = { t: 28, r: 44, b: 40, l: 44 };
   const W = 1000, H = 562.5, SLACK = 3, MIN_TEXT = 12, MAX_SIZES = 4;
-  const NO_BORDER = new Set(['title', 'closing', 'image', 'photo', 'photowords', 'pptx', 'section']);
+  const NO_BORDER = new Set(['title', 'closing', 'image', 'photo', 'photowords', 'photofull', 'section']);
   const NO_TITLE = new Set(['title', 'closing', 'section', 'statement', 'reflect', 'lines', 'image', 'photo', 'pptx', 'team', 'shout']);
   const SKIP = '.ctrls, .slide-tag, .sb-badge, .sbg-ov, .logo, .logo-plate, .src, .num, .slide-no, [aria-hidden="true"]';   // aria-hidden: decorative, not read
 
@@ -24,6 +24,8 @@
     const R = slide.getBoundingClientRect(); if (!R.width) return out;
     const k = R.width / W, toSlide = (r) => ({ x: (r.left - R.left) / k, y: (r.top - R.top) / k, w: r.width / k, h: r.height / k });
 
+    // a converted slide's source line: it belongs in the footer band, and footnote size is fine for it
+    const footnote = (n) => layout === 'pptx' && /^\s*(sources?|note|notes)\b/i.test((n.parentElement.closest('.pp') || n.parentElement).textContent);
     const t = slide.querySelector(':scope > .h-title');
     if (t && !NO_TITLE.has(layout) && t.textContent.trim()) {
       const cs = getComputedStyle(t), lh = parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.2;
@@ -43,7 +45,7 @@
         if (over > SLACK) hits.push(Object.assign(r, { over, what }));
       };
       // text: measure the words themselves, not the box they sit in
-      const walker = document.createTreeWalker(slide, NodeFilter.SHOW_TEXT, { acceptNode: (n) => n.nodeValue.trim() && !n.parentElement.closest(SKIP) && !n.parentElement.closest('svg') ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT });
+      const walker = document.createTreeWalker(slide, NodeFilter.SHOW_TEXT, { acceptNode: (n) => n.nodeValue.trim() && !n.parentElement.closest(SKIP) && !n.parentElement.closest('svg') && !footnote(n) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT });
       const rng = document.createRange();
       for (let n = walker.nextNode(); n; n = walker.nextNode()) {
         const cs = getComputedStyle(n.parentElement); if (cs.visibility === 'hidden' || cs.display === 'none') continue;
@@ -71,10 +73,10 @@
       });
     }
     // text size: nothing too small, and only a few sizes (titles, footers, and the logo don't count)
-    if (!['image', 'photo', 'pptx'].includes(layout)) {
+    if (!['image', 'photo'].includes(layout)) {
       const sizes = [], small = [];
       const rng = document.createRange();
-      const tw = document.createTreeWalker(slide, NodeFilter.SHOW_TEXT, { acceptNode: (n) => n.nodeValue.trim() && !n.parentElement.closest(SKIP + ', .h-title') ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT });
+      const tw = document.createTreeWalker(slide, NodeFilter.SHOW_TEXT, { acceptNode: (n) => n.nodeValue.trim() && !n.parentElement.closest(SKIP + ', .h-title') && !footnote(n) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT });
       for (let n = tw.nextNode(); n; n = tw.nextNode()) {
         const el = n.parentElement, cs = getComputedStyle(el); if (cs.visibility === 'hidden' || cs.display === 'none') continue;
         let fs = parseFloat(cs.fontSize) || 0;
@@ -160,6 +162,8 @@
   new ResizeObserver(() => later()).observe(deck);
   deck.addEventListener('input', () => later(400));
   window.addEventListener('resize', () => later());
+  // moving between slides of the same size changes nothing the observers see: redraw on the shell's signal, and again once the slide has settled
+  window.addEventListener('sb:slide', () => { later(40); setTimeout(() => requestAnimationFrame(draw), 450); });
   new MutationObserver(() => later(60)).observe(document.body, { attributes: true, attributeFilter: ['class'] });
   if (document.fonts) document.fonts.ready.then(() => later(300));
   later(400);
