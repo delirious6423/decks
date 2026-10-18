@@ -135,6 +135,7 @@ label.sb-check { display: inline-flex; align-items: center; gap: 6px; font-size:
 
 /* badges on the slide itself, both views */
 .sb-badge { position: absolute; z-index: 5; top: 8px; left: 8px; font: 700 11px 'DM Sans', sans-serif; padding: 3px 8px; border-radius: 10px; background: var(--sb-ink); color: #fff; pointer-events: none; }
+.sb-badge.inline { position: static; display: inline-block; margin-left: 10px; vertical-align: 1px; line-height: 1.3; }
 
 /* ---------- scroll view: simple replies under each slide ---------- */
 .sb-reply { margin-top: 6px; font: 12.5px/1.45 'DM Sans', sans-serif; color: var(--sb-ink); display: flex; gap: 10px; align-items: flex-start; }
@@ -332,3 +333,11 @@ body.sb-has-next.sb-on { padding-top: calc(var(--sb-top) + 42px) !important; }
 /* a reply Claude wrote before the current comment: context, not an answer */
 .sb-reply.stale { opacity: .6; }
 .sb-reply.stale .sb-who { font-style: normal; }
+
+/* the slide's thread in the side panel */
+.sb-hist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 14px; }
+.sb-hist li { border-left: 2px solid var(--sb-line); padding-left: 10px; font-size: 12.5px; line-height: 1.45; color: var(--sb-ink); }
+.sb-hist b { display: block; font-size: 10.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--sb-mute); margin-bottom: 1px; }
+.sb-hist .sb-h-claude { margin-top: 6px; }
+.sb-hist .sb-h-claude b { color: var(--sb-red); }
+.sb-hist .sb-h-end { margin-top: 5px; font-size: 11.5px; color: var(--sb-mute); opacity: .8; }

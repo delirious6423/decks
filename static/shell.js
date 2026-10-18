@@ -284,9 +284,22 @@
     const notes = notesOf(id);
     body.innerHTML = `<div class="sb-sec"><p class="sb-title">${esc(title(id))}</p><div class="sb-meta">Slide ${n} of ${all.length} · ${esc(id)}</div></div>
       <div class="sb-sec" id="sb-change-slot">${changeBlock(id, i)}</div>
+      ${historyBlock(id) ? `<div class="sb-sec">${historyBlock(id)}</div>` : ''}
       <div class="sb-sec"><h4>Notes and sources</h4>${notes ? `<div class="sb-notes">${esc(notes)}</div>` : '<div class="sb-hint">No notes on this slide.</div>'}</div>
       <div class="sb-sec"><div class="sb-hint">Comment under the slide, then click Ask Claude (or say “process changes” in Claude Code). Tick “Still drafting” to hold one back.</div></div>`;
   }
+  // the slide's thread: each earlier comment, Claude's reply, and how it ended
+  const historyBlock = (id) => {
+    const hs = (review.history || []).filter((x) => x.slide === id && x.reply && x.reply.status !== 'working');
+    if (!hs.length) return '';
+    const day = (t) => t ? new Date(t * 1000).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : '';
+    const said = { done: 'Done', question: 'Question', skipped: 'Skipped' };
+    const end = (x) => x.resolved ? 'Looks good' : x.reopened ? 'Reopened' : x.reply.status === 'question' ? 'You answered' : 'Followed up';
+    return `<h4>History on this slide</h4><ol class="sb-hist">${hs.map((x) => `<li>
+      ${x.reply.forText ? `<div class="sb-h-you"><b>You</b>${esc(x.reply.forText)}</div>` : ''}
+      <div class="sb-h-claude"><b>Claude · ${said[x.reply.status] || ''}</b>${esc(x.reply.text)}</div>
+      <div class="sb-h-end">${end(x)} · ${day(x.resolved || x.reopened || x.replaced)}</div></li>`).join('')}</ol>`;
+  };
   const changeBlock = (id, i) => i.ch ? `<h4>Changed in round ${esc(i.ch.round || '')}<button class="sb-btn" data-act="seen" style="padding:2px 8px;font-size:11.5px;text-transform:none;letter-spacing:0">Mark as seen</button></h4><div class="sb-change">${esc(i.ch.note || 'Updated this round.')}</div>` : '<div class="sb-hint">No changes on this slide in the last round.</div>';
 
   // buttons inside the panel and under slides
@@ -614,8 +627,9 @@
     wraps().forEach((w) => {
       const id = w.dataset.id, i = info(id), fr = frameOf(w);
       w.dataset.sbid = id;
-      let bd = fr.querySelector(':scope > .sb-badge');
-      if (i.changed) { if (!bd) { bd = h('span', 'sb-badge'); if (getComputedStyle(fr).position === 'static') fr.style.position = 'relative'; fr.appendChild(bd); } bd.textContent = `Changed · round ${i.ch.round || ''}`; }
+      const row = w.querySelector(':scope > .slide-no'), host = row || fr;   // in the row above the slide, so it never covers the title
+      let bd = host.querySelector(':scope > .sb-badge');
+      if (i.changed) { if (!bd) { bd = h('span', 'sb-badge' + (row ? ' inline' : '')); if (!row && getComputedStyle(fr).position === 'static') fr.style.position = 'relative'; host.appendChild(bd); } bd.textContent = `Changed · round ${i.ch.round || ''}`; }
       else if (bd) bd.remove();
       const fb = w.querySelector('textarea.fb'); if (!fb) return;
       const hold = holdRow(w); hold.querySelector('input').checked = i.hold;

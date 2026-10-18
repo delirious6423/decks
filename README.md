@@ -92,6 +92,11 @@ copy `config.example.json` to `config.json`, or set environment variables (they 
    changed slides carry a badge. Click **Looks good** to clear a handled comment, or reply
    to keep it open.
 
+Every slide keeps its history in the side panel: each comment, the agent's reply, and how
+it ended, round after round.
+
+![A revised slide: the new title, the history of the back-and-forth in the side panel, and the next question under the slide](docs/history.png)
+
 ## In the deck
 
 Four views, each with the slides bar on the left and the notes bar on the right:

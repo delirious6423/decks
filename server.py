@@ -340,6 +340,9 @@ def apply_review_op(deck, op):
         if kind == 'comment-state':            # page: draft or ready
             r['comments'][slide] = {'state': op['state'], 'text': op.get('text', ''), 'at': now, 'follow': bool(op.get('follow'))}
         elif kind == 'reply':                  # Claude: done / question / skipped / working
+            old = r['replies'].get(slide)
+            if old and old.get('status') != 'working' and (old.get('forText') != op.get('forText', '') or old.get('text') != op.get('text', '')):
+                r['history'].append({'slide': slide, 'reply': old, 'replaced': now})   # the slide's thread keeps it
             r['replies'][slide] = {'status': op['status'], 'text': op.get('text', ''),
                                    'forText': op.get('forText', ''), 'round': op.get('round'), 'at': now}
         elif kind == 'resolve':                # page: looks good
