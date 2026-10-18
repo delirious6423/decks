@@ -10,22 +10,25 @@ it works.
 
 ## Why I built this
 
-Most people learn how to make a good deck in one place and make their decks in another.
-You take the course or read the book, then go back to your desk with a deadline, and the
-method stays in your notes.
+I teach people consulting skills and a big part of my work is getting people to make
+better and more compelling decks in PowerPoint. I made most of my slides in PowerPoint
+too. Of course I did, I'm a former consultant.
 
-AI changes that. **You can use AI as both a doer and a teacher**, so you learn the
-method and apply it at the same time, on your own work.
+With Astra and Opus 5.5, we've reached a tipping point. I think that bulky software like
+Google Slides and PowerPoint increasingly doesn't make sense, especially for a solo
+operator like me. Handling basic formatting is trivial now and you can play project
+manager or partner, with the latest models as your Senior Associate. While I assume this
+may continue to evolve and I'm sure Claude's slide project may eventually kick my ass,
+for now, I am putting this out there as a simple harness that you can open in Claude or
+Codex and work in iteratively.
 
 Decks is built that way. You say what should change, your agent changes it, and it tells
-you on the slide what it did and why. Checks keeps the tests consultants use one
-keypress away: read only the titles and see if they tell the story; look at a slide for
-five seconds and see if the point lands. The guides flag what breaks a basic principle
-of slide design. They're guidelines, not rules.
+you on the slide what it did and why. I have a tab, **Checks**, that offers some of the
+tests I teach to teams and also still run on my own slides: five- and ten-second tests,
+title tests, and horizontal and vertical flow.
 
-I spent nearly a decade in strategy consulting, at McKinsey and BCG, and I've taught
-these skills through [StrategyU](https://strategyu.co) since 2017. I make my own
-workshops and talks in Decks.
+When I make slides now, this is my daily driver and harness. I'm not sure I'll ever align
+boxes in PowerPoint again.
 
 ## What you get
 
