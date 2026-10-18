@@ -36,7 +36,8 @@ you one file to send: the slides only, pictures inside, with a Present button.
 - The server needs only Python 3. Screenshots, the audit, PDF export, and dashboard
   thumbnails use Node.js and a headless Chrome, which `setup.sh` installs.
 - Everything runs on your machine, at `http://localhost:8790`.
-- Code: MIT. Templates: CC BY 4.0.
+- Code: [FSL-1.1-MIT](LICENSE.md), free for any use except a competing product, and MIT after two years.
+  Templates: CC BY 4.0.
 
 ## Install
 
@@ -311,5 +312,15 @@ API (what `sb` uses):
 
 ## License
 
-The code is MIT (`LICENSE`). The template content (the slides, their wording, and their
-notes) is CC BY 4.0 (`LICENSE-templates`). Decks you make are yours. Fonts: `NOTICE`.
+The code is under the Functional Source License, FSL-1.1-MIT (`LICENSE.md`). You can use
+it for anything except a competing product or service: make decks at work, for clients,
+for your own company, change it to suit you. Each version becomes MIT two years after its
+release. If you want to build a product on it, get in touch.
+
+The template content (the slides, their wording, and their notes) is CC BY 4.0
+(`LICENSE-templates`). Decks you make are yours, and you can send them to anyone: each
+deck file carries a copy of the deck engine with a link to its license. Fonts: `NOTICE`.
+
+## Contributing
+
+Issues and ideas are welcome. I'm not taking outside code yet.
