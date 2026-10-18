@@ -25,7 +25,8 @@ Codex and work in iteratively.
 Decks is built that way. You say what should change, your agent changes it, and it tells
 you on the slide what it did and why. I have a tab, **Checks**, that offers some of the
 tests I teach to teams and also still run on my own slides: five- and ten-second tests,
-title tests, and horizontal and vertical flow.
+title tests, and horizontal and vertical flow. You can use AI as both a doer and a
+teacher, so you learn the method and apply it at the same time, on your own work.
 
 When I make slides now, this is my daily driver and harness. I'm not sure I'll ever align
 boxes in PowerPoint again.
