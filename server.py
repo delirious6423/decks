@@ -1,0 +1,559 @@
+#!/usr/bin/env python3
+"""Slide Builder server.
+
+Serves every deck at one fixed local address, keeps each reviewer's edits and
+comments on disk (next to the deck, in .slidebuilder/), and gives the agent
+(Claude Code, Codex, or anything that can run `sb`) a small JSON API for reading
+comments and posting replies.
+
+    python3 server.py                 port and decks folder from sbconfig.py
+    python3 server.py --port 8799
+
+Decks are listed in decks.json in the decks folder (re-read on every request, so
+edits apply without a restart). The first start creates it with one demo deck.
+Nothing in a deck file is changed: the server adds a boot script when it serves a
+deck page, and that script removes itself before the builder runs, so "Save a
+copy" still produces a clean file to send.
+"""
+import argparse
+import json
+import mimetypes
+import os
+import re
+import subprocess
+import threading
+import time
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
+from urllib.parse import parse_qs, unquote, urlparse
+
+import newdeck
+import sbconfig
+
+APP = Path(__file__).resolve().parent
+STATIC = APP / 'static'
+LOCK = threading.Lock()
+STARTED = time.time()
+
+
+# ---------- decks and files ----------
+
+def load_registry():
+    reg = read_json(sbconfig.REGISTRY, {'decks': []})
+    for d in reg['decks']:
+        d['path'] = Path(os.path.expanduser(d['folder'])).resolve()
+    return reg
+
+
+def find_deck(slug):
+    for d in load_registry()['decks']:
+        if d['slug'] == slug:
+            return d
+    return None
+
+
+def sb_dir(deck):
+    p = deck['path'] / '.slidebuilder'
+    p.mkdir(exist_ok=True)
+    return p
+
+
+def read_json(path, default):
+    try:
+        with open(path, encoding='utf-8') as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return default
+
+
+def write_json(path, data):
+    tmp = path.with_suffix(path.suffix + '.tmp')
+    with open(tmp, 'w', encoding='utf-8') as f:
+        json.dump(data, f, ensure_ascii=False, indent=1)
+    os.replace(tmp, path)
+
+
+def mtime(path):
+    try:
+        return path.stat().st_mtime
+    except FileNotFoundError:
+        return 0
+
+
+# ---------- small caches: the dashboard asks every 5 seconds, the files rarely change ----------
+
+_memo = {}
+_memo_lock = threading.Lock()
+
+
+def memo(name, deck, sig, fn):
+    """fn() again only when sig (file times) changes, per deck."""
+    key = (name, deck['slug'])
+    with _memo_lock:
+        hit = _memo.get(key)
+    if hit and hit[0] == sig:
+        return hit[1]
+    val = fn()
+    with _memo_lock:
+        _memo[key] = (sig, val)
+    return val
+
+
+def entry_time(deck):
+    return mtime(deck['path'] / deck['entry'])
+
+
+def settings():
+    return read_json(sbconfig.SETTINGS, {'hideClients': False})
+
+
+def empty_review():
+    return {'comments': {}, 'replies': {}, 'history': [], 'changed': {}, 'rounds': [], 'claude': None}
+
+
+# ---------- what the dashboard and Claude need to know ----------
+
+def comments_from_state(state):
+    """Every non-empty comment in a deck's saved state: {slide: [{key, text}]}.
+
+    Decks keep comments in <prefix>ws_<version>.__fb (older builders used other
+    key names). Any saved JSON object with __fb counts.
+    """
+    out = {}
+    for key, raw in (state.get('keys') or {}).items():
+        if 'backup' in key:   # saved snapshots, not live comments
+            continue
+        try:
+            val = json.loads(raw)
+        except (TypeError, json.JSONDecodeError):
+            continue
+        fb = val.get('__fb') if isinstance(val, dict) else None
+        if not isinstance(fb, dict):
+            continue
+        for slide, text in fb.items():
+            if isinstance(text, str) and text.strip():
+                out.setdefault(slide, []).append({'key': key, 'text': text.strip()})
+    return out
+
+
+def open_comments(deck):
+    """Comments Claude still has to act on, merged with their review status."""
+    d = sb_dir(deck)
+    return memo('open', deck, (entry_time(deck), mtime(d / 'state.json'), mtime(d / 'review.json')), lambda: _open_comments(deck))
+
+
+def _open_comments(deck):
+    state = read_json(sb_dir(deck) / 'state.json', {'keys': {}})
+    review = read_json(sb_dir(deck) / 'review.json', empty_review())
+    done = set(deck_done_list(deck))
+    rows = []
+    for slide, items in comments_from_state(state).items():
+        for it in items:
+            text = it['text']
+            if text in done or f'{slide}::{text}' in done:
+                continue
+            meta = review['comments'].get(slide, {})
+            reply = review['replies'].get(slide)
+            if reply and reply.get('forText') != text:
+                reply = None  # the comment changed after Claude replied
+            rows.append({
+                'slide': slide, 'key': it['key'], 'text': text,
+                'state': meta.get('state', 'ready') if meta.get('text') == text else 'ready',
+                'reply': reply,
+            })
+    return rows
+
+
+def deck_done_list(deck):
+    """DONE_FB entries baked into the deck file (comments already handled)."""
+    return memo('done', deck, entry_time(deck), lambda: _deck_done_list(deck))
+
+
+def _deck_done_list(deck):
+    try:
+        src = (deck['path'] / deck['entry']).read_text(encoding='utf-8')
+    except FileNotFoundError:
+        return []
+    m = re.search(r'^const DONE_FB = (\[.*\]);\s*$', src, re.M)
+    if not m:
+        return []
+    try:
+        return json.loads(m.group(1))
+    except json.JSONDecodeError:
+        return []
+
+
+def latest_export(deck):
+    pdfs = sorted(deck['path'].glob('*.pdf'), key=lambda p: p.stat().st_mtime, reverse=True)
+    if not pdfs:
+        return None
+    p = pdfs[0]
+    return {'name': p.name, 'url': f"/d/{deck['slug']}/{p.name}", 'at': p.stat().st_mtime}
+
+
+def git_info(deck):
+    """Last commit and whether the folder has changes; asked of git at most every 15 seconds."""
+    return memo('git', deck, (entry_time(deck), int(time.time() // 15)), lambda: _git_info(deck))
+
+
+def _git_info(deck):
+    try:
+        out = subprocess.run(['git', '-C', str(deck['path']), 'log', '-1', '--format=%ct%x09%s'],
+                             capture_output=True, text=True, timeout=5)
+        if out.returncode == 0 and out.stdout.strip():
+            ts, msg = out.stdout.strip().split('\t', 1)
+            dirty = subprocess.run(['git', '-C', str(deck['path']), 'status', '--porcelain'],
+                                   capture_output=True, text=True, timeout=5).stdout.strip()
+            return {'at': float(ts), 'message': msg, 'uncommitted': bool(dirty)}
+    except (OSError, subprocess.SubprocessError, ValueError):
+        pass
+    return None
+
+
+def slide_count(deck):
+    """Slides in the default version, read from the file without running it."""
+    return memo('count', deck, entry_time(deck), lambda: _slide_count(deck))
+
+
+def _slide_count(deck):
+    try:
+        src = (deck['path'] / deck['entry']).read_text(encoding='utf-8')
+    except FileNotFoundError:
+        return None
+    i = src.find('const LIBRARY = {')
+    if i < 0:
+        return None
+    lib = src[i:src.find('\n};', i)]
+    starts = [m.start() for m in re.finditer(r"^  '[a-z0-9-]+'\s*:", lib, re.M)] + [len(lib)]
+    n = 0
+    for a, b in zip(starts, starts[1:]):
+        entry = re.sub(r"notes\s*:\s*'(?:[^'\\]|\\.)*'", '', lib[a:b])   # notes can mention anything
+        if not re.search(r'\b(?:alt|fac)\s*:\s*true', entry):
+            n += 1
+    return n or None
+
+
+def versions(deck):
+    """The deck's versions (workshop cuts or pitches), from its PITCHES table."""
+    return [dict(v) for v in memo('versions', deck, entry_time(deck), lambda: _versions(deck))]   # copies: callers add counts
+
+
+def _versions(deck):
+    try:
+        src = (deck['path'] / deck['entry']).read_text(encoding='utf-8')
+    except FileNotFoundError:
+        return []
+    i = src.find('const PITCHES = {')
+    if i < 0:
+        return []
+    block = src[i:src.find('\n};', i)]
+    out = []
+    for m in re.finditer(r"^\s{2}([a-z0-9_]+)\s*:\s*\{\s*name\s*:\s*'([^']+)'\s*,\s*blocks\s*:\s*(\[[^\]]*\]|[^,}\n]+)", block, re.M | re.S):
+        blocks = m.group(3)
+        n = len(re.findall(r"'[a-z0-9-]+'", blocks)) if blocks.startswith('[') else None
+        out.append({'key': m.group(1), 'name': m.group(2).replace(' — ', ': '), 'slides': n,
+                    'client': m.group(1) in deck.get('clientVersions', []),
+                    'url': f"/d/{deck['slug']}/{deck['entry']}#v={m.group(1)}"})
+    return out
+
+
+def deck_summary(deck):
+    review = read_json(sb_dir(deck) / 'review.json', empty_review())
+    rows = open_comments(deck)
+    vers = versions(deck)
+    if settings().get('hideClients'):   # recording or streaming: client work never leaves the server
+        vers = [v for v in vers if not v['client']]
+    for v in vers:   # comments live in one saved key per version: <prefix>..._<version>
+        v['open'] = sum(1 for r in rows if r['key'].endswith('_' + v['key']) and (not r['reply'] or r['reply'].get('status') not in ('done', 'skipped')))
+    return {
+        'slug': deck['slug'], 'name': deck['name'], 'group': deck.get('group', 'active'), 'client': bool(deck.get('client')),
+        'clientVersions': deck.get('clientVersions', []),
+        'kind': deck.get('kind'), 'delivered': deck.get('delivered'), 'pieces': deck.get('pieces') or [], 'prompt': deck.get('prompt'),
+        'folder': deck['folder'], 'url': f"/d/{deck['slug']}/{deck['entry']}",
+        'slides': slide_count(deck),
+        'open': sum(1 for r in rows if not r['reply'] or r['reply'].get('status') not in ('done', 'skipped')),
+        'questions': sum(1 for r in rows if r['reply'] and r['reply'].get('status') == 'question'),
+        'changed': len(review.get('changed') or {}),
+        'rounds': (review.get('rounds') or [])[-3:],
+        'claude': review.get('claude'),
+        'export': latest_export(deck),
+        'git': git_info(deck),
+        'fileAt': mtime(deck['path'] / deck['entry']),
+        'versions': vers,
+        'thumb': f"/api/decks/{deck['slug']}/thumb" if (sb_dir(deck) / 'thumb.png').exists() else None,
+    }
+
+
+# ---------- review operations (page and Claude) ----------
+
+def apply_review_op(deck, op):
+    path = sb_dir(deck) / 'review.json'
+    with LOCK:
+        r = read_json(path, empty_review())
+        for k, v in empty_review().items():
+            r.setdefault(k, v)
+        kind, slide, now = op.get('op'), op.get('slide'), time.time()
+        if kind == 'comment-state':            # page: draft or ready
+            r['comments'][slide] = {'state': op['state'], 'text': op.get('text', ''), 'at': now}
+        elif kind == 'reply':                  # Claude: done / question / skipped / working
+            r['replies'][slide] = {'status': op['status'], 'text': op.get('text', ''),
+                                   'forText': op.get('forText', ''), 'round': op.get('round'), 'at': now}
+        elif kind == 'resolve':                # page: looks good
+            rep = r['replies'].pop(slide, None)
+            r['comments'].pop(slide, None)
+            r['history'].append({'slide': slide, 'reply': rep, 'resolved': now})
+        elif kind == 'reopen':                 # page: not done yet
+            rep = r['replies'].pop(slide, None)
+            r['history'].append({'slide': slide, 'reply': rep, 'reopened': now})
+            r['comments'][slide] = {'state': 'ready', 'text': op.get('text', ''), 'at': now}
+        elif kind == 'claude':                 # Claude: live progress line, or null when idle
+            r['claude'] = None if op.get('idle') else {'text': op.get('text', ''), 'done': op.get('done'),
+                                                       'total': op.get('total'), 'at': now}
+        elif kind == 'round':                  # Claude: end of a round
+            number = (r['rounds'][-1]['number'] + 1) if r['rounds'] else 1
+            r['rounds'].append({'number': op.get('number') or number, 'summary': op.get('summary', ''),
+                                'export': op.get('export'), 'changed': list((op.get('changed') or {}).keys()), 'at': now})
+            r['changed'] = {s: {'note': n, 'round': op.get('number') or number} for s, n in (op.get('changed') or {}).items()}
+            r['claude'] = None
+        elif kind == 'seen':                   # page: clear a changed badge
+            for s in op.get('slides') or ([slide] if slide else []):
+                r['changed'].pop(s, None)
+        else:
+            raise ValueError(f'unknown op {kind!r}')
+        write_json(path, r)
+        return r
+
+
+# ---------- HTTP ----------
+
+BOOT_TAG = '<script id="sb-boot-data">window.__SB_BOOT={boot};</script><script id="sb-boot" src="/_sb/boot.js?v={v}"></script>'
+SHELL_TAG = ('<script id="sb-shell" src="/_sb/shell.js?v={v}" defer></script>'   # styles come from boot.js, before first paint
+             '<script id="sb-guides" src="/_sb/guides.js?v={v}" defer></script>'
+             '<script id="sb-addslide" src="/_sb/addslide.js?v={v}" defer></script>')
+
+
+def static_version():
+    return int(max((mtime(p) for p in STATIC.glob('*')), default=0))
+
+
+def inject(html, deck, page):
+    state = read_json(sb_dir(deck) / 'state.json', {'keys': {}, 'savedAt': 0})
+    st = settings()
+    boot = {'slug': deck['slug'], 'name': deck['name'], 'page': page, 'prefixes': deck.get('prefixes', []),
+            'state': state, 'entry': deck['entry'], 'folder': deck['folder'], 'app': sbconfig.tilde(APP),
+            'hideVersions': deck.get('clientVersions', []) if st.get('hideClients') else [], 'v': static_version()}
+    boot_json = json.dumps(boot, ensure_ascii=False).replace('</', '<\\/')
+    v = static_version()
+    head = BOOT_TAG.format(boot=boot_json, v=v)
+    m = re.search(r'<head[^>]*>', html, re.I)
+    html = html[:m.end()] + head + html[m.end():] if m else head + html
+    shell = SHELL_TAG.format(v=v)
+    i = html.lower().rfind('</body>')
+    return html[:i] + shell + html[i:] if i >= 0 else html + shell
+
+
+class Handler(BaseHTTPRequestHandler):
+    server_version = 'SlideBuilder/1.0'
+
+    def log_message(self, fmt, *args):
+        if not self.path.startswith('/api/decks/') or '/pulse' not in self.path:
+            super().log_message(fmt, *args)
+
+    # -- helpers
+    def send(self, code, body=b'', ctype='text/plain; charset=utf-8', cache=False, extra=None):
+        if isinstance(body, str):
+            body = body.encode('utf-8')
+        self.send_response(code)
+        self.send_header('Content-Type', ctype)
+        self.send_header('Content-Length', str(len(body)))
+        self.send_header('Cache-Control', 'max-age=300' if cache else 'no-store, max-age=0')
+        for k, v in (extra or {}).items():
+            self.send_header(k, v)
+        self.end_headers()
+        if self.command != 'HEAD':
+            self.wfile.write(body)
+
+    def json(self, code, data, extra=None):
+        self.send(code, json.dumps(data, ensure_ascii=False), 'application/json; charset=utf-8', extra=extra)
+
+    def body(self):
+        n = int(self.headers.get('Content-Length') or 0)
+        return json.loads(self.rfile.read(n) or b'{}') if n else {}
+
+    def serve_file(self, path, cache=False):
+        if not path.is_file():
+            return self.send(404, 'Not found')
+        ctype = mimetypes.guess_type(path.name)[0] or 'application/octet-stream'
+        if ctype.startswith('text/') or ctype in ('application/javascript', 'application/json', 'image/svg+xml'):
+            ctype += '; charset=utf-8'
+        self.send(200, path.read_bytes(), ctype, cache=cache)
+
+    # -- routes
+    def do_HEAD(self):
+        self.do_GET()
+
+    def do_GET(self):
+        url = urlparse(self.path)
+        path, q = unquote(url.path), parse_qs(url.query)
+        if path in ('/', '/index.html'):
+            return self.serve_file(STATIC / 'dashboard.html')
+        if path.startswith('/_sb/'):
+            return self.serve_file(STATIC / Path(path[5:]).name)
+        if path == '/favicon.ico':
+            return self.serve_file(STATIC / 'favicon.svg', cache=True)
+        if path == '/api/decks':
+            reg, st = load_registry(), settings()
+            decks = [d for d in reg['decks'] if not (st.get('hideClients') and d.get('client'))]
+            return self.json(200, {'decks': [deck_summary(d) for d in decks], 'started': STARTED, 'port': sbconfig.PORT,
+                                   'decksDir': sbconfig.tilde(sbconfig.DECKS), 'settings': st})
+        if path == '/api/settings':
+            return self.json(200, settings())
+        if path == '/api/templates':
+            return self.json(200, {'templates': [{k: t.get(k) for k in ('id', 'name', 'description', 'kind', 'folderPrefix')} for t in newdeck.list_templates()]})
+        m = re.match(r'^/api/decks/([a-z0-9-]+)(?:/([a-z-]+))?$', path)
+        if m:
+            deck = find_deck(m.group(1))
+            if not deck:
+                return self.json(404, {'error': 'no such deck'})
+            what = m.group(2)
+            if what is None:
+                return self.json(200, deck_summary(deck))
+            if what == 'state':
+                return self.json(200, read_json(sb_dir(deck) / 'state.json', {'keys': {}, 'savedAt': 0}))
+            if what == 'review':
+                return self.json(200, read_json(sb_dir(deck) / 'review.json', empty_review()))
+            if what == 'comments':
+                return self.json(200, {'comments': open_comments(deck)})
+            if what == 'thumb':
+                return self.serve_file(sb_dir(deck) / 'thumb.png')
+            if what == 'pulse':
+                sb = sb_dir(deck)
+                return self.json(200, {'file': mtime(deck['path'] / deck['entry']), 'review': mtime(sb / 'review.json'),
+                                       'state': mtime(sb / 'state.json'), 'shell': static_version()})
+            return self.json(404, {'error': 'unknown'})
+        m = re.match(r'^/d/([a-z0-9-]+)/(.*)$', path)
+        if m:
+            deck = find_deck(m.group(1))
+            if not deck:
+                return self.send(404, 'No such deck')
+            rel = m.group(2) or deck['entry']
+            target = (deck['path'] / rel).resolve()
+            if deck['path'] not in target.parents and target != deck['path']:
+                return self.send(403, 'Outside the deck folder')
+            if target.suffix.lower() == '.html' and target.is_file() and 'raw' not in q:
+                html = target.read_text(encoding='utf-8')
+                return self.send(200, inject(html, deck, rel), 'text/html; charset=utf-8')
+            return self.serve_file(target, cache=target.suffix.lower() in ('.png', '.jpg', '.jpeg', '.svg', '.woff2'))
+        if re.match(r'^/d/([a-z0-9-]+)$', path):
+            return self.send(302, extra={'Location': path + '/'})
+        self.send(404, 'Not found')
+
+    def do_PUT(self):
+        m = re.match(r'^/api/decks/([a-z0-9-]+)/state$', urlparse(self.path).path)
+        deck = find_deck(m.group(1)) if m else None
+        if not deck:
+            return self.json(404, {'error': 'no such deck'})
+        body = self.body()
+        path = sb_dir(deck) / 'state.json'
+        with LOCK:
+            st = read_json(path, {'keys': {}, 'savedAt': 0})
+            keys = st.setdefault('keys', {})
+            for k, v in (body.get('set') or {}).items():
+                if any(k.startswith(p) for p in deck.get('prefixes', [])):
+                    keys[k] = v
+            for k in body.get('remove') or []:
+                keys.pop(k, None)
+            st['savedAt'] = time.time()
+            write_json(path, st)
+        self.json(200, {'savedAt': st['savedAt']})
+
+    def do_POST(self):
+        if urlparse(self.path).path == '/api/settings':
+            with LOCK:
+                st = settings()
+                body = self.body()
+                if 'hideClients' in body:
+                    st['hideClients'] = bool(body['hideClients'])
+                sbconfig.DECKS.mkdir(parents=True, exist_ok=True)
+                write_json(sbconfig.SETTINGS, st)
+            return self.json(200, st)
+        if urlparse(self.path).path == '/api/new-deck':
+            try:
+                body = self.body()
+                with LOCK:
+                    deck = newdeck.create_deck(body.get('name'), body.get('template') or 'blank', body.get('brief') or {}, body.get('pieces') or [], body.get('logo'))
+            except (ValueError, json.JSONDecodeError) as e:
+                return self.json(400, {'error': str(e)})
+            deck['path'] = f'/d/{deck["slug"]}/{deck["entry"]}'
+            make_thumb(deck)
+            return self.json(200, deck)
+        m = re.match(r'^/api/decks/([a-z0-9-]+)/([a-z-]+)$', urlparse(self.path).path)
+        deck = find_deck(m.group(1)) if m else None
+        if not deck:
+            return self.json(404, {'error': 'no such deck'})
+        what = m.group(2)
+        try:
+            body = self.body()
+        except json.JSONDecodeError:
+            return self.json(400, {'error': 'bad json'})
+        if what == 'review':
+            try:
+                return self.json(200, apply_review_op(deck, body))
+            except (KeyError, ValueError) as e:
+                return self.json(400, {'error': str(e)})
+        self.json(404, {'error': 'unknown'})
+
+
+def make_thumb(deck):
+    """A thumbnail for the dashboard, in the background (headless Chrome takes a few seconds; no Chrome, no thumbnail)."""
+    thumb = Path(os.path.expanduser(deck['folder'])) / '.slidebuilder' / 'thumb.png'
+    env = dict(os.environ, SB_URL=f'http://localhost:{sbconfig.PORT}')
+    def run():
+        try:
+            subprocess.run(['node', str(APP / 'tools' / 'browser.mjs'), 'thumb', deck['slug'], str(thumb)], capture_output=True, timeout=120, env=env)
+        except (OSError, subprocess.SubprocessError):
+            pass
+    threading.Thread(target=run, daemon=True).start()
+
+
+def first_run():
+    """No decks.json yet: make the decks folder, an empty registry, and one demo deck to try things on."""
+    if sbconfig.REGISTRY.exists():
+        return None
+    sbconfig.DECKS.mkdir(parents=True, exist_ok=True)
+    write_json(sbconfig.REGISTRY, {'decks': []})
+    try:
+        return newdeck.create_demo()
+    except (OSError, ValueError) as e:
+        print(f'Could not make the demo deck: {e}', flush=True)
+        return None
+
+
+def main():
+    ap = argparse.ArgumentParser(description='Slide Builder server. Defaults come from config.json and SB_* environment variables (see sbconfig.py).')
+    ap.add_argument('--host', default=sbconfig.HOST)
+    ap.add_argument('--port', type=int, default=sbconfig.PORT)
+    a = ap.parse_args()
+    sbconfig.PORT = a.port   # deck addresses, prompts, and the thumbnail job use the port actually served
+    mimetypes.add_type('application/javascript', '.mjs')
+    srv = ThreadingHTTPServer((a.host, a.port), Handler)
+    demo = first_run()
+    if a.host == '127.0.0.1':
+        # browsers often resolve "localhost" to ::1 first; answer there too (loopback only)
+        try:
+            import socket
+
+            class V6(ThreadingHTTPServer):
+                address_family = socket.AF_INET6
+            threading.Thread(target=V6(('::1', a.port), Handler).serve_forever, daemon=True).start()
+        except OSError:
+            pass
+    if demo:
+        make_thumb(demo)
+        print(f'Made a demo deck in {demo["folder"]}', flush=True)
+    print(f'Slide Builder on http://localhost:{a.port}/  (decks in {sbconfig.tilde(sbconfig.DECKS)})', flush=True)
+    srv.serve_forever()
+
+
+if __name__ == '__main__':
+    main()

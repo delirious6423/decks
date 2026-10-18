@@ -1,0 +1,1 @@
+{ "name": "Talk", "description": "An opening, three parts, and a close", "kind": "workshop", "sub": "A talk", "entry": "deck.html", "folderPrefix": "talk", "order": 2 }

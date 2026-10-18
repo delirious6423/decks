@@ -1,0 +1,9 @@
+{
+  "name": "Blank",
+  "description": "A title, one part, two slides, and a close",
+  "kind": "workshop",
+  "sub": "A new deck",
+  "entry": "deck.html",
+  "folderPrefix": "deck",
+  "order": 9
+}

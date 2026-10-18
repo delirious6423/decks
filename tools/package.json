@@ -1,0 +1,7 @@
+{
+  "name": "slide-builder-tools",
+  "private": true,
+  "type": "module",
+  "description": "Headless tools for the Slide Builder: screenshots, overflow audit, PDF export, dashboard thumbnails",
+  "dependencies": { "playwright-core": "1.56.1" }
+}

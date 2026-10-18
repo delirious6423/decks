@@ -1,0 +1,13 @@
+# Optional (Linux): keep the Slide Builder running as a systemd user service.
+# Install: see "Run it at login" in README.md. __APP__ is filled in then.
+[Unit]
+Description=Slide Builder
+After=network.target
+
+[Service]
+WorkingDirectory=__APP__
+ExecStart=/usr/bin/env python3 __APP__/server.py
+Restart=on-failure
+
+[Install]
+WantedBy=default.target

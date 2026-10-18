@@ -1,0 +1,23 @@
+Template content: Creative Commons Attribution 4.0 International (CC BY 4.0)
+
+Copyright (c) 2026 Paul Millerd
+
+The template content in this repository is licensed under the Creative Commons
+Attribution 4.0 International License. That covers:
+
+  - templates/*/content.js, templates/*/pitches.js, and templates/*/template.json
+    (the slides, their wording, and their speaker notes)
+  - templates/consulting/ct-slides.js (the consulting starter's slide layouts)
+  - templates/_engine/basics.js (the basic guided layouts)
+
+The code (everything else, including the engine in templates/_engine/engine.html)
+is under the MIT License in LICENSE.
+
+You may share and adapt the template content for any purpose, including
+commercially, as long as you give appropriate credit, provide a link to the
+license, and indicate if changes were made. Decks you make from the templates
+are yours; a credit such as "Template from Slide Builder (CC BY 4.0)" in a deck
+you publish is enough.
+
+The full license text: https://creativecommons.org/licenses/by/4.0/legalcode
+A summary: https://creativecommons.org/licenses/by/4.0/

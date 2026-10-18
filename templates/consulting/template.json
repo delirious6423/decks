@@ -1,0 +1,10 @@
+{
+  "name": "Consulting starter",
+  "description": "A guided storyline in eight slides: answer first, then the proof",
+  "kind": "workshop",
+  "sub": "Consulting starter",
+  "entry": "deck.html",
+  "folderPrefix": "deck",
+  "order": 1,
+  "scripts": ["ct-slides.js"]
+}

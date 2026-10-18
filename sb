@@ -1,0 +1,211 @@
+#!/usr/bin/env python3
+"""sb: the agent's command line for the Slide Builder (Claude Code, Codex, or you).
+
+  sb decks                                  every deck, with open comments
+  sb comments <deck> [--all]                comments to act on (numbered like the deck); --all adds drafts
+  sb edits <deck> [--version v]             the reviewer's inline text edits and slide moves (read-only)
+  sb working <deck> <slide> [note]          show "Claude working" on a slide
+  sb reply <deck> <slide> <done|question|skipped> <text>
+  sb status <deck> <text> [--done N --total M]   the live line in the reviewer's top bar
+  sb idle <deck>                            clear the live line
+  sb round <deck> --summary S [--changed slide="what changed" ...] [--export v13]
+  sb shot <deck> [--version v] [--out DIR] <slide> ...
+  sb audit <deck> [--version v]
+  sb export <deck> [--version v]            next numbered PDF; older ones move to _archive/
+  sb thumb <deck>                           refresh the dashboard thumbnail
+  sb commit <deck> <message>                save the deck folder to version history
+  sb url <deck>
+  sb templates                              the templates a new deck can start from
+  sb new "<name>" [--template id] [--audience A] [--audience-type T] [--knows K] [--use U] [--length L]
+         [--point P] [--structure S] [--density D] [--style S] [--notes N]
+                                            a new deck: folder, storage prefix, decks.json, git, BRIEF.md
+
+The server must be running: python3 server.py (port and decks folder: sbconfig.py).
+sb finds it at SB_URL, or at http://localhost:<port> from config.json / SB_PORT.
+"""
+import json
+import os
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+import urllib.error
+import urllib.request
+from pathlib import Path
+
+import sbconfig
+
+BASE = sbconfig.url()
+APP = Path(__file__).resolve().parent
+TOOLS = APP / 'tools'
+
+
+def call(method, path, data=None):
+    req = urllib.request.Request(BASE + path, method=method, headers={'Content-Type': 'application/json'},
+                                 data=json.dumps(data).encode() if data is not None else None)
+    try:
+        with urllib.request.urlopen(req, timeout=30) as r:
+            return json.loads(r.read() or b'{}')
+    except urllib.error.URLError as e:
+        sys.exit(f'Slide Builder server not reachable at {BASE} ({e}). Start it: python3 {APP / "server.py"}')
+
+
+def node(*args):
+    try:   # the headless jobs talk to the same server as sb
+        out = subprocess.run(['node', str(TOOLS / 'browser.mjs'), *args], capture_output=True, text=True, env=dict(os.environ, SB_URL=BASE))
+    except FileNotFoundError:
+        sys.exit('This needs Node.js and the headless browser: run ./setup.sh')
+    if out.returncode:
+        sys.exit(out.stderr.strip() or out.stdout.strip())
+    return out.stdout
+
+
+def registry():
+    try:
+        return {d['slug']: d for d in json.loads(sbconfig.REGISTRY.read_text())['decks']}
+    except FileNotFoundError:
+        sys.exit(f'No decks yet ({sbconfig.REGISTRY} does not exist). Start the server once: python3 {APP / "server.py"}')
+
+
+def folder(slug):
+    d = registry().get(slug) or sys.exit(f'no deck {slug!r}; try: sb decks')
+    return d, Path(os.path.expanduser(d['folder']))
+
+
+def opt(argv, name, default=None, multi=False):
+    vals = []
+    while name in argv:
+        i = argv.index(name)
+        vals.append(argv[i + 1])
+        del argv[i:i + 2]
+    return vals if multi else (vals[-1] if vals else default)
+
+
+def next_round(slug):
+    r = call('GET', f'/api/decks/{slug}/review')
+    return (r.get('rounds') or [{'number': 0}])[-1]['number'] + 1
+
+
+def main(argv):
+    if not argv or argv[0] in ('-h', '--help', 'help'):
+        print(__doc__)
+        return
+    cmd, rest = argv[0], argv[1:]
+
+    if cmd == 'decks':
+        for d in call('GET', '/api/decks')['decks']:
+            print(f"{d['slug']:<22} {d['group']:<10} {str(d['slides'] or ''):>4} slides  {d['open']} open  {d['questions']} questions  {BASE}{d['url']}")
+        return
+
+    if cmd == 'templates':
+        for t in call('GET', '/api/templates')['templates']:
+            print(f"{t['id']:<14} {t['name']}: {t.get('description') or ''}")
+        return
+    if cmd == 'new':
+        tmpl = opt(rest, '--template', 'blank')
+        brief = {k: opt(rest, '--' + f) for k, f in (('audience', 'audience'), ('audienceType', 'audience-type'), ('knows', 'knows'), ('use', 'use'), ('length', 'length'),
+                                                     ('point', 'point'), ('structure', 'structure'), ('density', 'density'), ('style', 'style'), ('notes', 'notes'))}
+        name = ' '.join(rest).strip() or sys.exit('usage: sb new "<name>" [--template id] [--audience A] [--length L] [--point P] [--notes N]')
+        req = urllib.request.Request(BASE + '/api/new-deck', method='POST', headers={'Content-Type': 'application/json'},
+                                     data=json.dumps({'name': name, 'template': tmpl, 'brief': brief}).encode())
+        try:
+            with urllib.request.urlopen(req, timeout=60) as r:
+                d = json.loads(r.read())
+        except urllib.error.HTTPError as e:
+            sys.exit(json.loads(e.read() or b'{}').get('error') or str(e))
+        print(f"{d['slug']}  {BASE}{d['path']}\n{d['folder']}\n\n{d['prompt']}")
+        return
+
+    slug = rest.pop(0) if rest else sys.exit('which deck? try: sb decks')
+
+    if cmd == 'url':
+        print(BASE + call('GET', f'/api/decks/{slug}')['url'])
+    elif cmd == 'comments':
+        show_all = '--all' in rest
+        rows = call('GET', f'/api/decks/{slug}/comments')['comments']
+        if not show_all:
+            rows = [r for r in rows if r['state'] != 'draft']
+        if not rows:
+            print('No open comments.')
+            return
+        # each saved key is one version of the deck (tal_ws_talk -> talk)
+        by_version = {}
+        for r in rows:
+            v = r['key'].rsplit('_', 1)[-1]
+            if v not in by_version:
+                try:
+                    by_version[v] = {t['id']: t for t in json.loads(node('titles', slug, '--version', v))}
+                except SystemExit:
+                    by_version[v] = {t['id']: t for t in json.loads(node('titles', slug))}
+        rows.sort(key=lambda r: (r['key'], by_version[r['key'].rsplit('_', 1)[-1]].get(r['slide'], {}).get('n', 999)))
+        for r in rows:
+            t = by_version[r['key'].rsplit('_', 1)[-1]].get(r['slide'], {})
+            where = f"{t.get('n', '?'):>3} {r['slide']}  [saved under {r['key']}]"
+            rep = r['reply']['status'] if r['reply'] else 'new'
+            print(f"{where}  ({rep}{', draft' if r['state'] == 'draft' else ''})\n      title: {t.get('title', '')}\n      comment: {r['text']}\n")
+    elif cmd == 'edits':
+        version = opt(rest, '--version')
+        print(node('edits', slug, *(['--version', version] if version else [])), end='')
+    elif cmd in ('reply', 'working'):
+        slide = rest.pop(0)
+        status = 'working' if cmd == 'working' else rest.pop(0)
+        text = ' '.join(rest)
+        if status not in ('done', 'question', 'skipped', 'working'):
+            sys.exit('status must be done, question, skipped, or working')
+        rows = [r for r in call('GET', f'/api/decks/{slug}/comments')['comments'] if r['slide'] == slide]
+        for_text = rows[0]['text'] if rows else ''
+        call('POST', f'/api/decks/{slug}/review', {'op': 'reply', 'slide': slide, 'status': status, 'text': text,
+                                                   'forText': for_text, 'round': next_round(slug)})
+        print(f'{slide}: {status}')
+    elif cmd == 'status':
+        done, total = opt(rest, '--done'), opt(rest, '--total')
+        call('POST', f'/api/decks/{slug}/review', {'op': 'claude', 'text': ' '.join(rest),
+                                                   'done': int(done) if done else None, 'total': int(total) if total else None})
+    elif cmd == 'idle':
+        call('POST', f'/api/decks/{slug}/review', {'op': 'claude', 'idle': True})
+    elif cmd == 'round':
+        summary, export = opt(rest, '--summary', ''), opt(rest, '--export')
+        changed = {}
+        for c in opt(rest, '--changed', multi=True):
+            k, _, v = c.partition('=')
+            changed[k] = v
+        r = call('POST', f'/api/decks/{slug}/review', {'op': 'round', 'summary': summary, 'changed': changed, 'export': export})
+        print(f"round {r['rounds'][-1]['number']} recorded, {len(changed)} slides marked changed")
+    elif cmd == 'shot':
+        version, out = opt(rest, '--version'), opt(rest, '--out', os.path.join(tempfile.gettempdir(), 'sb-shots', slug))
+        print(node('shot', slug, out, *(['--version', version] if version else []), *rest), end='')
+    elif cmd == 'audit':
+        version = opt(rest, '--version')
+        print(node('audit', slug, *(['--version', version] if version else [])), end='')
+    elif cmd == 'export':
+        version = opt(rest, '--version')
+        d, path = folder(slug)
+        base = d.get('exportName') or d['name']
+        archive = path / '_archive'
+        pat = re.compile(re.escape(base) + r' \(v(\d+) export\)\.pdf$')
+        nums = [int(m.group(1)) for p in list(path.glob('*.pdf')) + list(archive.glob('*.pdf')) if (m := pat.match(p.name))]
+        n = max(nums, default=0) + 1
+        out = path / f'{base} (v{n} export).pdf'
+        node('export', slug, str(out), *(['--version', version] if version else []))
+        archive.mkdir(exist_ok=True)
+        for p in path.glob('*.pdf'):
+            if pat.match(p.name) and p != out:
+                shutil.move(str(p), archive / p.name)
+        node('thumb', slug, str(path / '.slidebuilder' / 'thumb.png'))
+        print(out)
+    elif cmd == 'thumb':
+        _, path = folder(slug)
+        print(node('thumb', slug, str(path / '.slidebuilder' / 'thumb.png')), end='')
+    elif cmd == 'commit':
+        _, path = folder(slug)
+        msg = ' '.join(rest) or 'Slide Builder round'
+        subprocess.run(['git', '-C', str(path), 'add', '-A'], check=True)
+        res = subprocess.run(['git', '-C', str(path), 'commit', '-q', '-m', msg], capture_output=True, text=True)
+        print(res.stdout.strip() or res.stderr.strip() or 'committed')
+    else:
+        sys.exit(f'unknown command {cmd!r}\n' + __doc__)
+
+
+if __name__ == '__main__':
+    main(sys.argv[1:])

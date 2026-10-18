@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Slide Builder</title>
+<link rel="icon" href="/_sb/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Lato:wght@700;900&display=swap" rel="stylesheet">
+<style>
+  :root { --red: #A22731; --ink: #272322; --mute: #635B58; --faint: #948C88; --line: #D9D4D0; --paper: #F1EFEE; --slide: #E3E2E0; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 14px/1.45 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif; }
+  a { color: inherit; text-decoration: none; }
+  header { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 12px; height: 56px; padding: 0 22px; background: #fff; border-bottom: 1px solid var(--line); }
+  header img { height: 24px; width: 24px; display: block; }
+  header .app { font-weight: 700; font-size: 15px; }
+  header .grow { flex: 1; }
+  header .addr { font-size: 12.5px; color: var(--faint); }
+  .btn { font: inherit; font-size: 13px; border: 1px solid var(--line); border-radius: 8px; padding: 6px 12px; background: #fff; color: var(--ink); cursor: pointer; white-space: nowrap; display: inline-block; }
+  .btn:hover { border-color: #BDB6B1; background: #FAF9F8; }
+  .btn.red { background: var(--red); border-color: var(--red); color: #fff; }
+  .btn.red:hover { background: #8E1F29; }
+  main { max-width: 1180px; margin: 0 auto; padding: 18px 22px 60px; display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr); gap: 26px; }
+  @media (max-width: 900px) { main { grid-template-columns: minmax(0, 1fr); } }
+  h2 { font-size: 11.5px; letter-spacing: .07em; text-transform: uppercase; color: var(--faint); font-weight: 600; margin: 18px 0 8px; }
+  .deck { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 16px; background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 14px; margin-bottom: 12px; }
+  .thumb { aspect-ratio: 16/9; background: var(--slide); border: 1px solid var(--line); border-radius: 5px; overflow: hidden; display: block; position: relative; }
+  .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .thumb .ph { padding: 12px 14px; font: 900 15px/1.2 Lato, sans-serif; color: var(--red); }
+  .deck h3 { margin: 2px 0 2px; font-size: 17px; }
+  .meta { font-size: 12.5px; color: var(--mute); }
+  .pills { margin: 9px 0 11px; display: flex; gap: 6px; flex-wrap: wrap; }
+  .pill { font-size: 12px; padding: 2px 9px; border-radius: 10px; background: var(--paper); color: var(--mute); }
+  .pill.red { background: #FBEAEA; color: var(--red); }
+  .pill.amber { background: #FFF1DC; color: #8A4B00; }
+  .pill.green { background: #E8F1E8; color: #2F6B34; }
+  .acts { display: flex; gap: 6px; flex-wrap: wrap; }
+  .row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 14px; background: #fff; border: 1px solid var(--line); border-radius: 10px; margin-bottom: 6px; }
+  .row:hover { border-color: #BDB6B1; }
+  .row .t { font-weight: 600; }
+  .row .r { font-size: 12.5px; color: var(--mute); white-space: nowrap; }
+  .row.muted .t, .row.muted .r { color: var(--faint); font-weight: 500; }
+  .round { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; margin-bottom: 6px; }
+  .round b { font-size: 13px; }
+  .round .meta { margin-top: 2px; }
+  .live { display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--red); background: #FBEAEA; border-radius: 10px; padding: 3px 10px; margin-top: 4px; }
+  .live i { width: 7px; height: 7px; border-radius: 50%; background: var(--red); animation: p 1.2s ease-in-out infinite; }
+  @keyframes p { 50% { opacity: .25; } }
+  .side { font-size: 13px; color: var(--mute); line-height: 1.7; }
+  .nd-back { display: none; position: fixed; inset: 0; z-index: 50; background: rgba(39,35,34,.38); align-items: flex-start; justify-content: center; padding: 72px 16px; overflow-y: auto; }
+  .nd-back.on { display: flex; }
+  .nd { width: 500px; max-width: 100%; background: #fff; border-radius: 12px; box-shadow: 0 18px 50px rgba(35,31,32,.25); padding: 22px 26px 24px; }
+  .nd-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px; }
+  .nd-step { font-size: 12px; color: var(--faint); }
+  .nd-head h3 { margin: 2px 0 0; font-size: 19px; }
+  .nd-x { border: 0; background: none; font-size: 22px; line-height: 1; color: var(--faint); cursor: pointer; padding: 2px 4px; }
+  .nd label { display: block; font-size: 13px; color: var(--mute); margin: 16px 0 6px; }
+  .nd label span { color: var(--faint); }
+  .nd input[type=text], .nd textarea, .nd select { width: 100%; font: inherit; font-size: 14px; color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 9px 11px; background: #fff; }
+  .nd select { appearance: none; -webkit-appearance: none; cursor: pointer; padding-right: 32px; background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 4.5 6 8l3.5-3.5' fill='none' stroke='%23948C88' stroke-width='1.6'/%3E%3C/svg%3E") no-repeat right 11px center; }
+  .nd input[type=text]:focus, .nd textarea:focus, .nd select:focus { outline: none; border-color: var(--red); box-shadow: 0 0 0 2px rgba(162,39,49,.14); }
+  .nd textarea { resize: vertical; min-height: 64px; }
+  .nd-uses { display: grid; gap: 6px; }
+  .nd-use { display: flex; gap: 12px; align-items: flex-start; width: 100%; text-align: left; font: inherit; color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; background: #fff; cursor: pointer; }
+  .nd-use:hover { border-color: #BDB6B1; }
+  .nd-use i { width: 14px; height: 14px; border-radius: 50%; border: 1.5px solid #BDB6B1; flex: none; margin-top: 3px; box-sizing: border-box; }
+  .nd-use.on { border: 2px solid var(--red); padding: 9px 11px; }
+  .nd-use.on i { border: 4px solid var(--red); }
+  .nd-use b { display: block; font-size: 14px; font-weight: 500; }
+  .nd-use small { display: block; font-size: 12.5px; color: var(--mute); margin-top: 1px; }
+  .nd-desc { font-size: 12.5px; color: var(--faint); margin-top: 6px; }
+  .nd-checks { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 6px; }
+  .nd-check { display: flex; gap: 10px; align-items: flex-start; text-align: left; font: inherit; color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 9px 11px; background: #fff; cursor: pointer; }
+  .nd-check:hover { border-color: #BDB6B1; }
+  .nd-check i { width: 16px; height: 16px; border-radius: 4px; border: 1.5px solid #BDB6B1; flex: none; margin-top: 2px; box-sizing: border-box; position: relative; }
+  .nd-check.on i { background: var(--red); border-color: var(--red); }
+  .nd-check.on i::after { content: ''; position: absolute; left: 4.5px; top: 1px; width: 4px; height: 8px; border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg); }
+  .nd-check b { display: block; font-size: 13.5px; font-weight: 500; }
+  .nd-check small { display: block; font-size: 12px; color: var(--mute); margin-top: 1px; line-height: 1.35; }
+  .nd-link { border: 0; background: none; padding: 0; font: inherit; font-size: 13px; color: var(--mute); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+  .nd-link:hover { color: var(--ink); }
+  .vers { margin: 6px 0 0; font-size: 12.5px; color: var(--faint); }
+  .vers a { color: var(--mute); text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px; }
+  .vers a:hover { color: var(--red); text-decoration-color: currentColor; }
+  .nd-more { margin-top: 18px; }
+  .nd-more summary { cursor: pointer; font-size: 13px; color: var(--mute); list-style: none; }
+  .nd-more summary::-webkit-details-marker { display: none; }
+  .nd-more summary::before { content: ''; display: inline-block; width: 6px; height: 6px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(-45deg); margin: 0 10px 1px 2px; transition: transform .15s; }
+  .nd-more[open] summary::before { transform: rotate(45deg); margin-bottom: 3px; }
+  .nd-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 12px; }
+  .nd-foot { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 22px; }
+  .nd-where { font-size: 12px; color: var(--faint); }
+  .nd-err { color: var(--red); font-size: 12.5px; margin-top: 6px; }
+  .nd[data-step="1"] .nd-p2, .nd[data-step="2"] .nd-p1 { display: none; }
+  .nd-done { display: none; }
+  .nd.ok .nd-form { display: none; }
+  .nd.ok .nd-done { display: block; }
+  .nd-prompt { margin-top: 10px; background: var(--paper); border-radius: 8px; padding: 10px 12px; font: 12.5px/1.55 ui-monospace, Menlo, monospace; color: var(--ink); white-space: pre-wrap; }
+  #clients.on { background: var(--ink); border-color: var(--ink); color: #fff; }
+  .howto { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) auto; gap: 14px; align-items: start; background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; }
+  .howto .st { display: flex; gap: 10px; font-size: 13.5px; color: var(--mute); line-height: 1.5; }
+  .howto .st i { flex: none; width: 24px; height: 24px; border-radius: 50%; background: var(--red); color: #fff; font: 700 12.5px/24px 'DM Sans', sans-serif; text-align: center; font-style: normal; }
+  .howto .st b { color: var(--ink); }
+  .howto .x { border: 0; background: none; font-size: 20px; line-height: 1; color: var(--faint); cursor: pointer; padding: 0 2px; }
+  @media (max-width: 900px) { .howto { grid-template-columns: minmax(0, 1fr); } }
+  .empty { color: var(--faint); font-size: 13px; padding: 6px 2px; }
+  footer { max-width: 1180px; margin: -40px auto 0; padding: 0 22px 28px; font-size: 12px; color: var(--faint); }
+</style>
+</head>
+<body>
+<header>
+  <img src="/_sb/logo.svg" alt="">
+  <span class="app">Slide Builder</span>
+  <span class="grow"></span>
+  <span class="addr" id="addr"></span>
+  <button class="btn" id="clients" title="Hide client decks and client pitches, for recording or streaming">Hide client work</button>
+  <button class="btn red" id="new">New deck</button>
+</header>
+<div class="nd-back" id="nd-back">
+  <div class="nd" id="nd" data-step="1" role="dialog" aria-modal="true" aria-labelledby="nd-title">
+    <div class="nd-form">
+      <div class="nd-head"><div><div class="nd-step" id="nd-step">Step 1 of 2</div><h3 id="nd-title">What are you making?</h3></div><button class="nd-x" id="nd-x" aria-label="Close">×</button></div>
+      <div class="nd-p1">
+        <label for="nd-name">Name</label>
+        <input type="text" id="nd-name" placeholder="AI for finance teams" autocomplete="off">
+        <div class="nd-err" id="nd-err"></div>
+        <label>What are you building?</label>
+        <div class="nd-uses" id="nd-kinds"></div>
+        <div id="nd-alongwrap"><label>Build alongside it</label><div class="nd-checks" id="nd-pieces"></div></div>
+        <div class="nd-foot"><button class="nd-link" id="nd-blank">Or start from a blank deck</button><button class="btn red" id="nd-next">Next</button></div>
+      </div>
+      <div class="nd-p2">
+        <label for="nd-aud">The audience</label>
+        <input type="text" id="nd-aud" placeholder="Finance leads at a mid-size company">
+        <label for="nd-knows">What they know and care about <span>(optional)</span></label>
+        <input type="text" id="nd-knows" placeholder="They use ChatGPT a little; they care about headcount">
+        <label for="nd-point">The one point they should leave with</label>
+        <input type="text" id="nd-point" placeholder="AI takes the crunching, so the job moves to judgment.">
+        <details class="nd-more" id="nd-more"><summary>Length, structure, colors, logo, and notes</summary>
+          <div class="nd-grid">
+            <div><label for="nd-length">Length</label><select id="nd-length" data-k="length"></select></div>
+            <div><label for="nd-atype">Kind of audience</label><select id="nd-atype" data-k="audienceType"><option value="">Claude picks</option><option>Executives</option><option>A client</option><option>My team</option><option>Workshop participants</option><option>A conference</option></select></div>
+            <div><label for="nd-structure">Structure</label><select id="nd-structure" data-k="structure"><option value="">Claude picks</option><option>Answer first</option><option>Situation, complication, resolution</option><option>A story in a few parts</option><option>Teach, practice, reflect</option></select></div>
+            <div><label for="nd-density">Density</label><select id="nd-density" data-k="density"><option value="">Claude picks</option><option>Sparse</option><option>Balanced</option><option>Detailed</option></select></div>
+            <div><label for="nd-style">Colors</label><select id="nd-style" data-k="style"><option>Navy</option><option>Dark</option><option>Minimal</option><option>Forest</option><option>Teal</option><option>Plum</option></select></div>
+            <div><label for="nd-titles">Title font</label><select id="nd-titles" data-k="titles"><option>Sans serif</option><option>Serif</option></select></div>
+          </div>
+          <label for="nd-logo">Your logo <span>(optional: PNG, SVG, or JPG; it goes in the corner of every slide)</span></label>
+          <input type="file" id="nd-logo" accept="image/png,image/svg+xml,image/jpeg,image/webp">
+          <label for="nd-notes">Notes or source material</label>
+          <textarea id="nd-notes" placeholder="Paste notes, or a folder path"></textarea>
+        </details>
+        <div class="nd-foot"><button class="btn" id="nd-backbtn">Back</button><span><button class="btn" id="nd-copy" title="Copy a prompt that asks Claude to set the deck up and build it">Copy prompt</button> <button class="btn red" id="nd-go">Create deck</button></span></div>
+      </div>
+    </div>
+    <div class="nd-done" id="nd-done"></div>
+  </div>
+</div>
+<main>
+  <div class="howto" id="howto" hidden>
+    <div class="st"><i>1</i><div><b>Start a deck.</b> Click New deck, answer a few questions, and paste the prompt it copies into Claude Code or Codex.</div></div>
+    <div class="st"><i>2</i><div><b>Comment on slides.</b> Click any text on a slide to edit it, or leave a comment under the slide.</div></div>
+    <div class="st"><i>3</i><div><b>Ask Claude.</b> Click Ask Claude in the deck, or say “process changes” in Claude Code. It edits the deck, replies under each comment, and exports a PDF.</div></div>
+    <button class="x" id="howto-x" aria-label="Hide how it works" title="Hide">×</button>
+  </div>
+  <section>
+    <h2>Active</h2><div id="active"><div class="empty">Loading…</div></div>
+    <h2 hidden>Pitch decks</h2><div id="pitch"></div>
+    <h2 hidden>Delivered</h2><div id="delivered"></div>
+  </section>
+  <aside>
+    <h2>Recent rounds</h2><div id="rounds"><div class="empty">No rounds yet.</div></div>
+    <h2>Server</h2><div class="side" id="server"></div>
+  </aside>
+</main>
+<footer>Made with StrategyU Slide Builder · MIT license</footer>
+<script>
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const ago = (t) => { if (!t) return ''; const s = Date.now() / 1000 - t; if (s < 90) return 'just now'; if (s < 3600) return Math.round(s / 60) + ' min ago'; if (s < 86400) return Math.round(s / 3600) + 'h ago'; return new Date(t * 1000).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }); };
+const pdfLabel = (e) => { const m = e && e.name.match(/\((v\d+)[^)]*\)/); return m ? m[1] + ' PDF' : 'Latest PDF'; };
+document.getElementById('addr').textContent = location.host;
+try { if (localStorage.getItem('__sb_howto') !== '1') document.getElementById('howto').hidden = false; } catch (e) { document.getElementById('howto').hidden = false; }
+document.getElementById('howto-x').addEventListener('click', () => { document.getElementById('howto').hidden = true; try { localStorage.setItem('__sb_howto', '1'); } catch (e) {} });
+
+// ---------- New deck: two short steps ----------
+const $ = (id) => document.getElementById(id);
+// what people build, the template each starts from, its lengths, and the pieces that can be built alongside it
+const KINDS = {
+  presentation: { name: 'A presentation', desc: 'A story with an answer, for a client or your team', template: 'consulting', structure: 'Answer first',
+    lengths: ['About 5 slides', 'About 10 slides', 'About 20 slides', '40 or more'],
+    pieces: [{ id: 'final', name: 'Final presentation', desc: 'The full story with the evidence; reads on its own', on: true },
+             { id: 'live', name: 'Live presentation', desc: 'Fewer words, built to present' },
+             { id: 'ceo', name: 'CEO deck', desc: 'The same story in five or six slides' },
+             { id: 'checkin', name: 'Check-in doc', desc: 'A progress update partway through the work' }] },
+  training: { name: 'A training', desc: 'Teach a skill, with practice and breakouts', template: 'workshop', structure: 'Teach, practice, reflect', audienceType: 'Workshop participants', length: 'Full day',
+    lengths: ['90 min', 'Half day', 'Full day', 'Two days'],
+    pieces: [{ id: 'slides', name: 'Training content', desc: 'The slides you teach from', on: true },
+             { id: 'facilitator', name: 'Facilitator pack', desc: 'Run sheet, timings, and notes', on: true },
+             { id: 'participant', name: 'Participant pack', desc: 'Handouts and exercises to print' }] },
+  talk: { name: 'A talk', desc: 'A keynote or a talk to a group', template: 'talk', structure: 'A story in a few parts', length: '45 min',
+    lengths: ['20 min', '30 min', '45 min', '60 min'],
+    pieces: [{ id: 'talk', name: 'Talk slides', desc: 'What you present', on: true },
+             { id: 'leave', name: 'Leave-behind', desc: 'A version to send afterward' }] },
+  proposal: { name: 'A proposal', desc: 'Win the work: approach, team, and fees', template: 'proposal', structure: 'Answer first', audienceType: 'A client', length: 'About 10 slides',
+    lengths: ['About 5 slides', 'About 10 slides', 'About 15 slides'],
+    pieces: [{ id: 'proposal', name: 'Proposal', desc: 'The full proposal', on: true },
+             { id: 'short', name: 'Short version', desc: 'A few slides for the decision maker' }] },
+  blank: { name: 'A blank deck', template: 'blank', lengths: ['About 5 slides', 'About 10 slides', 'About 20 slides', '30 min', '60 min'], pieces: [{ id: 'deck', name: 'The deck', on: true }] },
+};
+const nd = { kind: 'presentation', picked: {}, touched: new Set(), tpls: [] };
+const SELECTS = { length: 'nd-length', audienceType: 'nd-atype', structure: 'nd-structure', density: 'nd-density', style: 'nd-style', titles: 'nd-titles' };
+const readLogo = () => new Promise((ok) => { const f = $('nd-logo').files[0]; if (!f) return ok(null); const r = new FileReader(); r.onload = () => ok({ name: f.name, data: r.result }); r.onerror = () => ok(null); r.readAsDataURL(f); });
+const slugify = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 48).replace(/-+$/, '') || 'deck';
+const val = (id) => $(id).value.trim();
+const kindOf = () => KINDS[nd.kind];
+const tplId = () => { const t = kindOf().template; return nd.tpls.some((x) => x.id === t) ? t : 'blank'; };
+const tplOf = () => nd.tpls.find((t) => t.id === tplId()) || { id: 'blank', name: 'Blank', folderPrefix: 'deck' };
+const pieces = () => kindOf().pieces.filter((pc) => nd.picked[nd.kind + ':' + pc.id] ?? pc.on).map(({ id, name, desc }) => ({ id, name, desc }));
+const brief = () => Object.assign({ audience: val('nd-aud'), knows: val('nd-knows'), point: val('nd-point'), notes: val('nd-notes') },
+  Object.fromEntries(Object.entries(SELECTS).map(([k, id]) => [k, $(id).value])));
+function where() { const n = val('nd-name'); }
+function renderKinds() {
+  $('nd-kinds').innerHTML = ['presentation', 'training', 'talk', 'proposal'].map((k) => `<button class="nd-use${k === nd.kind ? ' on' : ''}" data-kind="${k}"><i></i><span><b>${KINDS[k].name}</b><small>${KINDS[k].desc}</small></span></button>`).join('')
+    + (nd.kind === 'blank' ? `<button class="nd-use on" data-kind="blank"><i></i><span><b>A blank deck</b><small>A title, one part, two slides, and a close</small></span></button>` : '');
+  const ps = kindOf().pieces; $('nd-alongwrap').style.display = ps.length > 1 ? '' : 'none';
+  $('nd-pieces').innerHTML = ps.map((pc) => `<button class="nd-check${(nd.picked[nd.kind + ':' + pc.id] ?? pc.on) ? ' on' : ''}" data-piece="${pc.id}"><i></i><span><b>${pc.name}</b><small>${pc.desc}</small></span></button>`).join('');
+  $('nd-blank').style.visibility = nd.kind === 'blank' ? 'hidden' : '';
+}
+function lengths() { const cur = $('nd-length').value, opts = kindOf().lengths;
+  $('nd-length').innerHTML = '<option value="">Claude picks</option>' + opts.map((o) => `<option${o === cur ? ' selected' : ''}>${o}</option>`).join(''); }
+function preset() {   // defaults for the kind; anything picked by hand stays
+  const k = kindOf(); lengths();
+  Object.entries(SELECTS).forEach(([key, id]) => { if (nd.touched.has(key) || !$(id).querySelector('option[value=""]')) return; $(id).value = [...$(id).options].some((o) => o.value === k[key]) ? k[key] : ''; });
+  renderKinds();
+}
+function stepTo(n) {
+  $('nd').dataset.step = n; $('nd-step').textContent = `Step ${n} of 2`; $('nd-title').textContent = n === 1 ? 'What are you making?' : 'Who is it for?';
+  setTimeout(() => $(n === 1 ? 'nd-name' : 'nd-aud').focus(), 30);
+}
+function askPrompt() {   // for when Claude should set it up as well
+  const b = brief(), t = tplOf(), n = val('nd-name'), ps = pieces();
+  const shape = [b.use, b.audienceType && 'for ' + b.audienceType.toLowerCase(), b.structure && 'structure: ' + b.structure.toLowerCase(), b.density && b.density.toLowerCase() + ' density', b.style && 'style: ' + b.style].filter(Boolean).join('; ');
+  return [`New slide builder deck “${n}” from the ${t.name} template${b.length ? ', ' + b.length : ''}${b.audience ? ', for ' + b.audience : ''}.`,
+    shape ? `Brief: ${shape}.` : '', b.knows ? `What they know and care about: ${b.knows}` : '',
+    ps.length > 1 ? `Build these together, each as a version in the deck: ${ps.map((pc, i) => pc.name + (i ? '' : ' (the main one, first)')).join(', ')}.` : '',
+    `Set it up with sb new (pass the brief), then build a first draft${b.notes ? ' from my notes below' : ''}.`, b.point ? `The one point: ${b.point}` : '',
+    'Titles are plain sentences, two lines max, everything passes Checks › Guides, and mark any wording you drafted for me in the notes.',
+    b.notes ? '\n\nMy notes:\n' + b.notes : ''].filter(Boolean).join(' ').replace(/ \n/g, '\n');
+}
+async function copy(text) { try { await navigator.clipboard.writeText(text); return true; } catch (e) { return false; } }
+function openNew() {
+  $('nd').classList.remove('ok'); $('nd-err').textContent = ''; $('nd-back').classList.add('on'); stepTo(1);
+  fetch('/api/templates').then((r) => r.json()).then((d) => {
+    nd.tpls = d.templates || []; preset();
+  });
+}
+const closeNew = () => $('nd-back').classList.remove('on');
+$('new').addEventListener('click', openNew);
+$('nd-x').addEventListener('click', closeNew);
+$('nd-back').addEventListener('mousedown', (e) => { if (e.target === $('nd-back')) closeNew(); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && $('nd-back').classList.contains('on')) closeNew(); });
+$('nd-kinds').addEventListener('click', (e) => { const b = e.target.closest('[data-kind]'); if (!b) return; nd.kind = b.dataset.kind; preset(); });
+$('nd-pieces').addEventListener('click', (e) => { const b = e.target.closest('[data-piece]'); if (!b) return; const key = nd.kind + ':' + b.dataset.piece, pc = kindOf().pieces.find((x) => x.id === b.dataset.piece);
+  const now = !(nd.picked[key] ?? pc.on); if (!now && pieces().length === 1) return;   // keep at least one
+  nd.picked[key] = now; renderKinds(); });
+$('nd-blank').addEventListener('click', () => { nd.kind = 'blank'; preset(); });
+Object.entries(SELECTS).forEach(([k, id]) => $(id).addEventListener('change', () => nd.touched.add(k)));
+$('nd-name').addEventListener('input', () => { $('nd-err').textContent = ''; });
+const next = () => { if (!val('nd-name')) { $('nd-err').textContent = 'Enter a name first.'; $('nd-name').focus(); return; } stepTo(2); };
+$('nd-next').addEventListener('click', next);
+$('nd-name').addEventListener('keydown', (e) => { if (e.key === 'Enter') next(); });
+$('nd-backbtn').addEventListener('click', () => stepTo(1));
+$('nd-copy').addEventListener('click', async () => { const ok = await copy(askPrompt()); $('nd-copy').textContent = ok ? 'Copied' : 'Copy failed'; setTimeout(() => { $('nd-copy').textContent = 'Copy prompt'; }, 1600); });
+$('nd-go').addEventListener('click', async () => {
+  const name = val('nd-name'); if (!name) { stepTo(1); $('nd-err').textContent = 'Enter a name first.'; return; }
+  const go = $('nd-go'); go.disabled = true; go.textContent = 'Creating…';
+  let r, d; try { r = await fetch('/api/new-deck', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, template: tplId(), brief: brief(), pieces: pieces(), logo: await readLogo() }) }); d = await r.json(); } catch (e) { d = { error: 'The server is not responding.' }; }
+  go.disabled = false; go.textContent = 'Create deck';
+  if (!r || !r.ok) { stepTo(1); $('nd-err').textContent = d.error || 'That didn’t work. Try again.'; return; }
+  const ok = await copy(d.prompt);
+  $('nd-done').innerHTML = `<div class="nd-head"><div><div class="nd-step">Ready</div><h3>${esc(d.name)}</h3></div><button class="nd-x" onclick="document.getElementById('nd-back').classList.remove('on')" aria-label="Close">×</button></div>
+    <div class="meta" style="margin-top:10px">${ok ? 'The prompt is on your clipboard. Paste it to Claude and it builds the first draft.' : 'Copy this prompt and paste it to Claude to build the first draft:'}</div>
+    <div class="nd-prompt">${esc(d.prompt)}</div>
+    <div class="nd-foot"><span class="nd-where">${esc(d.folder)}</span><span>${ok ? '' : '<button class="btn" id="nd-copy2">Copy prompt</button> '}<a class="btn red" href="${esc(d.path)}">Open deck</a></span></div>`;
+  $('nd').classList.add('ok'); load();
+  const c2 = $('nd-copy2'); if (c2) c2.addEventListener('click', async () => { c2.textContent = (await copy(d.prompt)) ? 'Copied' : 'Select the text above and copy it'; });
+  if (ok) setTimeout(() => { if ($('nd-back').classList.contains('on')) location.href = d.path; }, 2200);
+});
+
+function card(d) {
+  const r = d.rounds && d.rounds.length ? d.rounds[d.rounds.length - 1] : null;
+  const pills = [d.open ? `<span class="pill amber">${d.open} open comment${d.open === 1 ? '' : 's'}</span>` : '<span class="pill green">No open comments</span>',
+    d.questions ? `<span class="pill red">${d.questions} question${d.questions === 1 ? '' : 's'}</span>` : '',
+    d.changed ? `<span class="pill">${d.changed} changed</span>` : ''].join('');
+  const live = d.claude && Date.now() / 1000 - (d.claude.at || 0) < 1800 ? `<div class="live"><i></i>Claude${d.claude.total ? `: ${d.claude.done || 0} of ${d.claude.total}` : ''}${d.claude.text ? ' · ' + esc(d.claude.text) : ''}</div>` : '';
+  const thumb = d.thumb ? `<img src="${d.thumb}?t=${Math.round(d.fileAt)}" alt="">` : `<div class="ph">${esc(d.name)}</div>`;
+  return `<div class="deck"><a class="thumb" href="${d.url}">${thumb}</a><div>
+    <a href="${d.url}"><h3>${esc(d.name)}</h3></a>
+    <div class="meta">${esc(decksDir && d.folder.startsWith(decksDir + '/') ? d.folder.slice(decksDir.length + 1) : d.folder)}${d.slides ? ` · ${d.slides} slides` : ''}${r ? ` · round ${r.number}` : ''} · edited ${ago(d.fileAt)}</div>
+    ${(d.pieces || []).length ? `<div class="vers">Versions: ${d.pieces.map((v) => `<a href="${d.url}#v=${encodeURIComponent(v.id)}">${esc(v.name)}</a>`).join(' · ')}</div>` : ''}
+    ${live}<div class="pills">${pills}</div>
+    <div class="acts"><a class="btn red" href="${d.url}">Open</a>${d.export ? `<a class="btn" href="${d.export.url}" target="_blank">${pdfLabel(d.export)}</a>` : ''}<a class="btn" href="${d.url}" onclick="localStorage.setItem('__sb_ui', JSON.stringify(Object.assign(JSON.parse(localStorage.getItem('__sb_ui')||'{}'),{view:'scroll'})))">Scroll view</a></div>
+  </div></div>`;
+}
+const row = (href, t, r, muted) => `<a class="row${muted ? ' muted' : ''}" href="${href}"><span class="t">${esc(t)}</span><span class="r">${esc(r)}</span></a>`;
+
+let hideClients = false, decksDir = '';
+document.getElementById('clients').addEventListener('click', async () => {
+  const r = await fetch('/api/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ hideClients: !hideClients }) });
+  if (r.ok) load();
+});
+async function load() {
+  let data; try { data = await (await fetch('/api/decks', { cache: 'no-store' })).json(); } catch (e) { document.getElementById('active').innerHTML = '<div class="empty">The server is not responding.</div>'; return; }
+  hideClients = !!(data.settings && data.settings.hideClients); decksDir = data.decksDir || '';
+  const cb = document.getElementById('clients'); cb.classList.toggle('on', hideClients); cb.textContent = hideClients ? 'Client work hidden' : 'Hide client work';
+  const by = (g) => data.decks.filter((d) => d.group === g && !(hideClients && d.client));
+  document.getElementById('active').innerHTML = by('active').filter((d) => d.kind !== 'pitch').map(card).join('') || '<div class="empty">No active decks.</div>';
+  document.getElementById('pitch').innerHTML = by('active').concat(by('pitch')).filter((d) => d.kind === 'pitch').map((d) =>
+    (d.versions.length ? d.versions : [{ name: d.name, url: d.url, open: d.open }]).map((v) => row(v.url, v.name, (v.slides ? v.slides + ' slides' : '') + (v.open ? ` · ${v.open} open comment${v.open === 1 ? '' : 's'}` : ''))).join('')).join('');
+  document.getElementById('delivered').innerHTML = by('delivered').map((d) => row(d.url, d.name, (d.delivered ? d.delivered + ' · ' : '') + 'frozen', true)).join('');
+  ['pitch', 'delivered'].forEach((id) => { const box = document.getElementById(id); box.previousElementSibling.hidden = !box.innerHTML; });   // a heading only when there is something under it
+  const rounds = data.decks.flatMap((d) => (d.rounds || []).map((r) => Object.assign({ deck: d.name, url: d.url }, r))).sort((a, b) => b.at - a.at).slice(0, 6);
+  if (rounds.length) document.getElementById('rounds').innerHTML = rounds.map((r) => `<a class="round" href="${r.url}" style="display:block"><b>Round ${r.number} · ${esc(r.deck)}</b><div class="meta">${esc(r.summary || '')}${r.export ? ' · ' + esc(r.export) : ''} · ${ago(r.at)}</div></a>`).join('');
+  const commits = data.decks.filter((d) => d.git); const dirty = commits.filter((d) => d.git.uncommitted).length;
+  document.getElementById('server').innerHTML = `Running since ${new Date(data.started * 1000).toLocaleString(undefined, { weekday: 'short', hour: 'numeric', minute: '2-digit' })}<br>Comments and edits save to disk, next to each deck<br>${commits.length ? `Version history: ${commits.length} of ${data.decks.length} decks${dirty ? ` · ${dirty} with unsaved changes` : ', all committed'}` : 'Version history: not set up'}`;
+}
+load(); setInterval(load, 5000);
+</script>
+</body>
+</html>

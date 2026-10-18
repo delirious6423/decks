@@ -1,0 +1,25 @@
+Slide Builder
+Copyright (c) 2026 Paul Millerd
+
+Code: MIT License (LICENSE). Template content: CC BY 4.0 (LICENSE-templates).
+
+Third-party material
+--------------------
+
+Fonts. Decks and the dashboard load these from Google Fonts at runtime; the font
+files are not included in this repository. Both are licensed under the SIL Open
+Font License, Version 1.1 (https://openfontlicense.org):
+
+  - DM Sans, by The DM Sans Project Authors
+    https://github.com/googlefonts/dm-fonts
+    https://fonts.google.com/specimen/DM+Sans/license
+  - Lato, by Łukasz Dziedzic (tyPoland), Reserved Font Name "Lato"
+    https://www.latofonts.com
+    https://fonts.google.com/specimen/Lato/license
+
+Serif titles use Georgia or Times New Roman from the viewer's own system.
+
+Installed by setup.sh, not included here:
+
+  - playwright-core (Apache License 2.0), https://github.com/microsoft/playwright
+  - Chrome for Testing, downloaded by Playwright under Google's terms

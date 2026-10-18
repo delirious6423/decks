@@ -1,0 +1,1 @@
+{ "name": "Workshop day", "description": "Agenda, modules, practice, and breaks", "kind": "workshop", "sub": "A one-day workshop", "entry": "deck.html", "folderPrefix": "workshop", "order": 3 }
