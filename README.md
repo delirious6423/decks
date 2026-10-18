@@ -31,6 +31,39 @@ teacher, so you learn the method and apply it at the same time, on your own work
 When I make slides now, this is my daily driver and harness. I'm not sure I'll ever align
 boxes in PowerPoint again.
 
+## A builder with a strong opinion
+
+Decks is built on the ideas I teach at StrategyU, and the agent follows them every time it
+writes or fixes a slide:
+
+- **Answer first.** Lead with the recommendation, then the evidence. Build up to it only
+  when the audience is skeptical.
+- **Ghost deck first.** Write every title, in order, before building a single slide. It's
+  the cheapest moment to fix the story. ([Ghost decks](https://strategyu.co/ghost-deck/))
+- **Action titles.** Every title is a full sentence that says the point: "Q3 revenue grew
+  22%, driven by enterprise expansion", not "Q3 Revenue".
+  ([Action titles](https://strategyu.co/action-titles/))
+- **Vertical flow.** The title matches the content: the body proves the title, and there's
+  no takeaway box at the bottom.
+  ([The principles of flow](https://strategyu.co/persuasive-powerpoint-storytelling-principles-of-flow/))
+- **Horizontal flow.** Read only the titles, in order, and they tell the whole story.
+- **The five-second test.** For a slide you present: glance at it for five seconds, and
+  the one point comes through.
+- **The ten-second test.** For a slide people read: they can take it in within ten
+  seconds. One point, a clear hierarchy, a chart that reads without study.
+  ([The ten-second test](https://strategyu.co/ten-second-test/))
+- **"So what?"** A slide can be easy to read and still say nothing. Every slide tells the
+  audience what to think. ([Pretty slide syndrome](https://strategyu.co/pretty-slide-syndrome/))
+- **One idea per slide.** If it needs "and also", it's two slides.
+- **Charts prove the title.** Bars, columns, and lines; the number that matters stands
+  out; never a pie chart.
+- **Draw the relationship.** No grids of identical boxes. Show the process, the spectrum,
+  or the chart instead.
+
+Most of these are one keypress away in **Checks**. The agent's version of the method is
+in `.claude/skills/decks/SKILL.md`, and the full one is in my
+[strategy-slides skill](https://strategyu.co/strategy-consulting-aiskills/).
+
 ## Recommended setup
 
 I use Decks in the Claude and Codex apps, with the deck open in the app's built-in

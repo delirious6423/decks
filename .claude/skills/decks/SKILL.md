@@ -1,6 +1,6 @@
 ---
 name: decks
-description: Run feedback rounds and build slides in Decks, HTML slide decks reviewed in the browser at http://localhost:8790 (or the configured port). Use when the user says "process changes", "read my feedback", "check my comments", pastes an "Ask Claude" prompt from a deck, asks to find, open, or export a deck, or wants a new deck built. Covers the round procedure, the sb command line, the deck file, and slide style rules.
+description: Run feedback rounds and build slides in Decks, HTML slide decks reviewed in the browser at http://localhost:8790 (or the configured port). Use when the user says "process changes", "read my feedback", "check my comments", pastes an "Ask Claude" prompt from a deck, asks to find, open, or export a deck, or wants a new deck built. Covers the round procedure, the sb command line, the deck file, slide style rules, and the StrategyU slide method it applies to every slide (action titles, vertical and horizontal flow, the five- and ten-second tests, charts that prove the title).
 ---
 
 # Decks
@@ -71,10 +71,44 @@ The reviewer clears handled comments with "Looks good". Don't add them to `DONE_
 - Decks come off the dashboard with `./sb hide <deck>` (back with `./sb show`). `./sb delete <deck> --yes` moves a deck this app made to the Trash and only unregisters a deck in a folder of the user's own. Only delete when the user asks.
 - Downloading images or logos needs the user's OK each time. Tell them the filename, source, size, and license, and put the credit in the footer.
 
+## The method
+
+Decks is built on the method Paul Millerd teaches at StrategyU. Apply it to every slide you write or fix. If the `strategy-slides` skill is installed, it has the full version: use it for storylines, titles, and feedback.
+
+**Answer first.** Lead with the recommendation, then the context, then the evidence. Build up to the recommendation (situation and complication, then the key ideas) only for a skeptical audience.
+
+**Ghost deck first.** Before you build any slide body, write every action title in order and read them as one paragraph. If the paragraph doesn't make the argument, fix the titles or the order now; it's the cheapest point to fix the story. Note what each body must show to prove its title.
+
+**Vertical flow: the title is the takeaway, and the body proves it.**
+- Every title is an action title: a full sentence that says the point. "Q3 revenue grew 22%, driven by enterprise expansion", never "Q3 Revenue".
+- Push past vague titles. "The company is improving" is step one; "Profitability increased for the first time in 5 years due to supply chain investments" is where to end up.
+- No "key takeaway" boxes or summary strips at the bottom. The insight leads the page.
+- Use plain verbs with their natural objects. Don't personify data or force metaphors onto numbers. No comma-pivot fragments ("One mode of thinking, when the work needs two"). Two lines at most. Read it out loud: it should sound like something a person would say to a colleague.
+- Count-only titles are blank. "Three risks and how we cover them" becomes the finding: "The real exposure is West Coast service, not warehouse capacity."
+- Covers, section dividers, and the appendix divider are exempt. The closing slide isn't: "Approve by March 14 and we exit both leases before they renew", not "Next steps".
+
+**Horizontal flow: the titles alone tell the story.** Read them in order (Checks › Horizontal flow). If they don't make sense without the slide bodies, fix the titles or the order.
+
+**One idea per slide.** If a slide needs "and also", it needs to be two slides.
+
+**The five- and ten-second tests are about legibility.** A presented slide gets its one point across in five seconds. A slide people read can be taken in within ten: one main point, a readable hierarchy, a chart whose shape reads without study. Walls of text, a key number buried in a dense table, and several unrelated ideas on one slide all fail.
+
+**"So what?" is a separate test.** Three tidy boxes reading Innovation, Excellence, Growth pass the ten-second test and fail "so what?" (pretty slide syndrome). Every slide tells the audience what to think. Keep the two findings separate when you give feedback.
+
+**Charts prove the title.** Write the message before you draw the chart. Bars, columns, and lines cover almost everything; never use a pie chart. The number that matters is the most prominent mark, anything the title names (a recession, an inflection point) is marked on the chart, and whatever doesn't support the title goes. Uncertain data gets an "Illustrative" label and a note on the assumptions.
+
+**The executive summary is the most important slide:** the recommendation as its title, and three insights with a line of evidence each. Use section dividers only in long decks (20+ slides) with distinct sections.
+
+**Presented or read.** Presented: under 20 words in the body, one idea, large visuals. Read: more text is fine, with bold lead words, and every slide stands on its own because it will be forwarded.
+
+**Giving feedback on a deck.** Read the whole deck first. Then give, in order: the story (the titles in sequence, what they say, and what's missing or out of order); the slides that have a problem, with the fix (write the new title when the title is the problem); and the three changes that matter most, with the argument and the order before fonts and colors. If the argument doesn't hold, say that first. Check every slide number before you cite it.
+
+**Writing.** Active verbs, contractions, and numbers rather than adjectives. Never: delve, landscape, leverage, utilize, crucial, pivotal, robust, seamless, transformative, underscore, additionally, moreover, furthermore. One em dash per slide at most.
+
 ## Slide style rules
 
-- Titles are plain full sentences that say the point, two lines at most. No comma-pivot fragments ("One mode of thinking, when the work needs two"), no slogans.
-- The title is the takeaway; the body proves it. No takeaway line under a chart, list, or picture: the point goes in the title or the notes.
+On top of the method:
+
 - No small, muted, or italic lines at the bottom of cards or boxes. Fold anything important into the item it belongs to.
 - No grids of identical cards. Draw the relationship instead: a process, spectrum, ladder, chart, or map.
 - Instructions are one plain sentence. Reflection questions are plain and about the audience's own work.

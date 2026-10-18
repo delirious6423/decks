@@ -8,6 +8,9 @@ from a deck, a new deck, a PDF), read and follow
 `.claude/skills/decks/SKILL.md`. It has the round procedure, the `sb` commands,
 how a deck file is organized, and the slide style rules.
 
+Every slide follows the method in that file: action titles, vertical and horizontal flow, the
+five- and ten-second tests, and charts that prove the title.
+
 Quick reference:
 
 - Start the server if it isn't running: `python3 server.py` (port 8790 unless
