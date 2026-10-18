@@ -1,4 +1,4 @@
-/* StrategyU Slide Builder: Client copy (⋯ menu).
+/* StrategyU Decks: Client copy (⋯ menu).
    The file to send a client: the slides of the version on screen, as they look now (your edits and
    order included), and nothing else. No facilitator slides or notes, no comments, no other versions,
    no editing. It is a snapshot of the slides themselves, so none of that is even in its source.
@@ -12,7 +12,7 @@
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const api = (p) => '/api/decks/' + SB.slug + '/' + p;
 
-  // what the snapshot leaves out of each slide: the editor's own parts, and the Slide Builder's
+  // what the snapshot leaves out of each slide: the editor's own parts, and StrategyU Decks's
   const STRIP = '.ctrls, .slide-tag, .slide-no, .fnote, .fb, textarea, input, button, [class^="sb-"], [class*=" sb-"], [class^="sbg"], [class^="sbx"]';
 
   function slides() {

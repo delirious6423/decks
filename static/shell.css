@@ -1,4 +1,4 @@
-/* Slide Builder shell: top bar, focus view (filmstrip | slide | thread), replies in scroll view.
+/* StrategyU Decks shell: top bar, focus view (filmstrip | slide | thread), replies in scroll view.
    Everything is prefixed sb- so it never touches the deck's own styles. */
 :root { --sb-top: 52px; --sb-left: 232px; --sb-right: 344px; --sb-red: #A22731; --sb-ink: #272322; --sb-mute: #635B58; --sb-faint: #948C88; --sb-line: #D9D4D0; --sb-paper: #F1EFEE; }
 body.sb-on { padding-top: var(--sb-top); }

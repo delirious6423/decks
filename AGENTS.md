@@ -1,11 +1,11 @@
-# Slide Builder: instructions for coding agents
+# StrategyU Decks: instructions for coding agents
 
-This folder is the Slide Builder: HTML slide decks reviewed in the browser, where the
+This folder is StrategyU Decks: HTML slide decks reviewed in the browser, where the
 user comments under each slide and you edit the deck file and reply on the slide.
 
 For any deck work ("process changes", "read my feedback", a pasted "Ask Claude" prompt
 from a deck, a new deck, a PDF), read and follow
-`.claude/skills/slide-builder/SKILL.md`. It has the round procedure, the `sb` commands,
+`.claude/skills/strategyu-decks/SKILL.md`. It has the round procedure, the `sb` commands,
 how a deck file is organized, and the slide style rules.
 
 Quick reference:
@@ -16,7 +16,7 @@ Quick reference:
 - `./sb reply <deck> <slide> done|question|skipped "<text>"`: answer on the slide.
 - `./sb shot`, `./sb audit`, `./sb export`, `./sb round`, `./sb commit`: check and finish.
 
-Working on the Slide Builder itself (not a deck):
+Working on StrategyU Decks itself (not a deck):
 
 - `server.py` and `sb` use only the Python standard library. Keep it that way.
 - `tools/browser.mjs` needs `playwright-core` (`./setup.sh` installs it).

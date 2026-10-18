@@ -1,4 +1,4 @@
-/* StrategyU Slide Builder: pictures. Click a picture on a slide (or drop an image file on it) to put
+/* StrategyU Decks: pictures. Click a picture on a slide (or drop an image file on it) to put
    your own in. The picture sits in an editable box, so the new one saves like any text edit, and
    `sb edits` shows it to Claude to bake into the deck file. Uploads go to the deck's img/uploads/. */
 (function () {
@@ -7,7 +7,7 @@
   const input = document.createElement('input'); input.type = 'file'; input.accept = 'image/png,image/jpeg,image/gif,image/webp,image/svg+xml'; input.hidden = true;
   document.body.appendChild(input);
   let target = null;
-  const PIC = '.slide:is(.l-picture, .l-pictures, .l-photofull) .pic';   // only the Slide Builder picture layouts
+  const PIC = '.slide:is(.l-picture, .l-pictures, .l-photofull) .pic';   // only the StrategyU Decks picture layouts
   const picOf = (e) => { const p = e.target.closest && e.target.closest(PIC); return p && deck.contains(p) ? p : null; };
   const read = (f) => new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = no; r.readAsDataURL(f); });
   async function put(pic, file) {

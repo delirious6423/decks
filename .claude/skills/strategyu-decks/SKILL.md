@@ -1,15 +1,15 @@
 ---
-name: slide-builder
-description: Run feedback rounds and build slides in the Slide Builder, HTML slide decks reviewed in the browser at http://localhost:8790 (or the configured port). Use when the user says "process changes", "read my feedback", "check my comments", pastes an "Ask Claude" prompt from a deck, asks to find, open, or export a deck, or wants a new deck built. Covers the round procedure, the sb command line, the deck file, and slide style rules.
+name: strategyu-decks
+description: Run feedback rounds and build slides in StrategyU Decks, HTML slide decks reviewed in the browser at http://localhost:8790 (or the configured port). Use when the user says "process changes", "read my feedback", "check my comments", pastes an "Ask Claude" prompt from a deck, asks to find, open, or export a deck, or wants a new deck built. Covers the round procedure, the sb command line, the deck file, and slide style rules.
 ---
 
-# Slide Builder
+# StrategyU Decks
 
 The user reviews a deck in the browser. They type a comment under a slide (or edit text right on it), then say "process changes" or click **Ask Claude** in the deck, which copies a prompt naming the deck file and the `sb` steps below; treat that prompt as "process changes" for that deck. You act on every comment, reply on the slide itself, check your work, and export. Keep the chat summary short: the replies on the slides carry the detail.
 
 ## Where things are
 
-- The app folder is the Slide Builder repository: the folder this skill ships in (`.claude/skills/slide-builder/` inside it), or, for a copy of this skill in `~/.claude/skills/`, wherever the user cloned it. The Ask Claude prompt names it. It has `server.py`, the `sb` command line, the browser shell in `static/`, templates in `templates/`, and headless tools in `tools/`. Run `sb` from there: `./sb ...`.
+- The app folder is the StrategyU Decks repository: the folder this skill ships in (`.claude/skills/strategyu-decks/` inside it), or, for a copy of this skill in `~/.claude/skills/`, wherever the user cloned it. The Ask Claude prompt names it. It has `server.py`, the `sb` command line, the browser shell in `static/`, templates in `templates/`, and headless tools in `tools/`. Run `sb` from there: `./sb ...`.
 - The server: `python3 server.py`, at http://localhost:8790/ unless `config.json` or `SB_PORT` says otherwise. If `sb` says the server is not reachable, start it (in the background) and try again. `sb` finds it at `SB_URL`, or at the configured port.
 - Decks live in the decks folder (default `~/slide-decks`), one folder per deck, listed in `decks.json` there. `./sb decks` lists them with their addresses.
 - Open a deck at `http://localhost:<port>/d/<slug>/<entry>`. `#s=<slide-id>` jumps to a slide, and `#v=<version>&s=<id>` picks a version.
@@ -45,7 +45,7 @@ The user reviews a deck in the browser. They type a comment under a slide (or ed
    - `./sb audit <deck>` finds overflow, overlapping labels, and anything the Guides flag.
    - `./sb comments <deck>` should show nothing new and unhandled.
 7. Finish:
-   - `./sb export <deck>` writes the next numbered PDF and moves older ones to `_archive/`.
+   - `./sb export <deck>` writes the next numbered PDF from the deck file and moves older ones to `_archive/`. If the browser still holds edits that aren't baked in, it says so: bake them first. `--with-edits` exports exactly what the browser shows instead.
    - `./sb round <deck> --summary "…" --changed id="what changed" … --export vN`.
    - `./sb commit <deck> "Round N: …"`.
    - `./sb idle <deck>`.
@@ -54,7 +54,7 @@ The user reviews a deck in the browser. They type a comment under a slide (or ed
 
 New comments can arrive while you work. Run `./sb comments` again before finishing.
 
-The reviewer clears handled comments with "Looks good". Don't add them to `DONE_FB`; that list is only for copies opened outside the Slide Builder, such as a file sent to someone else.
+The reviewer clears handled comments with "Looks good". Don't add them to `DONE_FB`; that list is only for copies opened outside StrategyU Decks, such as a file sent to someone else.
 
 ## The deck file
 
@@ -67,6 +67,8 @@ The reviewer clears handled comments with "Looks good". Don't add them to `DONE_
 - A source line goes in the footer via `src:'Source: …'`, not a subtitle.
 - Colors, title font, and logo: a `<style id="deck-theme">` block in the deck file, and `LOGO` for the deck's logo in `img/`. Restyle by editing that block, not individual slides. Without `LOGO`, slides have no logo.
 - Big visual changes (a new layout, a redesign): show the user a mockup or two options first, then build.
+- When the user wants a file to send someone, that is the ⋯ menu's **Client copy**: the version on screen as slides only (no notes, comments, facilitator slides, other versions, or editing), pictures inside, with a Present button. **Editable copy** is the whole deck with notes and comments: never send that one to a client.
+- Decks come off the dashboard with `./sb hide <deck>` (back with `./sb show`). `./sb delete <deck> --yes` moves a deck this app made to the Trash and only unregisters a deck in a folder of the user's own. Only delete when the user asks.
 - Downloading images or logos needs the user's OK each time. Tell them the filename, source, size, and license, and put the credit in the footer.
 
 ## Slide style rules

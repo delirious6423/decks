@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Slide Builder server.
+"""StrategyU Decks server.
 
 Serves every deck at one fixed local address, keeps each reviewer's edits and
 comments on disk (next to the deck, in .slidebuilder/), and gives the agent
@@ -460,7 +460,7 @@ def inject(html, deck, page, snap=None):
 
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = 'SlideBuilder/1.0'
+    server_version = 'StrategyUDecks/1.0'
 
     def log_message(self, fmt, *args):
         p = getattr(self, 'path', '') or ''   # unset when the request line itself was malformed
@@ -678,7 +678,7 @@ def first_run():
 
 
 def main():
-    ap = argparse.ArgumentParser(description='Slide Builder server. Defaults come from config.json and SB_* environment variables (see sbconfig.py).')
+    ap = argparse.ArgumentParser(description='StrategyU Decks server. Defaults come from config.json and SB_* environment variables (see sbconfig.py).')
     ap.add_argument('--host', default=sbconfig.HOST)
     ap.add_argument('--port', type=int, default=sbconfig.PORT)
     a = ap.parse_args()
@@ -699,7 +699,7 @@ def main():
     if demo:
         make_thumb(demo)
         print(f'Made a demo deck in {demo["folder"]}', flush=True)
-    print(f'Slide Builder on http://localhost:{a.port}/  (decks in {sbconfig.tilde(sbconfig.DECKS)})', flush=True)
+    print(f'StrategyU Decks on http://localhost:{a.port}/  (decks in {sbconfig.tilde(sbconfig.DECKS)})', flush=True)
     srv.serve_forever()
 
 

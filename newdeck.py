@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""New decks and templates for the Slide Builder.
+"""New decks and templates for StrategyU Decks.
 
     python3 newdeck.py templates         list the templates
     python3 newdeck.py build <template>  print a template's assembled deck file (for checking)
@@ -262,7 +262,7 @@ def tmpl_phrase(tmpl):
 
 
 def prompt_for(deck, brief, tmpl, pieces=None):
-    bits = [f'New slide builder deck “{deck["name"]}” from {tmpl_phrase(tmpl)}']
+    bits = [f'New StrategyU Decks deck “{deck["name"]}” from {tmpl_phrase(tmpl)}']
     if brief.get('length'):
         bits[0] += f', {brief["length"]}'
     if brief.get('audience'):
@@ -439,9 +439,9 @@ def create_deck(name, tid, brief=None, pieces=None, logo=None, registry_path=Non
 
 
 def create_demo(registry_path=None):
-    """The deck a fresh install starts with: the talk template, with a brief about trying the Slide Builder."""
+    """The deck a fresh install starts with: the talk template, with a brief about trying StrategyU Decks."""
     return create_deck('Demo talk', 'talk', {
-        'audience': 'people trying the Slide Builder for the first time',
+        'audience': 'people trying StrategyU Decks for the first time',
         'point': 'Comment on a slide, ask your agent, and read its reply under the slide.',
         'length': '20 min',
         'style': 'Navy',

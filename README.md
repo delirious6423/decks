@@ -1,4 +1,4 @@
-# Slide Builder
+# StrategyU Decks
 
 Agent-first slide decks. You review a deck in the browser: leave a comment under any
 slide, or click its text and edit it in place. Your coding agent (Claude Code or Codex)
@@ -6,9 +6,13 @@ reads those comments with the `sb` command, edits the deck file, and replies on 
 slide: done, a question for you, or why it left something alone. The page updates while
 it works.
 
+It is built around the way consultants make decks: titles that say the point, slides
+that prove their titles, and the five- and ten-second tests, all one keypress away in
+Checks.
+
 Each deck is one self-contained HTML file in its own folder, with its own git history.
-It opens in any browser, presents full screen, prints to PDF, and "Save a copy" gives
-you a clean file to send.
+It opens in any browser, presents full screen, and prints to PDF. **Client copy** gives
+you one file to send: the slides only, pictures inside, with a Present button.
 
 - The server needs only Python 3. Screenshots, the audit, PDF export, and dashboard
   thumbnails use Node.js and a headless Chrome, which `setup.sh` installs.
@@ -21,8 +25,8 @@ You need Python 3.9 or newer, Node.js 18 or newer, and git (optional; decks get 
 history with it). macOS and Linux.
 
 ```bash
-git clone <this repository> slide-builder
-cd slide-builder
+git clone <this repository> strategyu-decks
+cd strategyu-decks
 ./setup.sh
 python3 server.py
 ```
@@ -58,7 +62,7 @@ copy `config.example.json` to `config.json`, or set environment variables (they 
    the deck (`.slidebuilder/state.json`), not just in your browser.
 2. **Ask Claude.** Click **Ask Claude** in the top bar. It copies a prompt that names the
    deck file and the `sb` steps. Paste it into Claude Code or Codex. With the
-   `slide-builder` skill installed, you can just say "process changes".
+   `strategyu-decks` skill installed, you can just say "process changes".
 3. **The agent works.** It runs `sb comments` and `sb edits`, changes the deck file, and
    replies on each slide with `sb reply`. You see "Claude working" on the slide and a live
    status line in the top bar.
@@ -116,7 +120,29 @@ say, for a layout the deck doesn't carry yet.
 
 Every deck carries the basic guided layouts in `templates/_engine/basics.js`: a big
 number, points, two columns, a process, a table, quotes, a section divider, a question,
-and an exercise.
+an exercise, and three picture layouts (a picture with the point beside it, two
+pictures, a full-screen photo). Click a picture, or drop an image file on it, to put
+your own in; it is saved next to the deck.
+
+### Sending a deck
+
+The ⋯ menu in the top bar has two copies:
+
+- **Client copy**: the version on screen as slides only, as they look now. No notes,
+  comments, facilitator slides, other versions, or editing, so none of it is in the
+  file's source either. One file with its pictures inside; it scrolls, prints one slide
+  per page, and presents full screen (P).
+- **Editable copy**: the whole deck with its notes and comments, for you.
+
+`sb export` prints the deck file to PDF. If the browser holds edits that aren't in the
+file yet, it says so; `--with-edits` prints what the browser shows instead.
+
+### Two tabs, or offline
+
+Each save carries what the page started from, and the server merges it with anything
+another tab saved meanwhile, so two tabs on the same deck keep both sets of changes
+(the other tab offers a reload). A save that fails is kept in the browser and retried
+until the server answers.
 
 ## New deck
 
@@ -154,14 +180,21 @@ are written into the deck as one `<style id="deck-theme">` block, so you can res
 whole deck there. A logo you upload goes in the corner of every slide; without one,
 slides have no logo.
 
+## The dashboard
+
+Every deck, with its open comments, latest PDF, and recent rounds. The ⋯ on a deck hides
+it (into a Hidden list at the bottom, where Show brings it back) or deletes it. Delete
+moves a deck this app made to the Trash; a deck you registered from a folder of your own
+only leaves the dashboard, and its files stay where they are.
+
 ## Use it with your agent
 
-The agent instructions are in `.claude/skills/slide-builder/SKILL.md`: the round
+The agent instructions are in `.claude/skills/strategyu-decks/SKILL.md`: the round
 procedure, the `sb` commands, how the deck file is organized, and slide style rules.
 
 - **Claude Code** finds the skill on its own when you start it in this folder. To use it
   from anywhere, copy it to your user skills:
-  `mkdir -p ~/.claude/skills && cp -r .claude/skills/slide-builder ~/.claude/skills/`
+  `mkdir -p ~/.claude/skills && cp -r .claude/skills/strategyu-decks ~/.claude/skills/`
 - **Codex** and other agents read `AGENTS.md` in this folder, which points to the same
   file.
 
@@ -181,30 +214,32 @@ Run from this folder (or by its full path). It talks to the running server.
 | `sb status <deck> "<text>" [--done N --total M]` | The live line in the top bar; `sb idle <deck>` clears it |
 | `sb shot <deck> [--version v] [--out DIR] <slide> ...` | Screenshots of slides |
 | `sb audit <deck> [--version v]` | Overflow, overlapping labels, and the Guides |
-| `sb export <deck> [--version v]` | The next numbered PDF; older ones move to `_archive/` |
+| `sb export <deck> [--version v] [--with-edits]` | The next numbered PDF; older ones move to `_archive/` |
 | `sb round <deck> --summary S [--changed slide="what changed" ...] [--export vN]` | Record a round |
 | `sb commit <deck> "<message>"` | Commit the deck folder |
 | `sb thumb <deck>` / `sb url <deck>` | Refresh the dashboard thumbnail / print the deck's address |
 | `sb templates` / `sb new "<name>" [--template id] ...` | Templates, and a new deck |
+| `sb hide <deck>` / `sb show <deck>` | Take a deck off the dashboard, or put it back |
+| `sb delete <deck> --yes` | Delete a deck (a deck this app made goes to the Trash) |
 
 ## Run it at login (optional)
 
 macOS (launchd):
 
 ```bash
-sed -e "s|__APP__|$PWD|g" -e "s|__HOME__|$HOME|g" contrib/slide-builder.plist > ~/Library/LaunchAgents/local.slide-builder.plist
-launchctl load ~/Library/LaunchAgents/local.slide-builder.plist
+sed -e "s|__APP__|$PWD|g" -e "s|__HOME__|$HOME|g" contrib/strategyu-decks.plist > ~/Library/LaunchAgents/local.strategyu-decks.plist
+launchctl load ~/Library/LaunchAgents/local.strategyu-decks.plist
 ```
 
-Restart it with `launchctl kickstart -k gui/$(id -u)/local.slide-builder`; the log is
-`~/Library/Logs/slide-builder.log`.
+Restart it with `launchctl kickstart -k gui/$(id -u)/local.strategyu-decks`; the log is
+`~/Library/Logs/strategyu-decks.log`.
 
 Linux (systemd user service):
 
 ```bash
 mkdir -p ~/.config/systemd/user
-sed "s|__APP__|$PWD|g" contrib/slide-builder.service > ~/.config/systemd/user/slide-builder.service
-systemctl --user enable --now slide-builder
+sed "s|__APP__|$PWD|g" contrib/strategyu-decks.service > ~/.config/systemd/user/strategyu-decks.service
+systemctl --user enable --now strategyu-decks
 ```
 
 ## How it works
@@ -216,14 +251,15 @@ systemctl --user enable --now slide-builder
 | `sb` | The agent's command line |
 | `newdeck.py` | Themes, templates, and new decks (used by the server and `sb new`) |
 | `templates/` | `_engine/engine.html` (the deck engine), `_engine/basics.js`, and one folder per template |
-| `static/` | The browser shell: `boot.js`, `shell.js`, `shell.css`, `guides.js`, `addslide.js`, `dashboard.html` |
+| `static/` | The browser shell: `boot.js`, `shell.js`, `shell.css`, `guides.js`, `addslide.js`, `pictures.js`, `clientcopy.js`, `dashboard.html` |
 | `tools/browser.mjs` | Headless Chrome jobs behind `sb`: titles, edits, shots, audit, PDF, thumbnails |
 | `tools/pptx2native.py` | Converts PowerPoint slides into editable native slides (how the consulting starter was made) |
 
 When the server serves a deck page it adds a small boot script that loads the deck's saved
 state and mirrors later saves back to disk, then removes its own tags before the deck
-runs. The deck file itself never changes, so "Save a copy" still produces a clean file,
-and `?raw=1` serves it untouched.
+runs. The deck file itself never changes, so a saved copy is still a clean file.
+`?raw=1` serves the file without the shell around it (in a browser that has edited the
+deck, the deck still shows those saved edits).
 
 Saved next to each deck, in `.slidebuilder/`:
 
@@ -244,10 +280,11 @@ API (what `sb` uses):
   `{op: 'comment-state' | 'resolve' | 'reopen' | 'seen'}`.
 - `GET /api/decks/<slug>/pulse`: modified times, polled by the page for live updates.
 - `GET /api/templates`, `POST /api/new-deck`: templates and new decks.
+- `POST /api/decks/<slug>/manage`: `{op: 'hide' | 'show' | 'delete'}`.
+- `POST /api/decks/<slug>/bundle`: a copy of the deck with its pictures and scripts embedded.
+- `POST /api/decks/<slug>/upload`: a picture for a slide, saved in the deck's `img/uploads/`.
 
 ## License
 
 The code is MIT (`LICENSE`). The template content (the slides, their wording, and their
-notes) is CC BY 4.0 (`LICENSE-templates`). Decks you make are yours. Fonts: `NOTICE`.
-
-Made with StrategyU Slide Builder.
+notes) is CC BY 4.0 (`LICENSE-templates`). Decks you make are yours. Fonts and the StrategyU name: `NOTICE`.

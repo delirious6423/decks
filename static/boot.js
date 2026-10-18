@@ -1,4 +1,4 @@
-/* Slide Builder: boot.
+/* StrategyU Decks: boot.
    Runs in <head>, before the deck's own script. It
    1. removes its own tags, so the deck's "Save a copy" captures a clean file,
    2. pushes any local saves that never reached the server (tab closed mid-save),

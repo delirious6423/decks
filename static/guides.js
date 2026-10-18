@@ -1,4 +1,4 @@
-/* Slide Builder: guides (Checks › Guides, key B).
+/* StrategyU Decks: guides (Checks › Guides, key B).
    Basic principles for a professional-looking slide, drawn on the slide in Checks › Guides:
    - the protected border: a band around the edge kept for the logo, the source line,
      and the page number. Text and figures stay inside it.
@@ -114,7 +114,7 @@
   }
   window.SBGuides = { check, issues, scan, BAND, MIN_TEXT, MAX_SIZES };
 
-  // ---------- the overlay (only inside the Slide Builder) ----------
+  // ---------- the overlay (only inside StrategyU Decks) ----------
   const deck = document.getElementById('deck');
   if (!window.__SB || !deck) return;
   const css = new CSSStyleSheet();

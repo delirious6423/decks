@@ -1412,7 +1412,7 @@
   .l-tension .q { font-size: 1.42rem; line-height: 1.3; font-weight: 700; color: var(--ink); }
   .l-tension .src, .l-svgfig .src { font-size: .72rem; color: var(--text-mute); margin-top: .4rem; max-width: 85%; }
 
-  /* section dividers (Slide Builder templates): a full color slide, the part's title, and every part along the bottom */
+  /* section dividers (StrategyU Decks templates): a full color slide, the part's title, and every part along the bottom */
   .slide.l-section { --div-bg: var(--maroon); --div-fg: #FFFFFF; --div-accent: #FFFFFF; background: var(--div-bg) !important; color: var(--div-fg); padding: 3.4rem 3.6rem 2.6rem; flex-direction: column; justify-content: flex-start; align-items: stretch; text-align: left; }
   .slide.l-section .sec-kicker { margin-top: 2.6rem; font: 700 .82rem/1 var(--slide); letter-spacing: .14em; text-transform: uppercase; color: var(--div-fg); opacity: .72; }
   .slide.l-section .h-title { color: var(--div-fg); font-size: 3rem; line-height: 1.1; max-width: 20ch; margin: 1.1rem 0 .9rem; text-align: left; }
@@ -1426,7 +1426,7 @@
   .slide.l-section .sec-step.on span { opacity: 1; font-weight: 700; }
   .slide.l-section .logo { filter: brightness(0) invert(1); opacity: .8; }
 
-  /* picture layouts (Slide Builder): the picture sits in an editable box, so replacing it saves like any edit */
+  /* picture layouts (StrategyU Decks): the picture sits in an editable box, so replacing it saves like any edit */
   .slide.l-picture, .slide.l-pictures { padding: 2.6rem 3.4rem 3.2rem; }
   .slide.l-picture .h-title, .slide.l-pictures .h-title { font-size: 2.1rem; margin: 0 0 1.4rem; }
   .slide.l-picture .pic-row { display: flex; gap: 2.4rem; flex: 1; min-height: 0; }
@@ -2938,20 +2938,20 @@ function build(id) {
       });
       s.appendChild(g); s.appendChild(logoImg()); break;
     }
-    case 'picture': {   // Slide Builder: a picture with the point beside it (click the picture to replace it)
+    case 'picture': {   // StrategyU Decks: a picture with the point beside it (click the picture to replace it)
       s.appendChild(ed('h2','h-title', b.title));
       const row = el('div','pic-row' + (b.right ? ' right' : ''));
       row.appendChild(ed('div','pic', `<img src="${b.img || 'img/picture.svg'}" alt="">`));
       const tx = el('div','pic-text'); (b.body || []).forEach((l) => tx.appendChild(ed('p','body-p', md(l)))); row.appendChild(tx);
       s.appendChild(row); if (b.src) s.appendChild(ed('div','src', b.src)); s.appendChild(logoImg()); break;
     }
-    case 'pictures': {   // Slide Builder: two pictures to compare, each with a caption
+    case 'pictures': {   // StrategyU Decks: two pictures to compare, each with a caption
       s.appendChild(ed('h2','h-title', b.title));
       const row = el('div','pics-row');
       (b.pics || []).forEach((x) => { const c = el('div','pics-col'); c.appendChild(ed('div','pic', `<img src="${x.img || 'img/picture.svg'}" alt="">`)); c.appendChild(ed('div','pic-cap', x.cap || '')); row.appendChild(c); });
       s.appendChild(row); if (b.src) s.appendChild(ed('div','src', b.src)); s.appendChild(logoImg()); break;
     }
-    case 'photofull': {   // Slide Builder: a full-screen photo with the point on it
+    case 'photofull': {   // StrategyU Decks: a full-screen photo with the point on it
       s.appendChild(ed('div','pic full', `<img src="${b.img || 'img/photo.svg'}" alt="">`));
       const band = el('div','pf-band'); band.appendChild(ed('h2','h-title', b.title)); if (b.sub) band.appendChild(ed('div','pf-sub', b.sub)); s.appendChild(band);
       s.appendChild(logoImg()); break;

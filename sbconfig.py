@@ -1,4 +1,4 @@
-"""Where the Slide Builder keeps your decks, and which port it serves them on.
+"""Where StrategyU Decks keeps your decks, and which port it serves them on.
 
 Settings come from, in order (later wins):
 

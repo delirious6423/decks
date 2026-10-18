@@ -1,5 +1,5 @@
-// Headless jobs for the Slide Builder (run by `sb` and the server). Always loads the plain
-// deck (?raw=1), so the Slide Builder shell never ends up in a screenshot or a PDF.
+// Headless jobs for StrategyU Decks (run by `sb` and the server). Always loads the plain
+// deck (?raw=1), so the StrategyU Decks shell never ends up in a screenshot or a PDF.
 //
 //   node browser.mjs titles <slug> [--version v]
 //   node browser.mjs edits  <slug> [--version v]   (the reviewer's inline edits and order, read-only)

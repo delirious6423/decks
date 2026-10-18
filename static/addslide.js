@@ -1,4 +1,4 @@
-/* Slide Builder: Add a slide (key N, or + in the filmstrip and the sorter).
+/* StrategyU Decks: Add a slide (key N, or + in the filmstrip and the sorter).
    "Help me choose" asks what you're trying to show and suggests a few layouts. If the deck carries
    one in its library (a template's layouts, the basic guided ones, or slides left out of this
    version), Add slide puts it right after the slide you're on. Either way, Copy prompt gives Claude

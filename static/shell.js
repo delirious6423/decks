@@ -1,5 +1,5 @@
-/* Slide Builder shell.
-   Wraps a deck page served by the Slide Builder server with:
+/* StrategyU Decks shell.
+   Wraps a deck page served by the StrategyU Decks server with:
    - a top bar (logo, version, filters, Claude's live status, view switch, present),
    - focus view: filmstrip | one slide | comment thread, both side bars collapsible,
    - scroll view: the deck as before, with Claude's replies under each slide,
@@ -67,7 +67,7 @@
 
   // ---------- top bar ----------
   const top = h('div'); top.id = 'sb-top';
-  top.innerHTML = `<a href="/" title="All decks"><img class="sb-logo" src="/_sb/logo.svg" alt="Slide Builder"></a>
+  top.innerHTML = `<a href="/" title="All decks"><img class="sb-logo" src="/_sb/logo.svg" alt="StrategyU Decks"></a>
     <a href="/" class="sb-btn sb-back" title="Back to the dashboard of all decks">← <span class="sb-lbl">All decks</span></a><span class="sb-sep"></span>
     <span class="sb-deck" title="${esc(SB.name)}">${esc(SB.name)}</span>
     ${sideSelect ? '<select id="sb-version" title="Version"></select>' : ''}
@@ -137,9 +137,9 @@
   const copyText = async (t) => { try { await navigator.clipboard.writeText(t); return true; } catch (e) { return false; } };
   const deckFile = () => `${SB.folder}/${SB.entry}`;
   const askPrompt = () => [
-    `Work through the comments on my slide deck “${SB.name}” in the Slide Builder.`,
+    `Work through the comments on my slide deck “${SB.name}” in StrategyU Decks.`,
     `Deck file: ${deckFile()} (open at ${location.origin}${location.pathname}).`,
-    `If you have the slide-builder skill, this is “process changes”. Otherwise, from ${SB.app || 'the Slide Builder folder'}:`,
+    `If you have the strategyu-decks skill, this is “process changes”. Otherwise, from ${SB.app || 'the StrategyU Decks folder'}:`,
     `1. ./sb comments ${SB.slug} lists my comments; ./sb edits ${SB.slug} shows text I edited on the slides.`,
     `2. For each comment, change the deck file, then reply on that slide: ./sb reply ${SB.slug} <slide-id> done "what changed" (question to ask me something, skipped to say why not).`,
     `3. Check your work: ./sb shot ${SB.slug} <slide-ids> and ./sb audit ${SB.slug}.`,

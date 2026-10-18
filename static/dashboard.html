@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Slide Builder</title>
+<title>StrategyU Decks</title>
 <link rel="icon" href="/_sb/favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Lato:wght@700;900&display=swap" rel="stylesheet">
@@ -134,7 +134,7 @@
 <body>
 <header>
   <img src="/_sb/logo.svg" alt="">
-  <span class="app">Slide Builder</span>
+  <span class="app">StrategyU Decks</span>
   <span class="grow"></span>
   <span class="addr" id="addr"></span>
   <button class="btn" id="clients" title="Hide client decks and client pitches, for recording or streaming">Hide client work</button>
@@ -205,7 +205,7 @@
     <h2>Server</h2><div class="side" id="server"></div>
   </aside>
 </main>
-<footer>Made with StrategyU Slide Builder · MIT license</footer>
+<footer>StrategyU Decks · MIT license</footer>
 <script>
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const ago = (t) => { if (!t) return ''; const s = Date.now() / 1000 - t; if (s < 90) return 'just now'; if (s < 3600) return Math.round(s / 60) + ' min ago'; if (s < 86400) return Math.round(s / 3600) + 'h ago'; return new Date(t * 1000).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }); };
@@ -272,7 +272,7 @@ function stepTo(n) {
 function askPrompt() {   // for when Claude should set it up as well
   const b = brief(), t = tplOf(), n = val('nd-name'), ps = pieces();
   const shape = [b.use, b.audienceType && 'for ' + b.audienceType.toLowerCase(), b.structure && 'structure: ' + b.structure.toLowerCase(), b.density && b.density.toLowerCase() + ' density', b.style && 'style: ' + b.style].filter(Boolean).join('; ');
-  return [`New slide builder deck “${n}” from the ${t.name} template${b.length ? ', ' + b.length : ''}${b.audience ? ', for ' + b.audience : ''}.`,
+  return [`New StrategyU Decks deck “${n}” from the ${t.name} template${b.length ? ', ' + b.length : ''}${b.audience ? ', for ' + b.audience : ''}.`,
     shape ? `Brief: ${shape}.` : '', b.knows ? `What they know and care about: ${b.knows}` : '',
     ps.length > 1 ? `Build these together, each as a version in the deck: ${ps.map((pc, i) => pc.name + (i ? '' : ' (the main one, first)')).join(', ')}.` : '',
     'Set it up with: ' + ['./sb new ' + JSON.stringify(n), '--template ' + tplId(), b.style && '--style ' + b.style, b.titles && b.titles !== 'Sans serif' && '--titles ' + JSON.stringify(b.titles),
@@ -377,9 +377,9 @@ function askDelete(d) {
   delSlug = d.slug;
   document.getElementById('del-title').textContent = `Delete “${d.name}”?`;
   document.getElementById('del-what').innerHTML = d.trashes
-    ? `Its folder, <code>${esc(d.trashes)}</code>, moves to the Trash, and the deck leaves the Slide Builder. You can put it back from the Trash.`
-    : `It leaves the Slide Builder. Its files stay where they are, in <code>${esc(d.folder)}</code>: this deck lives in a folder of your own, so nothing is moved or deleted.`;
-  document.getElementById('del-yes').textContent = d.trashes ? 'Move to Trash' : 'Remove from Slide Builder';
+    ? `Its folder, <code>${esc(d.trashes)}</code>, moves to the Trash, and the deck leaves StrategyU Decks. You can put it back from the Trash.`
+    : `It leaves StrategyU Decks. Its files stay where they are, in <code>${esc(d.folder)}</code>: this deck lives in a folder of your own, so nothing is moved or deleted.`;
+  document.getElementById('del-yes').textContent = d.trashes ? 'Move to Trash' : 'Remove from StrategyU Decks';
   document.getElementById('del-hide').hidden = !!d.hidden;
   document.getElementById('del-back').classList.add('on'); document.getElementById('del-no').focus();
 }
