@@ -355,7 +355,7 @@ async function load() {
   const by = (g) => data.decks.filter((d) => d.group === g && !d.hidden && !(hideClients && d.client));
   document.getElementById('active').innerHTML = by('active').filter((d) => d.kind !== 'pitch').map(card).join('') || '<div class="empty">No active decks.</div>';
   document.getElementById('pitch').innerHTML = by('active').concat(by('pitch')).filter((d) => d.kind === 'pitch').map((d) =>
-    (d.versions.length ? d.versions : [{ name: d.name, url: d.url, open: d.open }]).map((v) => row(v.url, v.name, (v.slides ? v.slides + ' slides' : '') + (v.open ? ` · ${v.open} open comment${v.open === 1 ? '' : 's'}` : ''))).join('')).join('') || '<div class="empty">None.</div>';
+    (d.versions.length ? d.versions : [{ name: d.name, url: d.url, open: d.open }]).map((v) => row(v.url, v.name, (v.slides ? v.slides + ' slides' : '') + (v.open ? ` · ${v.open} open comment${v.open === 1 ? '' : 's'}` : ''))).join('')).join('')   // empty: its heading hides;
   document.getElementById('delivered').innerHTML = by('delivered').map((d) => `<div class="rowwrap">${row(d.url, d.name, (d.delivered ? d.delivered + ' · ' : '') + 'frozen', true)}<button class="row-x" data-op="hide" data-slug="${esc(d.slug)}" title="Hide from the dashboard">Hide</button></div>`).join('');
   ['pitch', 'delivered'].forEach((id) => { const box = document.getElementById(id); box.previousElementSibling.hidden = !box.innerHTML; });   // a heading only when there is something under it
   const hid = data.decks.filter((d) => d.hidden && !(hideClients && d.client));

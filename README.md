@@ -6,9 +6,28 @@ reads those comments with the `sb` command, edits the deck file, and replies on 
 slide: done, a question for you, or why it left something alone. The page updates while
 it works.
 
-It is built around the way consultants make decks: titles that say the point, slides
-that prove their titles, and the five- and ten-second tests, all one keypress away in
-Checks.
+![A slide in Focus view: the reviewer's comment under it, and the agent's question back](docs/focus.png)
+
+## Why I built this
+
+Most people learn how to make a good deck in one place and make their decks in another.
+You take the course or read the book, then go back to your desk with a deadline, and the
+method stays in your notes.
+
+AI changes that. **You can use AI as both a doer and a teacher**, so you learn the
+method and apply it at the same time, on your own work.
+
+Decks is built that way. You say what should change, your agent changes it, and it tells
+you on the slide what it did and why. Checks keeps the tests consultants use one
+keypress away: read only the titles and see if they tell the story; look at a slide for
+five seconds and see if the point lands. The guides flag what breaks a basic principle
+of slide design. They're guidelines, not rules.
+
+I spent nearly a decade in strategy consulting, at McKinsey and BCG, and I've taught
+these skills through [StrategyU](https://strategyu.co) since 2017. I make my own
+workshops and talks in Decks.
+
+## What you get
 
 Each deck is one self-contained HTML file in its own folder, with its own git history.
 It opens in any browser, presents full screen, and prints to PDF. **Client copy** gives
@@ -92,6 +111,8 @@ Four views, each with the slides bar on the left and the notes bar on the right:
      should prove the title.
   5. Guides (below).
 
+![Checks › Horizontal flow: the deck's titles read in order, as paragraphs](docs/checks.png)
+
 **Titles only** (H) hides everything but the titles, in any view. `?` lists every
 shortcut. The version menu picks between a deck's versions (a full deck, a short cut, a
 facilitator pack), which share slides.
@@ -123,6 +144,8 @@ number, points, two columns, a process, a table, quotes, a section divider, a qu
 an exercise, and three picture layouts (a picture with the point beside it, two
 pictures, a full-screen photo). Click a picture, or drop an image file on it, to put
 your own in; it is saved next to the deck.
+
+![Add a slide: what are you trying to show, then the layouts that do it](docs/add-slide.png)
 
 ### Sending a deck
 
@@ -181,6 +204,8 @@ whole deck there. A logo you upload goes in the corner of every slide; without o
 slides have no logo.
 
 ## The dashboard
+
+![The dashboard: every deck, its open comments, and recent rounds](docs/dashboard.png)
 
 Every deck, with its open comments, latest PDF, and recent rounds. The ⋯ on a deck hides
 it (into a Hidden list at the bottom, where Show brings it back) or deletes it. Delete
