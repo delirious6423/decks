@@ -38,7 +38,7 @@ test('Tab crosses a virtual boundary in both directions and keyboard navigation 
 
 test('filter finds offscreen comments, maintains global slide numbering and refreshes badges',async()=>{
  const p=await open();await p.evaluate(()=>{
-  const f=document.querySelector('#deck > [data-id="large-900"] textarea.fb');f.value='Review this distant slide';f.dispatchEvent(new Event('input',{bubbles:true}));
+  SlideBuilder.comment('large-900','Review this distant slide');
   SlideBuilder.filter('open');SlideBuilder.go('large-900');
  });
  assert.equal(await rows(p).count(),1);assert.equal(await p.locator('.sb-fi .sb-fn').first().innerText(),'901');
@@ -53,7 +53,7 @@ test('remove and re-add a far slide through the shelf without legacy inputs',asy
  const shelf=p.locator('#sb-film-list .sb-extras');await shelf.evaluate(n=>n.open=true);
  const add=shelf.locator('.sb-ex').filter({hasText:'Slide 851 shows'}).locator('button');await add.click();
  await p.waitForFunction(()=>SlideBuilder.current()==='large-850');
- assert.equal(await p.locator('#deck > [data-id]').count(),1000);assert.ok(await rows(p).count()<20);
+ assert.equal(await p.evaluate(()=>deckIds().length),1000);assert.ok(await rows(p).count()<20);
 });
 
 test('drag reorder, insertion controls and version switches work across virtual windows',async()=>{
@@ -84,7 +84,7 @@ test('a large excluded library is windowed and can add a distant slide',async()=
  });
  const add=p.locator('.sb-ex').filter({hasText:'Slide 801 shows'}).locator('button');await add.click();
  await p.waitForFunction(()=>SlideBuilder.current()==='large-800');assert.ok(await p.locator('.sb-ex').count()<25);
- assert.equal(await p.locator('#deck > [data-id]').count(),4);
+ assert.equal(await p.evaluate(()=>deckIds().length),4);
 });
 
 test('the slide picker adds a basic layout through the library model',async()=>{

@@ -1,0 +1,1650 @@
+{
+  "before": {
+    "metrics": {
+      "Timestamp": 7567.114171,
+      "AudioHandlers": 0,
+      "AudioWorkletProcessors": 0,
+      "Documents": 3,
+      "Frames": 2,
+      "JSEventListeners": 10175,
+      "LayoutObjects": 893,
+      "MediaKeySessions": 0,
+      "MediaKeys": 0,
+      "Nodes": 286622,
+      "Resources": 12,
+      "ContextLifecycleStateObservers": 18,
+      "V8PerContextDatas": 3,
+      "WorkerGlobalScopes": 0,
+      "UACSSResources": 0,
+      "RTCPeerConnections": 0,
+      "ResourceFetchers": 3,
+      "AdSubframes": 0,
+      "DetachedScriptStates": 0,
+      "ArrayBufferContents": 0,
+      "LayoutCount": 14,
+      "RecalcStyleCount": 19,
+      "LayoutDuration": 0.073976,
+      "RecalcStyleDuration": 0.06323,
+      "DevToolsCommandDuration": 0.020266,
+      "ScriptDuration": 0.658077,
+      "V8CompileDuration": 0.05772,
+      "TaskDuration": 1.28424,
+      "TaskOtherDuration": 0.410971,
+      "ThreadTime": 1.207501,
+      "ProcessTime": 1.58,
+      "JSHeapUsedSize": 18754364,
+      "JSHeapTotalSize": 33300480,
+      "FirstMeaningfulPaint": 0,
+      "DomContentLoaded": 7566.630431,
+      "NavigationStart": 7565.766896
+    },
+    "self": [
+      {
+        "function": "(program)",
+        "url": "",
+        "line": 0,
+        "self_ms": 370.510999999997,
+        "inclusive_ms": 370.510999999997
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 3170,
+        "self_ms": 141.13600000000017,
+        "inclusive_ms": 141.13600000000017
+      },
+      {
+        "function": "el",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 1635,
+        "self_ms": 98.45800000000007,
+        "inclusive_ms": 107.29400000000014
+      },
+      {
+        "function": "(idle)",
+        "url": "",
+        "line": 0,
+        "self_ms": 67.83200000000008,
+        "inclusive_ms": 67.83200000000008
+      },
+      {
+        "function": "Q",
+        "url": "",
+        "line": 1,
+        "self_ms": 42.48400000000003,
+        "inclusive_ms": 42.48400000000003
+      },
+      {
+        "function": "slideWrap",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 3034,
+        "self_ms": 42.086000000000034,
+        "inclusive_ms": 207.14499999999953
+      },
+      {
+        "function": "(anonymous)",
+        "url": "",
+        "line": 1,
+        "self_ms": 39.80999999999998,
+        "inclusive_ms": 40.84799999999998
+      },
+      {
+        "function": "(garbage collector)",
+        "url": "",
+        "line": 0,
+        "self_ms": 29.99900000000001,
+        "inclusive_ms": 29.99900000000001
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 3371,
+        "self_ms": 29.717999999999996,
+        "inclusive_ms": 39.160999999999994
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/_sb/shell.js?v=1792430128",
+        "line": 731,
+        "self_ms": 25.109000000000012,
+        "inclusive_ms": 25.109000000000012
+      },
+      {
+        "function": "go",
+        "url": "/_sb/shell.js?v=1792430128",
+        "line": 744,
+        "self_ms": 25.018,
+        "inclusive_ms": 82.8920000000001
+      },
+      {
+        "function": "el",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 1635,
+        "self_ms": 20.80999999999999,
+        "inclusive_ms": 23.444000000000003
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 1498,
+        "self_ms": 20.65699999999999,
+        "inclusive_ms": 439.60400000000016
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/_sb/addslide.js?v=1792430128",
+        "line": 6,
+        "self_ms": 20.149,
+        "inclusive_ms": 23.48900000000001
+      },
+      {
+        "function": "createElement",
+        "url": "",
+        "line": 0,
+        "self_ms": 19.917999999999978,
+        "inclusive_ms": 19.917999999999978
+      },
+      {
+        "function": "L",
+        "url": "",
+        "line": 1,
+        "self_ms": 17.999,
+        "inclusive_ms": 69.10399999999981
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/_sb/boot.js?v=1792430128",
+        "line": 10,
+        "self_ms": 16.7,
+        "inclusive_ms": 16.854
+      },
+      {
+        "function": "appendChild",
+        "url": "",
+        "line": 0,
+        "self_ms": 16.068000000000005,
+        "inclusive_ms": 16.068000000000005
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/_sb/shell.js?v=1792430128",
+        "line": 796,
+        "self_ms": 13.703999999999999,
+        "inclusive_ms": 20.984999999999992
+      },
+      {
+        "function": "px",
+        "url": "/_sb/shell.js?v=1792430128",
+        "line": 726,
+        "self_ms": 11.036000000000005,
+        "inclusive_ms": 11.036000000000005
+      },
+      {
+        "function": "fbOf",
+        "url": "/_sb/shell.js?v=1792430128",
+        "line": 35,
+        "self_ms": 9.606999999999998,
+        "inclusive_ms": 23.583000000000006
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 3380,
+        "self_ms": 8.97,
+        "inclusive_ms": 8.97
+      },
+      {
+        "function": "appendChild",
+        "url": "",
+        "line": 0,
+        "self_ms": 8.686000000000003,
+        "inclusive_ms": 8.686000000000003
+      },
+      {
+        "function": "querySelectorAll",
+        "url": "",
+        "line": 0,
+        "self_ms": 8.620999999999997,
+        "inclusive_ms": 8.620999999999997
+      },
+      {
+        "function": "observeLazySlides",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 3126,
+        "self_ms": 8.333999999999998,
+        "inclusive_ms": 16.365999999999996
+      },
+      {
+        "function": "ensureSlide",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 3058,
+        "self_ms": 7.922999999999998,
+        "inclusive_ms": 12.095
+      },
+      {
+        "function": "createElement",
+        "url": "",
+        "line": 0,
+        "self_ms": 6.971999999999998,
+        "inclusive_ms": 6.971999999999998
+      },
+      {
+        "function": "info",
+        "url": "/_sb/shell.js?v=1792430128",
+        "line": 58,
+        "self_ms": 6.231999999999999,
+        "inclusive_ms": 31.301000000000005
+      },
+      {
+        "function": "deckIds",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 3456,
+        "self_ms": 5.639999999999999,
+        "inclusive_ms": 9.518999999999997
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 1640,
+        "self_ms": 4.721,
+        "inclusive_ms": 4.721
+      },
+      {
+        "function": "numberSlides",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 3167,
+        "self_ms": 4.691999999999999,
+        "inclusive_ms": 145.82800000000015
+      },
+      {
+        "function": "renderFilm",
+        "url": "/_sb/shell.js?v=1792430128",
+        "line": 292,
+        "self_ms": 4.485999999999999,
+        "inclusive_ms": 25.898999999999983
+      },
+      {
+        "function": "px",
+        "url": "/_sb/shell.js?v=1792430128",
+        "line": 726,
+        "self_ms": 3.934,
+        "inclusive_ms": 3.934
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/_sb/shell.js?v=1792430128",
+        "line": 27,
+        "self_ms": 3.926999999999999,
+        "inclusive_ms": 3.926999999999999
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/_sb/shell.js?v=1792430128",
+        "line": 29,
+        "self_ms": 3.8939999999999997,
+        "inclusive_ms": 3.8939999999999997
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 3456,
+        "self_ms": 3.8789999999999996,
+        "inclusive_ms": 3.8789999999999996
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 1640,
+        "self_ms": 3.8049999999999993,
+        "inclusive_ms": 3.8049999999999993
+      },
+      {
+        "function": "appendChild",
+        "url": "",
+        "line": 0,
+        "self_ms": 3.7339999999999987,
+        "inclusive_ms": 3.7339999999999987
+      },
+      {
+        "function": "fbOf",
+        "url": "/_sb/shell.js?v=1792430128",
+        "line": 35,
+        "self_ms": 3.547,
+        "inclusive_ms": 4.133
+      },
+      {
+        "function": "addEventListener",
+        "url": "",
+        "line": 0,
+        "self_ms": 3.5209999999999995,
+        "inclusive_ms": 3.5209999999999995
+      }
+    ],
+    "inclusive": [
+      {
+        "function": "(root)",
+        "url": "",
+        "line": 0,
+        "self_ms": 0,
+        "inclusive_ms": 1348.5699999999524
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 1498,
+        "self_ms": 20.65699999999999,
+        "inclusive_ms": 439.60400000000016
+      },
+      {
+        "function": "renderPitch",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 3186,
+        "self_ms": 1.411,
+        "inclusive_ms": 413.57300000000004
+      },
+      {
+        "function": "(program)",
+        "url": "",
+        "line": 0,
+        "self_ms": 370.510999999997,
+        "inclusive_ms": 370.510999999997
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 3196,
+        "self_ms": 2.339,
+        "inclusive_ms": 213.21799999999956
+      },
+      {
+        "function": "slideWrap",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 3034,
+        "self_ms": 42.086000000000034,
+        "inclusive_ms": 207.14499999999953
+      },
+      {
+        "function": "numberSlides",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 3167,
+        "self_ms": 4.691999999999999,
+        "inclusive_ms": 145.82800000000015
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 3170,
+        "self_ms": 141.13600000000017,
+        "inclusive_ms": 141.13600000000017
+      },
+      {
+        "function": "loadReview",
+        "url": "/_sb/shell.js?v=1792430128",
+        "line": 851,
+        "self_ms": 0.159,
+        "inclusive_ms": 117.1000000000001
+      },
+      {
+        "function": "refresh",
+        "url": "/_sb/shell.js?v=1792430128",
+        "line": 849,
+        "self_ms": 0.777,
+        "inclusive_ms": 116.94100000000009
+      },
+      {
+        "function": "setReview",
+        "url": "/_sb/shell.js?v=1792430128",
+        "line": 850,
+        "self_ms": 0,
+        "inclusive_ms": 116.94100000000009
+      },
+      {
+        "function": "el",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 1635,
+        "self_ms": 98.45800000000007,
+        "inclusive_ms": 107.29400000000014
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/_sb/shell.js?v=1792430128",
+        "line": 953,
+        "self_ms": 0.154,
+        "inclusive_ms": 92.59000000000015
+      },
+      {
+        "function": "setView",
+        "url": "/_sb/shell.js?v=1792430128",
+        "line": 692,
+        "self_ms": 0.782,
+        "inclusive_ms": 92.43600000000015
+      },
+      {
+        "function": "go",
+        "url": "/_sb/shell.js?v=1792430128",
+        "line": 744,
+        "self_ms": 25.018,
+        "inclusive_ms": 82.8920000000001
+      },
+      {
+        "function": "L",
+        "url": "",
+        "line": 1,
+        "self_ms": 17.999,
+        "inclusive_ms": 69.10399999999981
+      },
+      {
+        "function": "(idle)",
+        "url": "",
+        "line": 0,
+        "self_ms": 67.83200000000008,
+        "inclusive_ms": 67.83200000000008
+      },
+      {
+        "function": "counts",
+        "url": "/_sb/shell.js?v=1792430128",
+        "line": 830,
+        "self_ms": 0.787,
+        "inclusive_ms": 49.97099999999989
+      },
+      {
+        "function": "Q",
+        "url": "",
+        "line": 1,
+        "self_ms": 42.48400000000003,
+        "inclusive_ms": 42.48400000000003
+      },
+      {
+        "function": "O",
+        "url": "",
+        "line": 1,
+        "self_ms": 1.23,
+        "inclusive_ms": 42.14499999999996
+      },
+      {
+        "function": "(anonymous)",
+        "url": "",
+        "line": 1,
+        "self_ms": 39.80999999999998,
+        "inclusive_ms": 40.84799999999998
+      },
+      {
+        "function": "invalidateSaves",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 3371,
+        "self_ms": 1.258,
+        "inclusive_ms": 40.419
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 3371,
+        "self_ms": 29.717999999999996,
+        "inclusive_ms": 39.160999999999994
+      },
+      {
+        "function": "size",
+        "url": "/_sb/shell.js?v=1792430128",
+        "line": 723,
+        "self_ms": 0,
+        "inclusive_ms": 36.300999999999995
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/_sb/shell.js?v=1792430128",
+        "line": 833,
+        "self_ms": 1.278,
+        "inclusive_ms": 34.811
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/_sb/shell.js?v=1792430128",
+        "line": 833,
+        "self_ms": 0.643,
+        "inclusive_ms": 33.533
+      },
+      {
+        "function": "pass",
+        "url": "/_sb/shell.js?v=1792430128",
+        "line": 67,
+        "self_ms": 1.589,
+        "inclusive_ms": 32.89
+      },
+      {
+        "function": "info",
+        "url": "/_sb/shell.js?v=1792430128",
+        "line": 58,
+        "self_ms": 6.231999999999999,
+        "inclusive_ms": 31.301000000000005
+      },
+      {
+        "function": "(garbage collector)",
+        "url": "",
+        "line": 0,
+        "self_ms": 29.99900000000001,
+        "inclusive_ms": 29.99900000000001
+      },
+      {
+        "function": "renderFilm",
+        "url": "/_sb/shell.js?v=1792430128",
+        "line": 292,
+        "self_ms": 4.485999999999999,
+        "inclusive_ms": 25.898999999999983
+      },
+      {
+        "function": "ed",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 1636,
+        "self_ms": 2.1959999999999997,
+        "inclusive_ms": 25.64
+      },
+      {
+        "function": "decorate",
+        "url": "/_sb/shell.js?v=1792430128",
+        "line": 795,
+        "self_ms": 0.47,
+        "inclusive_ms": 25.38799999999999
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/_sb/shell.js?v=1792430128",
+        "line": 731,
+        "self_ms": 25.109000000000012,
+        "inclusive_ms": 25.109000000000012
+      },
+      {
+        "function": "below",
+        "url": "/_sb/shell.js?v=1792430128",
+        "line": 731,
+        "self_ms": 0,
+        "inclusive_ms": 25.109000000000012
+      },
+      {
+        "function": "commentOf",
+        "url": "/_sb/shell.js?v=1792430128",
+        "line": 36,
+        "self_ms": 1.486,
+        "inclusive_ms": 25.069000000000006
+      },
+      {
+        "function": "fbOf",
+        "url": "/_sb/shell.js?v=1792430128",
+        "line": 35,
+        "self_ms": 9.606999999999998,
+        "inclusive_ms": 23.583000000000006
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/_sb/addslide.js?v=1792430128",
+        "line": 6,
+        "self_ms": 20.149,
+        "inclusive_ms": 23.48900000000001
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/_sb/addslide.js?v=1792430128",
+        "line": 1,
+        "self_ms": 0,
+        "inclusive_ms": 23.48900000000001
+      },
+      {
+        "function": "el",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 1635,
+        "self_ms": 20.80999999999999,
+        "inclusive_ms": 23.444000000000003
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/_sb/shell.js?v=1792430128",
+        "line": 796,
+        "self_ms": 13.703999999999999,
+        "inclusive_ms": 20.984999999999992
+      },
+      {
+        "function": "createElement",
+        "url": "",
+        "line": 0,
+        "self_ms": 19.917999999999978,
+        "inclusive_ms": 19.917999999999978
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/_sb/boot.js?v=1792430128",
+        "line": 10,
+        "self_ms": 16.7,
+        "inclusive_ms": 16.854
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/_sb/boot.js?v=1792430128",
+        "line": 1,
+        "self_ms": 0,
+        "inclusive_ms": 16.854
+      },
+      {
+        "function": "observeLazySlides",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 3126,
+        "self_ms": 8.333999999999998,
+        "inclusive_ms": 16.365999999999996
+      },
+      {
+        "function": "appendChild",
+        "url": "",
+        "line": 0,
+        "self_ms": 16.068000000000005,
+        "inclusive_ms": 16.068000000000005
+      },
+      {
+        "function": "wrapOf",
+        "url": "/_sb/shell.js?v=1792430128",
+        "line": 29,
+        "self_ms": 3.453,
+        "inclusive_ms": 13.976000000000003
+      },
+      {
+        "function": "ensureSlide",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 3058,
+        "self_ms": 7.922999999999998,
+        "inclusive_ms": 12.095
+      },
+      {
+        "function": "excluded",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 3244,
+        "self_ms": 1.139,
+        "inclusive_ms": 11.135
+      },
+      {
+        "function": "excluded",
+        "url": "/_sb/shell.js?v=1792430128",
+        "line": 31,
+        "self_ms": 0,
+        "inclusive_ms": 11.135
+      },
+      {
+        "function": "px",
+        "url": "/_sb/shell.js?v=1792430128",
+        "line": 726,
+        "self_ms": 11.036000000000005,
+        "inclusive_ms": 11.036000000000005
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/_sb/shell.js?v=1792430128",
+        "line": 10,
+        "self_ms": 1.379,
+        "inclusive_ms": 10.381000000000006
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/_sb/shell.js?v=1792430128",
+        "line": 1,
+        "self_ms": 0,
+        "inclusive_ms": 10.381000000000006
+      },
+      {
+        "function": "size",
+        "url": "/_sb/shell.js?v=1792430128",
+        "line": 723,
+        "self_ms": 0,
+        "inclusive_ms": 10.296000000000005
+      },
+      {
+        "function": "fitSlides",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 1639,
+        "self_ms": 2.2349999999999994,
+        "inclusive_ms": 9.541000000000002
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 3935,
+        "self_ms": 0,
+        "inclusive_ms": 9.541000000000002
+      },
+      {
+        "function": "deckIds",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 3456,
+        "self_ms": 5.639999999999999,
+        "inclusive_ms": 9.518999999999997
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 3380,
+        "self_ms": 8.97,
+        "inclusive_ms": 8.97
+      },
+      {
+        "function": "appendChild",
+        "url": "",
+        "line": 0,
+        "self_ms": 8.686000000000003,
+        "inclusive_ms": 8.686000000000003
+      },
+      {
+        "function": "querySelectorAll",
+        "url": "",
+        "line": 0,
+        "self_ms": 8.620999999999997,
+        "inclusive_ms": 8.620999999999997
+      },
+      {
+        "function": "fitSlides",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 1639,
+        "self_ms": 2.3469999999999995,
+        "inclusive_ms": 8.432999999999998
+      }
+    ],
+    "navigation": {
+      "name": "http://127.0.0.1:18800/d/bench-large-10000/deck.html",
+      "entryType": "navigation",
+      "startTime": 0,
+      "duration": 940.6999999992549,
+      "navigationId": 821,
+      "initiatorType": "navigation",
+      "deliveryType": "",
+      "nextHopProtocol": "http/1.0",
+      "renderBlockingStatus": "non-blocking",
+      "contentType": "text/html",
+      "contentEncoding": "",
+      "workerStart": 0,
+      "workerRouterEvaluationStart": 0,
+      "workerCacheLookupStart": 0,
+      "workerMatchedSourceType": "",
+      "workerFinalSourceType": "",
+      "redirectStart": 0,
+      "redirectEnd": 0,
+      "fetchStart": 3.7999999998137355,
+      "domainLookupStart": 10.899999999441206,
+      "domainLookupEnd": 10.899999999441206,
+      "connectStart": 10.899999999441206,
+      "secureConnectionStart": 0,
+      "connectEnd": 11,
+      "requestStart": 11.099999999627471,
+      "responseStart": 42.59999999962747,
+      "firstInterimResponseStart": 0,
+      "finalResponseHeadersStart": 42.59999999962747,
+      "responseEnd": 133.19999999925494,
+      "transferSize": 4636738,
+      "encodedBodySize": 4636438,
+      "decodedBodySize": 4636438,
+      "responseStatus": 200,
+      "serverTiming": [],
+      "unloadEventStart": 0,
+      "unloadEventEnd": 0,
+      "domInteractive": 813.2999999998137,
+      "domContentLoadedEventStart": 863.5,
+      "domContentLoadedEventEnd": 863.5,
+      "domComplete": 939.0999999996275,
+      "loadEventStart": 940.6999999992549,
+      "loadEventEnd": 940.6999999992549,
+      "type": "navigate",
+      "redirectCount": 0,
+      "activationStart": 0,
+      "criticalCHRestart": 0,
+      "notRestoredReasons": null,
+      "confidence": {
+        "randomizedTriggerRate": 0.4994798,
+        "value": "high"
+      }
+    },
+    "dom": {
+      "*": 90669,
+      "#block-list *": 0,
+      "#sb-film-list *": 341,
+      "#deck *": 90099,
+      ".sb-hold": 1
+    }
+  },
+  "after": {
+    "metrics": {
+      "Timestamp": 7567.70636,
+      "AudioHandlers": 0,
+      "AudioWorkletProcessors": 0,
+      "Documents": 5,
+      "Frames": 2,
+      "JSEventListeners": 182,
+      "LayoutObjects": 897,
+      "MediaKeySessions": 0,
+      "MediaKeys": 0,
+      "Nodes": 2243,
+      "Resources": 13,
+      "ContextLifecycleStateObservers": 22,
+      "V8PerContextDatas": 5,
+      "WorkerGlobalScopes": 0,
+      "UACSSResources": 0,
+      "RTCPeerConnections": 0,
+      "ResourceFetchers": 5,
+      "AdSubframes": 0,
+      "DetachedScriptStates": 2,
+      "ArrayBufferContents": 2,
+      "LayoutCount": 13,
+      "RecalcStyleCount": 17,
+      "LayoutDuration": 0.045866,
+      "RecalcStyleDuration": 0.008314,
+      "DevToolsCommandDuration": 0.014801,
+      "ScriptDuration": 0.079229,
+      "V8CompileDuration": 0.058351,
+      "TaskDuration": 0.345658,
+      "TaskOtherDuration": 0.139097,
+      "ThreadTime": 0.313462,
+      "ProcessTime": 0.48,
+      "JSHeapUsedSize": 11922340,
+      "JSHeapTotalSize": 21495808,
+      "FirstMeaningfulPaint": 0,
+      "DomContentLoaded": 7567.593012,
+      "NavigationStart": 7567.262805
+    },
+    "self": [
+      {
+        "function": "(program)",
+        "url": "",
+        "line": 0,
+        "self_ms": 219.93499999999898,
+        "inclusive_ms": 219.93499999999898
+      },
+      {
+        "function": "(idle)",
+        "url": "",
+        "line": 0,
+        "self_ms": 98.24100000000023,
+        "inclusive_ms": 98.24100000000023
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 1500,
+        "self_ms": 21.44699999999998,
+        "inclusive_ms": 37.62599999999998
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/_sb/shell.js?v=1792432017",
+        "line": 738,
+        "self_ms": 15.824,
+        "inclusive_ms": 15.824
+      },
+      {
+        "function": "(garbage collector)",
+        "url": "",
+        "line": 0,
+        "self_ms": 10.215999999999998,
+        "inclusive_ms": 10.215999999999998
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/_sb/addslide.js?v=1792432017",
+        "line": 6,
+        "self_ms": 9.057,
+        "inclusive_ms": 10.646999999999998
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/_sb/boot.js?v=1792432017",
+        "line": 10,
+        "self_ms": 8.766,
+        "inclusive_ms": 9.382
+      },
+      {
+        "function": "renderFilm",
+        "url": "/_sb/shell.js?v=1792432017",
+        "line": 296,
+        "self_ms": 3.863999999999999,
+        "inclusive_ms": 8.373000000000001
+      },
+      {
+        "function": "build",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 4161,
+        "self_ms": 3.697,
+        "inclusive_ms": 4.608
+      },
+      {
+        "function": "allCat",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 1615,
+        "self_ms": 3.5309999999999997,
+        "inclusive_ms": 4.296999999999999
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/_sb/shell.js?v=1792432017",
+        "line": 46,
+        "self_ms": 2.471,
+        "inclusive_ms": 2.471
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/_sb/shell.js?v=1792432017",
+        "line": 10,
+        "self_ms": 2.326,
+        "inclusive_ms": 4.652999999999999
+      },
+      {
+        "function": "indexSlides",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 3081,
+        "self_ms": 2.319,
+        "inclusive_ms": 3.5589999999999997
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/_sb/addslide.js?v=1792432017",
+        "line": 21,
+        "self_ms": 1.5899999999999999,
+        "inclusive_ms": 1.5899999999999999
+      },
+      {
+        "function": "excluded",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 3427,
+        "self_ms": 1.375,
+        "inclusive_ms": 2.442
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/_sb/shell.js?v=1792432017",
+        "line": 846,
+        "self_ms": 1.264,
+        "inclusive_ms": 2.8320000000000003
+      },
+      {
+        "function": "(anonymous)",
+        "url": "",
+        "line": 1,
+        "self_ms": 1.081,
+        "inclusive_ms": 1.081
+      },
+      {
+        "function": "(anonymous)",
+        "url": "",
+        "line": 1,
+        "self_ms": 1.079,
+        "inclusive_ms": 1.079
+      },
+      {
+        "function": "go",
+        "url": "/_sb/shell.js?v=1792432017",
+        "line": 755,
+        "self_ms": 1.04,
+        "inclusive_ms": 19.052
+      },
+      {
+        "function": "renderPitch",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 3361,
+        "self_ms": 0.947,
+        "inclusive_ms": 10.179999999999994
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/_sb/shell.js?v=1792432017",
+        "line": 738,
+        "self_ms": 0.9270000000000002,
+        "inclusive_ms": 0.9270000000000002
+      },
+      {
+        "function": "el",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 1637,
+        "self_ms": 0.802,
+        "inclusive_ms": 0.802
+      },
+      {
+        "function": "refresh",
+        "url": "/_sb/shell.js?v=1792432017",
+        "line": 860,
+        "self_ms": 0.786,
+        "inclusive_ms": 16.183999999999997
+      },
+      {
+        "function": "info",
+        "url": "/_sb/shell.js?v=1792432017",
+        "line": 62,
+        "self_ms": 0.784,
+        "inclusive_ms": 1.5679999999999998
+      },
+      {
+        "function": "SlideHeights",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 3069,
+        "self_ms": 0.779,
+        "inclusive_ms": 0.779
+      },
+      {
+        "function": "px",
+        "url": "/_sb/shell.js?v=1792432017",
+        "line": 733,
+        "self_ms": 0.778,
+        "inclusive_ms": 0.778
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 1615,
+        "self_ms": 0.766,
+        "inclusive_ms": 0.766
+      },
+      {
+        "function": "deckIds",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 3671,
+        "self_ms": 0.7510000000000001,
+        "inclusive_ms": 0.7510000000000001
+      },
+      {
+        "function": "cloneNode",
+        "url": "",
+        "line": 0,
+        "self_ms": 0.674,
+        "inclusive_ms": 0.674
+      },
+      {
+        "function": "evaluate",
+        "url": "",
+        "line": 284,
+        "self_ms": 0.636,
+        "inclusive_ms": 0.636
+      },
+      {
+        "function": "InjectedScript",
+        "url": "",
+        "line": 6429,
+        "self_ms": 0.634,
+        "inclusive_ms": 0.789
+      },
+      {
+        "function": "counts",
+        "url": "/_sb/shell.js?v=1792432017",
+        "line": 843,
+        "self_ms": 0.63,
+        "inclusive_ms": 3.462
+      },
+      {
+        "function": "px",
+        "url": "/_sb/shell.js?v=1792432017",
+        "line": 733,
+        "self_ms": 0.6290000000000001,
+        "inclusive_ms": 0.6290000000000001
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/_sb/boot.js?v=1792432017",
+        "line": 12,
+        "self_ms": 0.616,
+        "inclusive_ms": 0.616
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 1642,
+        "self_ms": 0.5870000000000001,
+        "inclusive_ms": 0.5870000000000001
+      },
+      {
+        "function": "layout",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 3321,
+        "self_ms": 0.504,
+        "inclusive_ms": 0.504
+      },
+      {
+        "function": "fetch",
+        "url": "",
+        "line": 0,
+        "self_ms": 0.483,
+        "inclusive_ms": 0.483
+      },
+      {
+        "function": "(anonymous)",
+        "url": "",
+        "line": 2,
+        "self_ms": 0.46799999999999997,
+        "inclusive_ms": 1.2570000000000001
+      },
+      {
+        "function": "setView",
+        "url": "/_sb/shell.js?v=1792432017",
+        "line": 696,
+        "self_ms": 0.46599999999999997,
+        "inclusive_ms": 20.756
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 1625,
+        "self_ms": 0.46199999999999997,
+        "inclusive_ms": 0.46199999999999997
+      }
+    ],
+    "inclusive": [
+      {
+        "function": "(root)",
+        "url": "",
+        "line": 0,
+        "self_ms": 0,
+        "inclusive_ms": 441.64699999999533
+      },
+      {
+        "function": "(program)",
+        "url": "",
+        "line": 0,
+        "self_ms": 219.93499999999898,
+        "inclusive_ms": 219.93499999999898
+      },
+      {
+        "function": "(idle)",
+        "url": "",
+        "line": 0,
+        "self_ms": 98.24100000000023,
+        "inclusive_ms": 98.24100000000023
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 1500,
+        "self_ms": 21.44699999999998,
+        "inclusive_ms": 37.62599999999998
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/_sb/shell.js?v=1792432017",
+        "line": 969,
+        "self_ms": 0.155,
+        "inclusive_ms": 20.910999999999998
+      },
+      {
+        "function": "setView",
+        "url": "/_sb/shell.js?v=1792432017",
+        "line": 696,
+        "self_ms": 0.46599999999999997,
+        "inclusive_ms": 20.756
+      },
+      {
+        "function": "go",
+        "url": "/_sb/shell.js?v=1792432017",
+        "line": 755,
+        "self_ms": 1.04,
+        "inclusive_ms": 19.052
+      },
+      {
+        "function": "size",
+        "url": "/_sb/shell.js?v=1792432017",
+        "line": 730,
+        "self_ms": 0,
+        "inclusive_ms": 16.602
+      },
+      {
+        "function": "refresh",
+        "url": "/_sb/shell.js?v=1792432017",
+        "line": 860,
+        "self_ms": 0.786,
+        "inclusive_ms": 16.183999999999997
+      },
+      {
+        "function": "loadReview",
+        "url": "/_sb/shell.js?v=1792432017",
+        "line": 862,
+        "self_ms": 0,
+        "inclusive_ms": 16.183999999999997
+      },
+      {
+        "function": "setReview",
+        "url": "/_sb/shell.js?v=1792432017",
+        "line": 861,
+        "self_ms": 0,
+        "inclusive_ms": 16.183999999999997
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/_sb/shell.js?v=1792432017",
+        "line": 738,
+        "self_ms": 15.824,
+        "inclusive_ms": 15.824
+      },
+      {
+        "function": "below",
+        "url": "/_sb/shell.js?v=1792432017",
+        "line": 738,
+        "self_ms": 0,
+        "inclusive_ms": 15.824
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/_sb/addslide.js?v=1792432017",
+        "line": 6,
+        "self_ms": 9.057,
+        "inclusive_ms": 10.646999999999998
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/_sb/addslide.js?v=1792432017",
+        "line": 1,
+        "self_ms": 0,
+        "inclusive_ms": 10.646999999999998
+      },
+      {
+        "function": "(garbage collector)",
+        "url": "",
+        "line": 0,
+        "self_ms": 10.215999999999998,
+        "inclusive_ms": 10.215999999999998
+      },
+      {
+        "function": "renderPitch",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 3361,
+        "self_ms": 0.947,
+        "inclusive_ms": 10.179999999999994
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/_sb/boot.js?v=1792432017",
+        "line": 10,
+        "self_ms": 8.766,
+        "inclusive_ms": 9.382
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/_sb/boot.js?v=1792432017",
+        "line": 1,
+        "self_ms": 0,
+        "inclusive_ms": 9.382
+      },
+      {
+        "function": "renderFilm",
+        "url": "/_sb/shell.js?v=1792432017",
+        "line": 296,
+        "self_ms": 3.863999999999999,
+        "inclusive_ms": 8.373000000000001
+      },
+      {
+        "function": "mountSlide",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 3124,
+        "self_ms": 0.153,
+        "inclusive_ms": 4.760999999999999
+      },
+      {
+        "function": "ensureSlide",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 3213,
+        "self_ms": 0,
+        "inclusive_ms": 4.760999999999999
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/_sb/shell.js?v=1792432017",
+        "line": 10,
+        "self_ms": 2.326,
+        "inclusive_ms": 4.652999999999999
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/_sb/shell.js?v=1792432017",
+        "line": 1,
+        "self_ms": 0,
+        "inclusive_ms": 4.652999999999999
+      },
+      {
+        "function": "build",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 4161,
+        "self_ms": 3.697,
+        "inclusive_ms": 4.608
+      },
+      {
+        "function": "allCat",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 1615,
+        "self_ms": 3.5309999999999997,
+        "inclusive_ms": 4.296999999999999
+      },
+      {
+        "function": "resetLazySlides",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 3277,
+        "self_ms": 0.301,
+        "inclusive_ms": 3.8599999999999994
+      },
+      {
+        "function": "indexSlides",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 3081,
+        "self_ms": 2.319,
+        "inclusive_ms": 3.5589999999999997
+      },
+      {
+        "function": "counts",
+        "url": "/_sb/shell.js?v=1792432017",
+        "line": 843,
+        "self_ms": 0.63,
+        "inclusive_ms": 3.462
+      },
+      {
+        "function": "size",
+        "url": "/_sb/shell.js?v=1792432017",
+        "line": 730,
+        "self_ms": 0,
+        "inclusive_ms": 3.247
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/_sb/shell.js?v=1792432017",
+        "line": 846,
+        "self_ms": 1.264,
+        "inclusive_ms": 2.8320000000000003
+      },
+      {
+        "function": "refit",
+        "url": "/_sb/shell.js?v=1792432017",
+        "line": 48,
+        "self_ms": 0,
+        "inclusive_ms": 2.6180000000000003
+      },
+      {
+        "function": "excluded",
+        "url": "/_sb/shell.js?v=1792432017",
+        "line": 35,
+        "self_ms": 0.157,
+        "inclusive_ms": 2.599
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/_sb/shell.js?v=1792432017",
+        "line": 46,
+        "self_ms": 2.471,
+        "inclusive_ms": 2.471
+      },
+      {
+        "function": "fitIn",
+        "url": "/_sb/shell.js?v=1792432017",
+        "line": 46,
+        "self_ms": 0,
+        "inclusive_ms": 2.471
+      },
+      {
+        "function": "excluded",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 3427,
+        "self_ms": 1.375,
+        "inclusive_ms": 2.442
+      },
+      {
+        "function": "fillThumb",
+        "url": "/_sb/shell.js?v=1792432017",
+        "line": 216,
+        "self_ms": 0.159,
+        "inclusive_ms": 2.292
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/_sb/shell.js?v=1792432017",
+        "line": 215,
+        "self_ms": 0,
+        "inclusive_ms": 2.292
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/_sb/shell.js?v=1792432017",
+        "line": 215,
+        "self_ms": 0,
+        "inclusive_ms": 2.292
+      },
+      {
+        "function": "O",
+        "url": "",
+        "line": 1,
+        "self_ms": 0.277,
+        "inclusive_ms": 1.821
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/_sb/addslide.js?v=1792432017",
+        "line": 21,
+        "self_ms": 1.5899999999999999,
+        "inclusive_ms": 1.5899999999999999
+      },
+      {
+        "function": "info",
+        "url": "/_sb/shell.js?v=1792432017",
+        "line": 62,
+        "self_ms": 0.784,
+        "inclusive_ms": 1.5679999999999998
+      },
+      {
+        "function": "build",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 1763,
+        "self_ms": 0.164,
+        "inclusive_ms": 1.4589999999999999
+      },
+      {
+        "function": "previewSlide",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 3303,
+        "self_ms": 0,
+        "inclusive_ms": 1.4589999999999999
+      },
+      {
+        "function": "build",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 4161,
+        "self_ms": 0,
+        "inclusive_ms": 1.4589999999999999
+      },
+      {
+        "function": "(anonymous)",
+        "url": "",
+        "line": 2,
+        "self_ms": 0.46799999999999997,
+        "inclusive_ms": 1.2570000000000001
+      },
+      {
+        "function": "(anonymous)",
+        "url": "",
+        "line": 1,
+        "self_ms": 0,
+        "inclusive_ms": 1.2570000000000001
+      },
+      {
+        "function": "sideState",
+        "url": "/_sb/shell.js?v=1792432017",
+        "line": 718,
+        "self_ms": 0,
+        "inclusive_ms": 1.238
+      },
+      {
+        "function": "size",
+        "url": "/_sb/shell.js?v=1792432017",
+        "line": 730,
+        "self_ms": 0,
+        "inclusive_ms": 1.238
+      },
+      {
+        "function": "paintFilm",
+        "url": "/_sb/shell.js?v=1792432017",
+        "line": 238,
+        "self_ms": 0.42800000000000005,
+        "inclusive_ms": 1.143
+      },
+      {
+        "function": "(anonymous)",
+        "url": "",
+        "line": 1,
+        "self_ms": 1.081,
+        "inclusive_ms": 1.081
+      },
+      {
+        "function": "below",
+        "url": "/_sb/shell.js?v=1792432017",
+        "line": 738,
+        "self_ms": 0.154,
+        "inclusive_ms": 1.081
+      },
+      {
+        "function": "(anonymous)",
+        "url": "",
+        "line": 1,
+        "self_ms": 0,
+        "inclusive_ms": 1.081
+      },
+      {
+        "function": "(anonymous)",
+        "url": "",
+        "line": 1,
+        "self_ms": 1.079,
+        "inclusive_ms": 1.079
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/_sb/shell.js?v=1792432017",
+        "line": 160,
+        "self_ms": 0.158,
+        "inclusive_ms": 1.06
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/_sb/shell.js?v=1792432017",
+        "line": 738,
+        "self_ms": 0.9270000000000002,
+        "inclusive_ms": 0.9270000000000002
+      },
+      {
+        "function": "build",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 1763,
+        "self_ms": 0,
+        "inclusive_ms": 0.911
+      },
+      {
+        "function": "size",
+        "url": "/_sb/shell.js?v=1792432017",
+        "line": 730,
+        "self_ms": 0.159,
+        "inclusive_ms": 0.902
+      },
+      {
+        "function": "el",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 1637,
+        "self_ms": 0.802,
+        "inclusive_ms": 0.802
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 2981,
+        "self_ms": 0,
+        "inclusive_ms": 0.802
+      }
+    ],
+    "navigation": {
+      "name": "http://127.0.0.1:18799/d/bench-large-10000/deck.html",
+      "entryType": "navigation",
+      "startTime": 0,
+      "duration": 333.70000000018626,
+      "navigationId": 9185,
+      "initiatorType": "navigation",
+      "deliveryType": "",
+      "nextHopProtocol": "http/1.0",
+      "renderBlockingStatus": "non-blocking",
+      "contentType": "text/html",
+      "contentEncoding": "",
+      "workerStart": 0,
+      "workerRouterEvaluationStart": 0,
+      "workerCacheLookupStart": 0,
+      "workerMatchedSourceType": "",
+      "workerFinalSourceType": "",
+      "redirectStart": 0,
+      "redirectEnd": 0,
+      "fetchStart": 0.7999999998137355,
+      "domainLookupStart": 7.2000000001862645,
+      "domainLookupEnd": 7.400000000372529,
+      "connectStart": 7.400000000372529,
+      "secureConnectionStart": 0,
+      "connectEnd": 7.6000000005587935,
+      "requestStart": 7.6000000005587935,
+      "responseStart": 42.200000000186265,
+      "firstInterimResponseStart": 0,
+      "finalResponseHeadersStart": 42.200000000186265,
+      "responseEnd": 122.6000000005588,
+      "transferSize": 4651928,
+      "encodedBodySize": 4651628,
+      "decodedBodySize": 4651628,
+      "responseStatus": 200,
+      "serverTiming": [],
+      "unloadEventStart": 0,
+      "unloadEventEnd": 0,
+      "domInteractive": 290.5,
+      "domContentLoadedEventStart": 330.20000000018626,
+      "domContentLoadedEventEnd": 330.29999999981374,
+      "domComplete": 331.90000000037253,
+      "loadEventStart": 333.6000000005588,
+      "loadEventEnd": 333.70000000018626,
+      "type": "navigate",
+      "redirectCount": 0,
+      "activationStart": 0,
+      "criticalCHRestart": 0,
+      "notRestoredReasons": null,
+      "confidence": {
+        "randomizedTriggerRate": 0.4994798,
+        "value": "high"
+      }
+    },
+    "dom": {
+      "*": 687,
+      "#block-list *": 0,
+      "#sb-film-list *": 341,
+      "#deck *": 117,
+      ".sb-hold": 1
+    }
+  },
+  "provenance": {
+    "measured_at_utc": "2026-10-19T17:55:37.669501+00:00",
+    "before_commit": "0d14a674242a8a6bd3bfbb074695c53575138b3f",
+    "candidate_parent": "0d14a674242a8a6bd3bfbb074695c53575138b3f",
+    "candidate_branch": "perf/virtual-wrappers",
+    "runtime_sha256": {
+      "before": {
+        "server.py": "72e4d7111b36ebb188f553a42f8f71d90925be555ba5e29f25d5317e2c1ea8a2",
+        "static/boot.js": "f7e5f7fc755b6c46ddd1f64f51a36d0d33978b8e0147a34d75278da2afb76e1e",
+        "static/shell.js": "ab1bbbc7f11284b09d730860d7e8dfc991fcf71f777191e0c8505c6e924647ff",
+        "static/shell.css": "85bb6ce1c077d47ad7e1905059bd46819ce17b7d0f8eda5da6027659e5d73680",
+        "static/addslide.js": "67acae4e5c5f5136c7e82f95857c779e548bbc2f958bd5064b1c7e1729509b2d",
+        "static/guides.js": "f6b664398eaa4061072e9606964913278dcf3d3bc92722f1b01687bc12f2d4d6",
+        "templates/_engine/engine.html": "103ad4a8cce44b81480515615809cf7b8550ec2358bf387f95adc38db960c22a",
+        "tools/browser.mjs": "b8433e097e0e31283a30977e8761771823bbf544a13a157b65da125dadfef7da",
+        "tools/browser-jobs.mjs": "233e962a334aae6e96f4c1f63de4d5810cafc00a4f9dbba866c61179fb1f9116"
+      },
+      "after": {
+        "server.py": "72e4d7111b36ebb188f553a42f8f71d90925be555ba5e29f25d5317e2c1ea8a2",
+        "static/boot.js": "2fd6490ed2ab21e086053c6836026b811d326f51a4d202cc92ec19116d1dc986",
+        "static/shell.js": "448d50bf967582a253a93a30039f1c895de772159c8ca3ade2c77af8e43e58ef",
+        "static/shell.css": "d3be10cbeeed094122b7d41ec380867caccf8c072fc1704d8212b04fe6f1fb3c",
+        "static/addslide.js": "bae03c3079710a005b044d8483389f7211c881f6d3f90c0d5fe22e92cfe8daa1",
+        "static/guides.js": "a9f27dac52018a18b0e501086d31b8de96b7842d0a2ac2145b27fa212f838286",
+        "templates/_engine/engine.html": "aa89efd9b13479dd248ef34ee10825fb931b6fc69f1bc99ec29b0e42cda4aca7",
+        "tools/browser.mjs": "b8433e097e0e31283a30977e8761771823bbf544a13a157b65da125dadfef7da",
+        "tools/browser-jobs.mjs": "233e962a334aae6e96f4c1f63de4d5810cafc00a4f9dbba866c61179fb1f9116"
+      }
+    },
+    "fixture_helper_sha256": "17338a4d8896f86acf5067ebbaf6b92fec6ff4835d395de4c2739b0a1bb05c4c",
+    "environment": {
+      "platform": "Linux-7.0.0-38-generic-x86_64-with-glibc2.43",
+      "cpu": "13th Gen Intel(R) Core(TM) i7-13700HX",
+      "logical_cpus": 24,
+      "physical_memory_bytes": 65694711808,
+      "node": "v22.22.1",
+      "python": "3.14.4"
+    }
+  },
+  "methodology": "Separate single 100-microsecond CDP CPU sample per version at 10,000 slides. Inclusive rows overlap. Diagnostic profile durations are not the five-trial unprofiled benchmark."
+}

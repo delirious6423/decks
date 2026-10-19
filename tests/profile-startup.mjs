@@ -3,10 +3,11 @@ import {chromium} from '../tools/node_modules/playwright-core/index.mjs';
 import fs from 'node:fs';
 const b=await chromium.launch({executablePath:process.env.SB_CHROME,headless:true});
 const result={};
+const slug=process.env.PROFILE_SLUG||'bench-large-1000';
 for(const [label,base] of [['before',process.env.BASELINE_URL||'http://127.0.0.1:18800'],['after',process.env.SB_URL||'http://127.0.0.1:18799']]){
  const c=await b.newContext({viewport:{width:1600,height:1000}});await c.route('https://fonts.googleapis.com/**',r=>r.abort());
  const p=await c.newPage(),d=await c.newCDPSession(p);await d.send('Profiler.enable');await d.send('Profiler.setSamplingInterval',{interval:100});await d.send('Performance.enable');await d.send('Profiler.start');
- await p.goto(`${base}/d/bench-large-1000/deck.html`);await p.waitForFunction(()=>document.body.classList.contains('sb-ready'));await p.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
+ await p.goto(`${base}/d/${slug}/deck.html`);await p.waitForFunction(()=>document.body.classList.contains('sb-ready'));await p.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
  const {profile}=await d.send('Profiler.stop'),metrics=await d.send('Performance.getMetrics');
  const nodes=new Map(profile.nodes.map(n=>[n.id,n])),parents=new Map();for(const n of profile.nodes)for(const ch of n.children||[])parents.set(ch,n.id);
  const self=new Map(),total=new Map();profile.samples.forEach((id,i)=>{const dt=profile.timeDeltas[i]/1000;self.set(id,(self.get(id)||0)+dt);for(let k=id;k;k=parents.get(k))total.set(k,(total.get(k)||0)+dt);});

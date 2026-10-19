@@ -24,23 +24,27 @@
   const saveUi = () => { try { localStorage.setItem(UIKEY, JSON.stringify(ui)); } catch (e) {} };
 
   // ---------- the deck, as the builders expose it ----------
+  const virtual = () => !!window.DeckRenderer?.virtual?.();
+  const slideIds = () => virtual() ? window.DeckRenderer.ids() : wraps().map((w) => w.dataset.id);
+  const positionOf = (id, ids = slideIds()) => virtual() ? window.DeckRenderer.position(id) : ids.indexOf(id);
+  const hasSlide = (id) => virtual() ? window.DeckRenderer.has(id) : !!wrapOf(id);
   const wraps = () => [...deck.children].filter((n) => n.dataset && n.dataset.id);
   let wmap = null;   // id -> slide wrapper, rebuilt when the deck re-renders
-  const wrapOf = (id) => { if (!id) return null; const w = wmap && wmap.get(id); if (w && w.parentNode === deck) return w; wmap = new Map(wraps().map((x) => [x.dataset.id, x])); return wmap.get(id) || null; };
+  const wrapOf = (id) => { if (!id) return null; if (virtual()) return window.DeckRenderer.get(id); const w = wmap && wmap.get(id); if (w && w.parentNode === deck) return w; wmap = new Map(wraps().map((x) => [x.dataset.id, x])); return wmap.get(id) || null; };
   const lib = () => { try { return LIBRARY; } catch (e) { return {}; } };            // eslint-disable-line no-undef
   const excluded = () => window.DeckLibrary ? window.DeckLibrary.excluded() : [...document.querySelectorAll('#block-list input[data-id]')].filter((i) => !i.checked).map((i) => i.dataset.id);
   const addFromLibrary = (id) => { if (window.DeckLibrary) window.DeckLibrary.toggle(id); else document.querySelector(`#block-list input[data-id="${CSS.escape(id)}"]`)?.click(); };
   const title = (id) => { let t = ''; try { if (typeof titleOf === 'function') t = titleOf(id); } catch (e) {} if (!t) { const b = lib()[id] || {}; t = String(b.title || b.q || id); } return t.replace(/<[^>]+>/g, '').replace(/\*\*/g, ''); }; // eslint-disable-line no-undef
   const notesOf = (id) => String((lib()[id] || {}).notes || '').replace(/<[^>]+>/g, '');
   const fbOf = (id) => { const w = wrapOf(id); return w && w.querySelector('textarea.fb'); };
-  const commentOf = (id) => { const f = fbOf(id); return f ? f.value.trim() : ''; };
-  const setComment = (id, v) => { const f = fbOf(id); if (!f) return; f.value = v; f.dispatchEvent(new Event('input', { bubbles: true })); };
+  const commentOf = (id) => { if (virtual()) return window.DeckRenderer.comment(id).trim(); const f = fbOf(id); return f ? f.value.trim() : ''; };
+  const setComment = (id, v) => { if (virtual()) { window.DeckRenderer.setComment(id, v); return; } const f = fbOf(id); if (!f) return; f.value = v; f.dispatchEvent(new Event('input', { bubbles: true })); };
   // the box a slide is scaled into: .slide-frame in the workshop engine, .slide-box in the pitch builder
   const frameOf = (w) => { const sl = w.querySelector('.slide'); return (sl && sl.parentElement !== w && sl.parentElement) || w; };
   // scale slides to their frames: every width first, then every transform, so the browser lays out once
   // (the deck's own fitSlides alternates the two, one layout per slide). One slide in focus and checks.
   const fitIn = (list) => { const fs = list.map((w) => w.querySelector('.slide') && frameOf(w)).filter((f) => f && f.matches('.slide-frame, .slide-box')), k = fs.map((f) => f.clientWidth / 1000);
-    fs.forEach((f, i) => { const s = f.querySelector('.slide'); if (s) s.style.transform = k[i] && isFinite(k[i]) ? `scale(${k[i]})` : 'none'; }); return fs.length; };
+    fs.forEach((f, i) => { const s = f.querySelector('.slide'), t = k[i] && isFinite(k[i]) ? `scale(${k[i]})` : 'none'; if (s && s.style.transform !== t) s.style.transform = t; }); return fs.length; };
   const refit = () => {
     const one = (ui.view === 'focus' || ui.view === 'checks') && cur && wrapOf(cur);
     try { if (fitIn(one ? [one] : wraps())) return; } catch (e) {}
@@ -65,7 +69,7 @@
   };
   const FILTERS = [['all', 'All'], ['open', 'Open'], ['replied', 'Replied'], ['questions', 'Questions'], ['changed', 'Changed']];
   const pass = (id, f = filter) => { if (f === 'all') return true; const i = info(id); return (f === 'open' && i.open) || (f === 'replied' && i.replied) || (f === 'questions' && i.question) || (f === 'changed' && i.changed); };
-  const visible = () => wraps().map((w) => w.dataset.id).filter((id) => pass(id));
+  const visible = () => filter === 'all' ? slideIds() : slideIds().filter((id) => pass(id));
 
   // ---------- top bar ----------
   const top = h('div'); top.id = 'sb-top';
@@ -290,7 +294,7 @@
   }
   let filmKey = '';
   function renderFilm() {
-    const list = $('#sb-film-list'), all = wraps().map((w) => w.dataset.id), ids = visible();
+    const list = $('#sb-film-list'), all = slideIds(), ids = visible();
     $('#sb-film-h').textContent = filter === 'all' ? `Slides · ${all.length}` : `${ids.length} of ${all.length}`;
     const outIds = excluded();
     const key = [filter, all.join(','), ids.join(','), outIds.join(',')].join('|');
@@ -366,7 +370,7 @@
   // the right bar: the slide's notes and what changed. Comments live under the slide itself.
   function renderPanel() {
     const body = $('#sb-panel-body'); if (!cur) { body.innerHTML = '<div class="sb-empty">No slide selected.</div>'; return; }
-    const id = cur, i = info(id), all = wraps().map((w) => w.dataset.id), n = all.indexOf(id) + 1;
+    const id = cur, i = info(id), all = slideIds(), n = positionOf(id, all) + 1;
     const notes = notesOf(id);
     body.innerHTML = `<div class="sb-sec"><p class="sb-title">${esc(title(id))}</p><div class="sb-meta">Slide ${n} of ${all.length} · ${esc(id)}</div></div>
       <div class="sb-sec" id="sb-change-slot">${changeBlock(id, i)}</div>
@@ -416,7 +420,7 @@
     deck.dispatchEvent(new Event('input', { bubbles: true }));
   }
   function renderSorter() {
-    const ids = wraps().map((w) => w.dataset.id), y = window.scrollY;
+    const ids = slideIds(), y = window.scrollY;
     const zw = ui.zoom || 210;
     lazy.disconnect(); sorter.innerHTML = `<div class="sb-sorter-head"><span><b>${ids.length} slides</b> in this version · drag to reorder · click a slide to open it</span><label class="sb-zoom">Smaller <input type="range" min="120" max="520" step="10" value="${zw}" aria-label="Thumbnail size"> Bigger</label></div><div class="sb-grid" id="sb-grid"></div>`;
     sorter.style.setProperty('--sb-thumbw', zw + 'px');
@@ -494,7 +498,7 @@
   });
   function renderChecks() {
     if (checks.querySelector('[contenteditable]:focus')) return;   // don't rebuild under the cursor
-    const ids = wraps().map((w) => w.dataset.id), fmt = ui.fmt || 'para';
+    const ids = slideIds(), fmt = ui.fmt || 'para';
     let mode = ui.checks || 'horizontal'; if (!['five', 'ten', 'horizontal', 'vertical', 'guides'].includes(mode)) mode = 'horizontal';
     const timed = mode === 'five' || mode === 'ten';
     const nflag = ids.filter((id) => { const t = titleEl(id); return t && flags(id, t.innerText.trim()).length; }).length;
@@ -690,20 +694,23 @@
 
   // ---------- views, navigation, and sizing ----------
   function setView(v) {
-    if (window.DeckRenderer) window.DeckRenderer.window(cur, v);
+    if (ui.view === 'sorter' && v !== 'sorter') { lazy.disconnect(); sorter.replaceChildren(); }
+    if (ui.view === 'checks' && v !== 'checks') checks.replaceChildren();
     ui.view = v; saveUi();
     top.querySelectorAll('.sb-seg button').forEach((b) => b.classList.toggle('on', b.dataset.v === v));
     document.body.classList.toggle('sb-focus', v === 'focus');
     document.body.classList.toggle('sb-scroll', v === 'scroll');
     document.body.classList.toggle('sb-sorter', v === 'sorter');
     document.body.classList.toggle('sb-checks', v === 'checks');
+    if (v === 'scroll') deck.style.maxWidth = '';
+    if (window.DeckRenderer) window.DeckRenderer.window(cur, v);
     document.documentElement.classList.remove('sb-lazy-boot');
     if (v !== 'checks') { under.classList.remove('sb-timed-on'); document.body.classList.remove('sb-story', 'sb-test', 'sb-vflow', 'sb-ten', 'sb-gcheck'); clearTimeout(tenTimer); document.querySelectorAll('.slide.sb-cover').forEach((x) => x.classList.remove('sb-cover')); document.querySelectorAll('.sb-count').forEach((x) => x.remove()); const hl = under.parentNode && under.parentNode.querySelector('.sb-hint-line'); if (hl) hl.style.display = 'none'; }
-    if (v === 'checks') { if (!cur || !wrapOf(cur)) cur = (wraps()[0] || {}).dataset?.id; renderChecks(); go(cur, true); if (isTimed()) tenReady(); window.scrollTo(0, 0); sideState(); return; }
+    if (v === 'checks') { if (!cur || !hasSlide(cur)) cur = slideIds()[0]; renderChecks(); go(cur, true); if (isTimed()) tenReady(); window.scrollTo(0, 0); sideState(); return; }
     if (document.body.classList.contains('view-sorter') && $('[data-view="slides"]')) $('[data-view="slides"]').click();
     if (v === 'sorter') { wraps().forEach((w) => w.classList.remove('sb-active')); renderSorter(); window.scrollTo(0, 0); sideState(); return; }
     top.querySelectorAll('.sb-seg button').forEach((b) => b.classList.toggle('on', b.dataset.v === v));
-    if (v === 'focus') { if (document.body.classList.contains('view-sorter') && $('[data-view="slides"]')) $('[data-view="slides"]').click(); if (!cur || !wrapOf(cur)) cur = (visible()[0] || (wraps()[0] || {}).dataset?.id); go(cur, true); }
+    if (v === 'focus') { if (document.body.classList.contains('view-sorter') && $('[data-view="slides"]')) $('[data-view="slides"]').click(); if (!cur || !hasSlide(cur)) cur = (visible()[0] || slideIds()[0]); go(cur, true); }
     else { wraps().forEach((w) => w.classList.remove('sb-active')); deck.style.maxWidth = ''; renderFilm(); renderPanel(); requestAnimationFrame(() => { refit(); if (cur) { const w = wrapOf(cur); if (w) w.scrollIntoView({ block: 'start' }); } }); }
     sideState();
   }
@@ -731,24 +738,30 @@
     const below = () => { let n = 0; if (aw) [...aw.children].forEach((c) => { if (c.querySelector('.slide') || c.classList.contains('slide') || c.classList.contains('sb-reply') || !c.offsetHeight) return; const cs = getComputedStyle(c); if (cs.position === 'absolute' || cs.position === 'fixed') return; n += c.offsetHeight + (parseFloat(cs.marginTop) || 0) + (parseFloat(cs.marginBottom) || 0); }); return n; };
     const W = window.innerWidth - left - right - 68, H0 = window.innerHeight - 52 - 22 - 70 - (document.body.classList.contains('sb-has-next') ? 42 : 0) - (test ? (checks.offsetHeight || 150) + 34 : 0);
     const fit = (b) => Math.max(320, Math.min(W, (H0 - b - 30) * 16 / 9));   // 30: one line for Claude's reply, kept on every slide so moving never resizes
-    deck.style.maxWidth = Math.round(W) + 'px';
-    let w = fit(below());
-    deck.style.maxWidth = Math.round(w) + 'px';
-    const w2 = fit(below()); if (w2 < w) { w = w2; deck.style.maxWidth = Math.round(w) + 'px'; }
-    under.style.maxWidth = Math.round(w) + 'px';
+    let value;
+    // Usually the width already matches and this reads once. When wrapping changes
+    // after a resize, converge from the current width without resetting it on every slide.
+    for (let pass = 0; pass < 3; pass++) {
+      value = Math.round(fit(below())) + 'px';
+      if (deck.style.maxWidth === value) break;
+      deck.style.maxWidth = value;
+    }
+    if (under.style.maxWidth !== value) under.style.maxWidth = value;
     refit();
   }
   window.addEventListener('resize', debounce(() => { size(); if (ui.view === 'sorter') refitThumbs(); }, 120));
   new ResizeObserver(debounce(refit, 60)).observe(deck);
 
   function go(id, force, fromScroll) {
-    if (!id || !wrapOf(id)) return;
-    if (window.DeckRenderer) window.DeckRenderer.window(id, ui.view);
+    if (!id || !hasSlide(id)) return;
     const changedSlide = id !== cur;
     const previous = changedSlide && wrapOf(cur);
     if (previous && window.DeckRenderer?.enabled() && !previous.querySelector('textarea.fb')?.value.trim() && !previous.querySelector('.sb-reply')) previous.querySelector('.sb-hold')?.remove();
     cur = id;
-    holdRow(wrapOf(id));
+    if (window.DeckRenderer) window.DeckRenderer.window(id, ui.view, !!fromScroll);
+    const selected = wrapOf(id); if (!selected) return;
+    holdRow(selected);
+    if (virtual()) decorate([selected]);
     deck.querySelectorAll(':scope > .sb-active').forEach((w) => { if (w.dataset.id !== id) w.classList.remove('sb-active'); });
     if (changedSlide) { const x = $('#sb-edge'); if (x) x.classList.remove('on'); }   // the end-of-filter hint belongs to the slide it was shown on
     if (ui.view === 'focus') { wrapOf(id).classList.add('sb-active'); size(); window.scrollTo(0, 0); }
@@ -759,8 +772,8 @@
     else if (ui.view === 'scroll' && !fromScroll) { tracking = false; wrapOf(id).scrollIntoView({ block: 'start' }); setTimeout(() => { tracking = true; }, 400); }
     if (window.DeckRenderer) window.DeckRenderer.layout(id);
     history.replaceState(null, '', '#' + (sideSelect ? 'v=' + encodeURIComponent(sideSelect.value) + '&' : '') + 's=' + encodeURIComponent(id));
-    const all = wraps().map((w) => w.dataset.id), ids = visible(), k = ids.indexOf(id);
-    $('#sb-pos').innerHTML = `Slide ${all.indexOf(id) + 1} of ${all.length}${filter !== 'all' ? ` · ${k + 1} of ${ids.length} ${esc(FILTERS.find((f) => f[0] === filter)[1].toLowerCase())}` : ''} · <kbd>←</kbd> <kbd>→</kbd> to move · <button class="sb-keyhint" data-keys>? shortcuts</button>`;
+    const all = slideIds(), ids = visible(), k = filter === 'all' ? positionOf(id, all) : ids.indexOf(id);
+    $('#sb-pos').innerHTML = `Slide ${positionOf(id, all) + 1} of ${all.length}${filter !== 'all' ? ` · ${k + 1} of ${ids.length} ${esc(FILTERS.find((f) => f[0] === filter)[1].toLowerCase())}` : ''} · <kbd>←</kbd> <kbd>→</kbd> to move · <button class="sb-keyhint" data-keys>? shortcuts</button>`;
     revealFilm(id);
     $('#sb-film-list').querySelectorAll('.sb-fi').forEach((b) => { b.classList.toggle('on', b.dataset.id === id); b.setAttribute('aria-current', b.dataset.id === id ? 'true' : 'false'); });
     const on = $('#sb-film-list .sb-fi.on'); if (on) on.scrollIntoView({ block: 'nearest' });
@@ -777,7 +790,7 @@
   const watch = () => { seen.disconnect(); wraps().forEach((w) => seen.observe(w)); };
   function step(d) {
     const ids = visible(); if (!ids.length) return;
-    const k = ids.indexOf(cur), next = ids[k < 0 ? 0 : Math.max(0, Math.min(ids.length - 1, k + d))];
+    const k = filter === 'all' ? positionOf(cur, ids) : ids.indexOf(cur), next = ids[k < 0 ? 0 : Math.max(0, Math.min(ids.length - 1, k + d))];
     if (next === cur) { edge(d); return; }   // nothing further this way: say so instead of redrawing the same slide
     go(next);
   }
@@ -792,8 +805,8 @@
   document.addEventListener('click', (e) => { if (!e.target.closest('[data-allf]')) return; filter = 'all'; refresh(); const x = $('#sb-edge'); if (x) x.classList.remove('on'); });
 
   // ---------- badges, replies under slides, counts ----------
-  function decorate() {
-    wraps().forEach((w) => {
+  function decorate(list = wraps()) {
+    list.forEach((w) => {
       const id = w.dataset.id, i = info(id), fr = frameOf(w);
       w.dataset.sbid = id;
       const row = w.querySelector(':scope > .slide-no'), host = row || fr;   // in the row above the slide, so it never covers the title
@@ -828,13 +841,11 @@
   const released = new Set();
   const releaseEmpty = debounce(() => { released.forEach((id) => { const m = review.comments[id]; if (m && m.state === 'draft' && !commentOf(id)) post({ op: 'comment-state', slide: id, state: 'ready', text: '' }).then(setReview); }); released.clear(); }, 600);
   function counts() {
-    const ids = wraps().map((w) => w.dataset.id);
-    const n = { all: ids.length };
-    FILTERS.slice(1).forEach(([f]) => { n[f] = ids.filter((id) => pass(id, f)).length; });
+    const ids = slideIds();
+    const n = { all: ids.length, open: 0, replied: 0, questions: 0, changed: 0 }, done = []; let ask = 0;
+    ids.forEach((id) => { const i = info(id); n.open += +i.open; n.replied += +i.replied; n.questions += +i.question; n.changed += +i.changed; if (i.open && !i.question) ask++; if (i.st === 'done' && i.text) done.push(id); });
     $('#sb-chips').innerHTML = FILTERS.map(([f, l]) => (f === 'all' || n[f] || f === filter) ? `<button class="sb-chip${f === filter ? ' on' : ''}" data-f="${f}">${l} <b>${n[f]}</b></button>` : '').join('');
-    const ask = ids.filter((id) => { const i = info(id); return i.open && !i.question; }).length;
     const askN = $('#sb-ask-n'); if (askN) { askN.textContent = ask ? String(ask) : ''; askN.classList.toggle('on', ask > 0); }
-    const done = ids.filter((id) => { const i = info(id); return i.st === 'done' && i.text; });
     const rb = $('#sb-resolve'); rb.hidden = done.length < 2; rb.textContent = `Looks good: all ${done.length} done`;
     rb.onclick = async () => { rb.disabled = true; for (const id of done) { const r = await post({ op: 'resolve', slide: id }); setComment(id, ''); review = r; } rb.disabled = false; refresh(); };
   }
@@ -861,7 +872,11 @@
   });
 
   // the deck re-renders on version switches and reorders: follow it
-  new MutationObserver(debounce(() => { if (cur && !wrapOf(cur)) cur = null; refresh(); watch(); if (ui.view === 'focus') go(cur || visible()[0] || (wraps()[0] || {}).dataset?.id, true); }, 150)).observe(deck, { childList: true });
+  const afterDeck = debounce(() => { if (cur && !hasSlide(cur)) cur = null; refresh(); watch(); if (ui.view === 'focus') go(cur || visible()[0] || slideIds()[0], true); }, 150);
+  new MutationObserver(() => { if (!virtual()) afterDeck(); }).observe(deck, { childList: true });
+  window.addEventListener('sb:order', afterDeck);
+  window.addEventListener('sb:window', () => { watch(); decorate(); });
+  window.addEventListener('sb:comment', afterComment);
 
   // keyboard
   let lastKey = 0;
@@ -939,16 +954,17 @@
   // ---------- agent-friendly handle (Claude can drive the page with this) ----------
   window.SlideBuilder = {
     go, step, setView, say, current: () => cur, filter: (f) => { filter = f; refresh(); }, order: (ids) => saveOrder(ids), title, hidden: (id) => clientOnly.has(id),
-    slides: () => wraps().map((w, k) => Object.assign({ n: k + 1, id: w.dataset.id, title: title(w.dataset.id) }, (({ text, st, changed, hold }) => ({ comment: text, reply: st, changed, draft: hold }))(info(w.dataset.id)))),
+    slides: () => slideIds().map((id, k) => Object.assign({ n: k + 1, id, title: title(id) }, (({ text, st, changed, hold }) => ({ comment: text, reply: st, changed, draft: hold }))(info(id)))),
+    comment: (id, text) => text === undefined ? commentOf(id) : setComment(id, text),
   };
 
   // ---------- start ----------
   const wantV = decodeURIComponent((location.hash.match(/[#&]v=([^&]+)/) || [])[1] || '');
   if (wantV && sideSelect && !(SB.hideVersions || []).includes(wantV) && [...sideSelect.options].some((o) => o.value === wantV) && sideSelect.value !== wantV) { sideSelect.value = wantV; sideSelect.dispatchEvent(new Event('change', { bubbles: true })); }
   const want = decodeURIComponent((location.hash.match(/[#&]s=([^&]+)/) || [])[1] || '');
-  cur = want && wrapOf(want) ? want : null;
+  cur = want && hasSlide(want) ? want : null;
   hideBtn().addEventListener('click', () => setHide(!ui.hide));
   setHide(!!ui.hide);
   watch();
-  loadReview().then(() => { setView(['scroll', 'sorter', 'checks'].includes(ui.view) ? ui.view : 'focus'); requestAnimationFrame(() => document.body.classList.add('sb-ready')); });
+  loadReview().then(() => { setView(['scroll', 'sorter', 'checks'].includes(ui.view) ? ui.view : 'focus'); requestAnimationFrame(() => { document.body.classList.add('sb-ready'); window.dispatchEvent(new Event('sb:ready')); }); });
 })();

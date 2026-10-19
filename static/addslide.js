@@ -9,7 +9,7 @@
   const lib = () => { try { return LIBRARY; } catch (e) { return {}; } };   // eslint-disable-line no-undef
   const labels = () => { try { return CAT_LABELS; } catch (e) { return {}; } };   // eslint-disable-line no-undef
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-  const shown = () => [...deck.children].filter((n) => n.dataset && n.dataset.id).map((n) => n.dataset.id);
+  const shown = () => window.DeckRenderer?.virtual?.() ? window.DeckRenderer.ids() : [...deck.children].filter((n) => n.dataset && n.dataset.id).map((n) => n.dataset.id);
   const box = (id) => window.DeckLibrary ? (window.DeckLibrary.has(id) ? { click: () => window.DeckLibrary.toggle(id) } : null) : document.querySelector(`#block-list input[data-id="${CSS.escape(id)}"]`);
   const addable = (id) => !!lib()[id] && !shown().includes(id) && !!box(id) && !(API.hidden && API.hidden(id));   // never a hidden client's slide
   // a basic layout can go in more than once: it comes with numbered copies (basic-x, basic-x-2 …)
@@ -275,7 +275,7 @@
     for (const w of rows) if (w.dataset?.id && !decorated.has(w)) { w.appendChild(ins(w.dataset.id, 'Add a slide after this one')); decorated.add(w); }
   };
   new MutationObserver(decorateDeck).observe(deck, { childList: true });
-  window.addEventListener('sb:slide', decorateDeck); decorateDeck();
+  window.addEventListener('sb:slide', decorateDeck); window.addEventListener('sb:window', decorateDeck); decorateDeck();
   deck.addEventListener('click', (e) => { const g = e.target.closest('.sbx-ins'); if (!g) return; e.stopPropagation(); open(g.dataset.after); }, true);
   const sorter = document.getElementById('sb-sorter');
   if (sorter) new MutationObserver(() => { const h = sorter.querySelector('.sb-sorter-head'); if (h && !h.querySelector('.sbx-plus')) { const b = document.createElement('button'); b.className = 'sbx-plus'; b.textContent = '+ Add slide'; b.addEventListener('click', () => open()); h.appendChild(b); } }).observe(sorter, { childList: true });

@@ -87,6 +87,8 @@
   .deck { display: flex; flex-direction: column; gap: 1.6rem; }
 
   .slide-wrap { }
+  .deck.virtual-scroll { display: block; position: relative; overflow-anchor: none; }
+  #deck.virtual-scroll > .slide-wrap[data-id] { position: absolute; left: 0; right: 0; }
   .slide-no { display: flex; align-items: baseline; gap: .5rem; margin: 0 0 .35rem; user-select: text; }
   .slide-no b { font: 800 .95rem/1 var(--sans); color: var(--red-deep); letter-spacing: .02em; }
   .slide-no code { font: 600 .68rem/1 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--text-light); background: #EFECE9; border-radius: 3px; padding: .18rem .35rem; }
@@ -1575,7 +1577,7 @@ const ed = (tag, cls, html) => { const n = el(tag, cls, html); n.contentEditable
 function logoImg() { const src = typeof LOGO !== 'undefined' && LOGO; if (!src) return document.createDocumentFragment(); const i = document.createElement('img'); i.src = src; i.className = 'logo'; i.alt = (typeof LOGO_ALT !== 'undefined' && LOGO_ALT) || 'Logo'; return i; }
 function fitSlides() {
   const frames = [...document.querySelectorAll('.slide-frame')], widths = frames.map((f) => f.clientWidth / 1000);
-  frames.forEach((f, i) => { const s = f.querySelector('.slide'); if (s) s.style.transform = widths[i] && isFinite(widths[i]) ? `scale(${widths[i]})` : 'none'; });
+  frames.forEach((f, i) => { const s = f.querySelector('.slide'), t = widths[i] && isFinite(widths[i]) ? `scale(${widths[i]})` : 'none'; if (s && s.style.transform !== t) s.style.transform = t; });
 }
 window.addEventListener('resize', fitSlides);
 /* A small chart drawn in SVG: column, bar, line, pie, or 100% stacked column.
@@ -2985,14 +2987,168 @@ function slideWrap(id, s = null) {
 
 let current = (() => { const v = new URLSearchParams(location.search).get('v'); return (v && PITCHES && PITCHES[v]) ? v : (Object.keys(PITCHES).find((k) => PITCHES[k].default) || ('cut' in PITCHES ? 'cut' : Object.keys(PITCHES)[0])); })();
 const ORDER = Object.keys(LIBRARY);
+const libraryPositions = new Map(ORDER.map((id, i) => [id, i]));
 const ORIG = new Set();   // slides the reviewer switched back to the original image
 const ADDED = new Set();  // alternatives the reviewer ticked on themselves
 
 
-// Large interactive decks keep comments/order in lightweight wrappers. Raw/headless
-// pages stay eager. Only slide bodies are evicted; saved fields survive in memory.
-const lazySlides = { enabled: false, mode: 'focus', current: null, slots: new Map(), mounted: new Set(), fields: new Map(), observer: null, visible: new Set(), pinned: false };
+// Large interactive decks use an order/field/comment model independent of the DOM.
+// Raw/headless pages stay eager; ?wrappers=0 retains body-only lazy rendering for diagnosis.
+const lazySlides = {
+  enabled: false, mode: 'focus', current: null, slots: new Map(), mounted: new Set(), fields: new Map(),
+  observer: null, visible: new Set(), pinned: false,
+  virtual: false, order: [], positions: new Map(), feedback: new Map(), heights: new Map(),
+  heightIndex: null, width: 0, gap: 25.6, epoch: 0, scrollFrame: 0, wrapperObserver: null
+};
+// Prefix sums keep scroll offsets and height corrections logarithmic. No DOM row
+// or spacer per logical slide is needed, even for decks with thousands of slides.
+class SlideHeights {
+  constructor(values) {
+    this.values = Float64Array.from(values); this.tree = new Float64Array(values.length + 1);
+    for (let i = 1; i < this.tree.length; i++) { this.tree[i] += this.values[i - 1]; const p = i + (i & -i); if (p < this.tree.length) this.tree[p] += this.tree[i]; }
+  }
+  prefix(count) { let n = 0; for (let i = count; i > 0; i -= i & -i) n += this.tree[i]; return n; }
+  set(i, value) { const d = value - this.values[i]; this.values[i] = value; for (let j = i + 1; j < this.tree.length; j += j & -j) this.tree[j] += d; }
+  at(offset) {
+    let pos = 0, sum = 0, bit = 1; while (bit * 2 < this.tree.length) bit *= 2;
+    for (; bit; bit >>= 1) { const next = pos + bit; if (next < this.tree.length && sum + this.tree[next] <= offset) { pos = next; sum += this.tree[next]; } }
+    return Math.min(Math.max(0, this.values.length - 1), pos);
+  }
+}
+function indexSlides(ids) {
+  lazySlides.order = Object.freeze([...new Set(ids)].filter((id) => Object.hasOwn(LIBRARY, id)));
+  lazySlides.positions = new Map(lazySlides.order.map((id, i) => [id, i]));
+  const estimate = (lazySlides.width || 1000) * 9 / 16 + 100 + lazySlides.gap;
+  lazySlides.heightIndex = new SlideHeights(lazySlides.order.map((id) => lazySlides.heights.get(id) || estimate));
+}
+function numberSlide(w) {
+  const k = lazySlides.positions.get(w.dataset.id); if (k === undefined) return;
+  const tag = w.querySelector('.slide-no'); if (!tag) return;
+  const b = tag.querySelector('b'); if (b.textContent !== String(k + 1)) b.textContent = k + 1;
+  let of = tag.querySelector('.of'); if (!of) { of = el('span', 'of'); tag.appendChild(of); }
+  const text = 'of ' + lazySlides.order.length; if (of.textContent !== text) of.textContent = text;
+}
+function collectFeedback() {
+  if (!lazySlides.virtual) {
+    const fb = {}; deckEl.querySelectorAll('.slide-wrap .fb').forEach((t) => { if (t.value.trim()) fb[t.closest('.slide-wrap').dataset.id] = t.value.trim(); }); return fb;
+  }
+  for (const [id, w] of lazySlides.slots) {
+    const v = w.querySelector('.fb').value; if (v.trim()) lazySlides.feedback.set(id, v); else lazySlides.feedback.delete(id);
+  }
+  return Object.fromEntries([...lazySlides.feedback].filter(([id, v]) => lazySlides.positions.has(id) && v.trim()).map(([id, v]) => [id, v.trim()]));
+}
+function slideComment(id) {
+  const w = lazySlides.slots.get(id);
+  return w ? w.querySelector('.fb').value : lazySlides.feedback.get(id) || '';
+}
+function setSlideComment(id, text) {
+  if (!lazySlides.positions.has(id)) return;
+  if (text.trim()) lazySlides.feedback.set(id, text); else lazySlides.feedback.delete(id);
+  const w = lazySlides.slots.get(id);
+  if (w) { const t = w.querySelector('.fb'); t.value = text; t.dispatchEvent(new Event('input', { bubbles: true })); }
+  else { fbCount(); queueSave(); window.dispatchEvent(new CustomEvent('sb:comment', { detail: id })); }
+}
+function captureSlide(w) {
+  invalidateSaves(saveObserver.takeRecords());
+  const id = w.dataset.id, fb = w.querySelector('.fb').value;
+  if (fb.trim()) lazySlides.feedback.set(id, fb); else lazySlides.feedback.delete(id);
+  let bits = slideSaves.get(w);
+  if (!bits) { bits = [...w.querySelectorAll('[contenteditable]')].map((n) => n.innerHTML); slideSaves.set(w, bits); }
+  const hash = defHash(id);
+  if (djb(bits.join('\u0001')) === hash) lazySlides.fields.delete(id);
+  else lazySlides.fields.set(id, { bits, hash });
+}
+function mountSlide(id) {
+  if (!lazySlides.positions.has(id)) return null;
+  let w = lazySlides.slots.get(id); if (w) return w;
+  w = build(id); if (!w) return null;
+  const nodes = [...w.querySelectorAll('[contenteditable]')], bits = nodes.map((n) => n.innerHTML), hash = djb(bits.join('\u0001'));
+  defaultHashes.set(id, { signature: JSON.stringify(LIBRARY[id]) + '|' + ORIG.has(id) + '|' + ADDED.has(id), hash });
+  const saved = lazySlides.fields.get(id);
+  if (saved && saved.hash === hash && saved.bits.length === bits.length) nodes.forEach((n, i) => { n.innerHTML = saved.bits[i]; });
+  lazySlides.fields.delete(id);
+  const fb = w.querySelector('.fb'); fb.value = lazySlides.feedback.get(id) || ''; fb.classList.toggle('has', !!fb.value.trim());
+  numberSlide(w); lazySlides.slots.set(id, w); lazySlides.mounted.add(w); deckEl.appendChild(w);
+  lazySlides.wrapperObserver.observe(w); lazySlides.epoch++;
+  return w;
+}
+function unmountSlide(w, force = false) {
+  if (!force && w.contains(document.activeElement)) return;
+  if (force && w.contains(document.activeElement)) document.activeElement.blur();
+  captureSlide(w); lazySlides.wrapperObserver.unobserve(w);
+  lazySlides.slots.delete(w.dataset.id); lazySlides.mounted.delete(w); slideSaves.delete(w); w.remove(); lazySlides.epoch++;
+}
+function positionSlides() {
+  const scroll = lazySlides.virtual && lazySlides.mode === 'scroll' && !lazySlides.pinned;
+  deckEl.classList.toggle('virtual-scroll', scroll);
+  deckEl.style.height = scroll ? Math.max(0, lazySlides.heightIndex.prefix(lazySlides.order.length) - lazySlides.gap) + 'px' : '';
+  for (const [id, w] of lazySlides.slots) {
+    w.style.top = scroll ? lazySlides.heightIndex.prefix(lazySlides.positions.get(id)) + 'px' : '';
+  }
+}
+function scrollMetrics() {
+  const width = deckEl.clientWidth, gap = parseFloat(getComputedStyle(deckEl).gap) || 0;
+  if (!width || (Math.abs(width - lazySlides.width) < 1 && Math.abs(gap - lazySlides.gap) < .5)) return;
+  const sample = lazySlides.slots.values().next().value, margin = sample ? parseFloat(getComputedStyle(sample).scrollMarginTop) || 0 : 0;
+  const old = lazySlides.heightIndex, top = -deckEl.getBoundingClientRect().top + margin + 1, anchor = old.at(Math.max(0, top)), before = old.prefix(anchor), hadWidth = lazySlides.width > 0;
+  lazySlides.width = width; lazySlides.gap = gap;
+  lazySlides.heights.clear(); indexSlides(lazySlides.order); positionSlides();
+  if (hadWidth) window.scrollBy(0, lazySlides.heightIndex.prefix(anchor) - before);
+  lazySlides.wrapperObserver.disconnect(); lazySlides.slots.forEach((w) => lazySlides.wrapperObserver.observe(w));
+}
+
+function virtualWindow(id = lazySlides.current, mode = lazySlides.mode, viewport = false) {
+  if (!lazySlides.virtual || lazySlides.pinned) return;
+  lazySlides.current = lazySlides.positions.has(id) ? id : lazySlides.order[0]; lazySlides.mode = mode;
+  if (mode === 'checks') { materializeSlides(); return; }
+  const epoch = lazySlides.epoch, keep = new Set();
+  if (mode !== 'sorter' && lazySlides.order.length) {
+    let start, end;
+    if (mode === 'scroll') {
+      scrollMetrics();
+      if (viewport) {
+        const top = window.scrollY - (deckEl.getBoundingClientRect().top + window.scrollY);
+        start = Math.max(0, lazySlides.heightIndex.at(Math.max(0, top - 600)) - 1);
+        end = Math.min(lazySlides.order.length, lazySlides.heightIndex.at(Math.max(0, top + innerHeight + 600)) + 2);
+      }
+    }
+    if (start === undefined) { const at = lazySlides.positions.get(lazySlides.current) || 0; start = Math.max(0, at - 1); end = Math.min(lazySlides.order.length, at + 2); }
+    for (let i = start; i < end; i++) keep.add(lazySlides.order[i]);
+  }
+  for (const [key, w] of lazySlides.slots) if (!keep.has(key)) unmountSlide(w, !lazySlides.positions.has(key));
+  keep.forEach(mountSlide);
+  // Reordering a handful of mounted nodes preserves their identity and focus.
+  let cursor = deckEl.firstElementChild;
+  [...lazySlides.slots].sort((a, b) => lazySlides.positions.get(a[0]) - lazySlides.positions.get(b[0])).forEach(([, w]) => {
+    if (cursor !== w) deckEl.insertBefore(w, cursor); cursor = w.nextElementSibling;
+  });
+  positionSlides();
+  if (epoch !== lazySlides.epoch) window.dispatchEvent(new Event('sb:window'));
+}
+function scheduleSlideWindow() {
+  if (!lazySlides.virtual || lazySlides.pinned || lazySlides.mode !== 'scroll' || lazySlides.scrollFrame) return;
+  lazySlides.scrollFrame = requestAnimationFrame(() => { lazySlides.scrollFrame = 0; virtualWindow(undefined, 'scroll', true); fitSlides(); autofitText(); drawTrees(); });
+}
+function measureWrappers(entries) {
+  if (!lazySlides.virtual || lazySlides.pinned || lazySlides.mode !== 'scroll') return;
+  if (Math.abs(deckEl.clientWidth - lazySlides.width) >= 1) { scheduleSlideWindow(); return; }
+  const margin = parseFloat(getComputedStyle(entries[0].target).scrollMarginTop) || 0;
+  const tree = lazySlides.heightIndex, top = -deckEl.getBoundingClientRect().top + margin + 1, anchor = tree.at(Math.max(0, top)), before = tree.prefix(anchor);
+  let changed = false;
+  for (const e of entries) {
+    const id = e.target.dataset.id, k = lazySlides.positions.get(id), h = (e.borderBoxSize?.[0]?.blockSize || e.contentRect.height) + lazySlides.gap;
+    if (k === undefined || !lazySlides.slots.has(id) || h <= lazySlides.gap || Math.abs(tree.values[k] - h) < .5) continue;
+    lazySlides.heights.set(id, h); tree.set(k, h); changed = true;
+  }
+  if (!changed) return;
+  positionSlides(); const delta = tree.prefix(anchor) - before; if (Math.abs(delta) > .5) window.scrollBy(0, delta);
+  scheduleSlideWindow();
+}
+window.addEventListener('scroll', scheduleSlideWindow, { passive: true });
+window.addEventListener('resize', scheduleSlideWindow);
+
 function ensureSlide(id) {
+  if (lazySlides.virtual) return mountSlide(id);
   const known = lazySlides.slots.get(id);
   const w = known && known.parentElement === deckEl ? known : deckEl.querySelector(`.slide-wrap[data-id="${id}"]`);
   if (!w) return null;
@@ -3015,6 +3171,7 @@ function ensureSlide(id) {
   return w;
 }
 function releaseSlide(w) {
+  if (lazySlides.virtual) { unmountSlide(w); return; }
   if (!w || !w.querySelector('.slide') || w.contains(document.activeElement)) return;
   invalidateSaves(saveObserver.takeRecords());
   const bits = [...w.querySelectorAll('[contenteditable]')].map((n) => n.innerHTML);
@@ -3024,6 +3181,7 @@ function releaseSlide(w) {
   w.querySelector('.slide').remove(); w.classList.add('is-unrendered'); slideSaves.delete(w); lazySlides.mounted.delete(w);
 }
 function updateSlideWindow(id = lazySlides.current, mode = lazySlides.mode) {
+  if (lazySlides.virtual) { virtualWindow(id, mode); return; }
   if (!lazySlides.enabled || lazySlides.pinned) return;
   lazySlides.current = id; lazySlides.mode = mode;
   if (mode === 'checks') { materializeSlides(); return; }
@@ -3035,15 +3193,20 @@ function updateSlideWindow(id = lazySlides.current, mode = lazySlides.mode) {
   keep.forEach(ensureSlide);
   for (const w of lazySlides.mounted) if (!keep.has(w.dataset.id)) releaseSlide(w);
 }
-function materializeSlides() {
+function materializeSlides(layout = true) {
   if (!lazySlides.enabled) return;
+  const complete = lazySlides.pinned && (!lazySlides.virtual || lazySlides.slots.size === lazySlides.order.length);
   lazySlides.pinned = true;
-  for (const w of deckEl.children) ensureSlide(w.dataset.id);
-  fitSlides(); autofitText(); drawTrees();
+  if (lazySlides.virtual) {
+    if (!complete) { lazySlides.order.forEach(mountSlide); lazySlides.order.forEach((id) => deckEl.appendChild(lazySlides.slots.get(id))); }
+    positionSlides();
+  }
+  if (!lazySlides.virtual) for (const w of deckEl.children) ensureSlide(w.dataset.id);
+  if (layout) { fitSlides(); autofitText(); drawTrees(); }
 }
 function resumeSlides() { lazySlides.pinned = false; updateSlideWindow(); }
 async function preparePrint() {
-  materializeSlides();
+  materializeSlides(false);
   await document.fonts.ready;
   await Promise.all([...document.images].map((im) => im.decode().catch(() => {})));
   fitSlides(); autofitText(); drawTrees();
@@ -3051,6 +3214,11 @@ async function preparePrint() {
 function resetLazySlides(ids) {
   if (lazySlides.observer) lazySlides.observer.disconnect();
   lazySlides.enabled = !!window.__SB && !window.__SB.readonly && ids.length >= 80 && new URLSearchParams(location.search).get('lazy') !== '0';
+  lazySlides.virtual = lazySlides.enabled && new URLSearchParams(location.search).get('wrappers') !== '0';
+  if (lazySlides.wrapperObserver) lazySlides.wrapperObserver.disconnect();
+  lazySlides.feedback.clear(); lazySlides.heights.clear(); lazySlides.width = 0;
+  if (!lazySlides.wrapperObserver) lazySlides.wrapperObserver = new ResizeObserver(measureWrappers);
+  indexSlides(ids); positionSlides();
   document.documentElement.classList.toggle('sb-lazy-boot', lazySlides.enabled && !window.SlideBuilder);
   lazySlides.slots.clear(); lazySlides.mounted.clear(); lazySlides.fields.clear(); lazySlides.visible.clear(); lazySlides.pinned = false;
   lazySlides.current = ids[0];
@@ -3061,6 +3229,7 @@ function resetLazySlides(ids) {
   }, { rootMargin: '600px 0px' });
 }
 function observeLazySlides() {
+  if (lazySlides.virtual) { virtualWindow(); return; }
   if (!lazySlides.enabled) return;
   lazySlides.slots = new Map([...deckEl.children].map((w) => [w.dataset.id, w]));
   lazySlides.observer.disconnect();
@@ -3069,6 +3238,7 @@ function observeLazySlides() {
 }
 // Thumbnail clones are transient and don't populate the main deck with hidden bodies.
 function previewSlide(id) {
+  if (lazySlides.virtual && lazySlides.slots.has(id)) return lazySlides.slots.get(id);
   const known = lazySlides.slots.get(id);
   const w = known && known.parentElement === deckEl ? known : deckEl.querySelector(`.slide-wrap[data-id="${id}"]`);
   if (w && w.querySelector('.slide')) return w;
@@ -3081,7 +3251,10 @@ function previewSlide(id) {
   return fresh;
 }
 window.DeckRenderer = { ensure: ensureSlide, preview: previewSlide, all: materializeSlides, resume: resumeSlides, preparePrint,
-  window: (id, mode) => { if (mode !== 'checks') lazySlides.pinned = false; updateSlideWindow(id, mode); },
+  window: (id, mode, viewport = false) => { if (mode !== 'checks') lazySlides.pinned = false; if (lazySlides.virtual) virtualWindow(id, mode, viewport); else updateSlideWindow(id, mode); },
+  virtual: () => lazySlides.virtual, ids: () => lazySlides.virtual ? lazySlides.order : deckIds(), has: (id) => lazySlides.virtual ? lazySlides.positions.has(id) : !!deckEl.querySelector(`.slide-wrap[data-id="${id}"]`),
+  get: (id) => lazySlides.virtual ? lazySlides.slots.get(id) || null : deckEl.querySelector(`.slide-wrap[data-id="${id}"]`),
+  position: (id) => lazySlides.virtual ? (lazySlides.positions.get(id) ?? -1) : deckIds().indexOf(id), comment: slideComment, setComment: setSlideComment,
   layout: (id) => { const w = ensureSlide(id); if (w && w.getBoundingClientRect().width) { autofitText(w); drawTrees(w); } },
   observe: observeLazySlides, enabled: () => lazySlides.enabled };
 window.addEventListener('beforeprint', materializeSlides);
@@ -3102,12 +3275,14 @@ function tagFor(b) {
 
 // Slide numbers match the exported PDF's page numbers, so a comment can say "p54".
 function numberSlides() {
+  if (lazySlides.virtual) { lazySlides.slots.forEach(numberSlide); const c = document.getElementById('slide-count'); if (c) c.textContent = lazySlides.order.length + ' slides'; return; }
   const wraps = [...deckEl.querySelectorAll('.slide-wrap')];
   const pos = {};
   wraps.forEach((w, i) => {
     pos[w.dataset.id] = i + 1;
     const tag = w.querySelector('.slide-no');
-    if (tag) tag.innerHTML = '<b>' + (i + 1) + '</b><code>' + w.dataset.id + '</code><span class="of">of ' + wraps.length + '</span>';
+    const text = '<b>' + (i + 1) + '</b><code>' + w.dataset.id + '</code><span class="of">of ' + wraps.length + '</span>';
+    if (tag && tag.innerHTML !== text) tag.innerHTML = text;
   });
   listEl.querySelectorAll('.toggle').forEach((lab) => {
     const inp = lab.querySelector('input'); if (!inp) return;
@@ -3123,14 +3298,14 @@ function numberSlides() {
 function renderPitch(key) {
   // Finish the previous version before switching; its debounce may still be pending.
   if (dirty) { clearTimeout(saveTimer); snapshot(); dirty = false; }
-  defaultHashes.clear();
+  defaultHashes.clear(); ORIG.clear(); ADDED.clear();
   current = key;
   const p = PITCHES[key];
   titleEl.textContent = p.name;
   resetLazySlides(p.blocks);
   deckEl.innerHTML = '';
   const fragment = document.createDocumentFragment();
-  p.blocks.forEach((id) => { const s = lazySlides.enabled ? slideWrap(id) : build(id); if (s) fragment.appendChild(s); });
+  if (!lazySlides.virtual) p.blocks.forEach((id) => { const s = lazySlides.enabled ? slideWrap(id) : build(id); if (s) fragment.appendChild(s); });
   deckEl.appendChild(fragment);
   if (lazySlides.enabled) ensureSlide(p.blocks[0]);
 
@@ -3154,7 +3329,9 @@ function renderPitch(key) {
     });
     listEl.appendChild(wrap);
   });
-  fitSlides(); autofitText(); drawTrees(); numberSlides(); observeLazySlides();
+  if (!lazySlides.virtual) { fitSlides(); autofitText(); drawTrees(); }
+  numberSlides(); observeLazySlides();
+  if (lazySlides.virtual) window.dispatchEvent(new Event('sb:order'));
 }
 
 // Ticking a slide on inserts it in library order, not at the end.
@@ -3162,11 +3339,17 @@ function toggleLibrary(id, checked) {
   if (!LIBRARY[id] || !ORDER.includes(id)) return;
   const inp = listEl.querySelector(`input[data-id="${id}"]`);
   if (inp) inp.checked = checked;
+  if (lazySlides.virtual) {
+    const ids = deckIds(), has = lazySlides.positions.has(id);
+    if (checked && !has) applyOrder(inLibraryOrder(ids, id));
+    else if (!checked && has) applyOrder(ids.filter((x) => x !== id));
+    return;
+  }
   const existing = deckEl.querySelector(`.slide-wrap[data-id="${id}"]`);
   if (checked && !existing) {
     if (LIBRARY[id].alt || LIBRARY[id].fac) ADDED.add(id);
     const s = lazySlides.enabled ? slideWrap(id) : build(id); if (!s) return;
-    const idx = ORDER.indexOf(id);
+    const idx = libraryPositions.get(id);
     let before = null;
     for (const w of deckEl.querySelectorAll('.slide-wrap')) { if (ORDER.indexOf(w.dataset.id) > idx) { before = w; break; } }
     deckEl.insertBefore(s, before); fitSlides(); autofitText(s); drawTrees(s);
@@ -3179,12 +3362,24 @@ listEl.addEventListener('change', (e) => {
 window.DeckLibrary = {
   has: (id) => ORDER.includes(id),
   excluded: () => { const included = new Set(deckIds()); return ORDER.filter((id) => !included.has(id)); },
-  toggle: (id) => toggleLibrary(id, !deckEl.querySelector(`.slide-wrap[data-id="${id}"]`))
+  toggle: (id) => toggleLibrary(id, !deckIds().includes(id))
 };
 
 deckEl.addEventListener('click', (e) => {
   const btn = e.target.closest('.cbtn'); if (!btn) return;
   const s = btn.closest('.slide-wrap'); const a = btn.dataset.a;
+  if (lazySlides.virtual) {
+    const id = s.dataset.id, ids = deckIds(), k = lazySlides.positions.get(id);
+    if (a === 'orig') {
+      unmountSlide(s, true); if (ORIG.has(id)) ORIG.delete(id); else ORIG.add(id);
+      lazySlides.fields.delete(id); ensureSlide(id); numberSlides(); fitSlides(); autofitText(); drawTrees(); snapshot(); window.dispatchEvent(new Event('sb:window')); return;
+    }
+    if (a === 'rm') ids.splice(k, 1);
+    else if (a === 'up' && k > 0) [ids[k - 1], ids[k]] = [ids[k], ids[k - 1]];
+    else if (a === 'down' && k < ids.length - 1) [ids[k], ids[k + 1]] = [ids[k + 1], ids[k]];
+    else return;
+    applyOrder(ids); return;
+  }
   if (a === 'orig') { const id = s.dataset.id; if (ORIG.has(id)) ORIG.delete(id); else ORIG.add(id); const fresh = build(id); s.replaceWith(fresh); fitSlides(); autofitText(fresh); numberSlides(); snapshot(); return; }
   if (a === 'rm') { const inp = listEl.querySelector(`input[data-id="${s.dataset.id}"]`); if (inp) inp.checked = false; s.remove(); }
   else if (a === 'up' && s.previousElementSibling) deckEl.insertBefore(s, s.previousElementSibling);
@@ -3255,18 +3450,33 @@ function restore() {
     // have changed underneath it: drop slides the file no longer has (or now marks
     // as alternatives the reviewer never chose), and slot in slides the file added
     const defaults = PITCHES[current].blocks;
-    let order = data.__order.filter((id) => LIBRARY[id] && !((LIBRARY[id].alt || LIBRARY[id].fac) && !ADDED.has(id) && !defaults.includes(id)));
+    const defaultSet = new Set(defaults), removed = new Set(data.__removed || []);
+    let order = data.__order.filter((id) => LIBRARY[id] && !((LIBRARY[id].alt || LIBRARY[id].fac) && !ADDED.has(id) && !defaultSet.has(id)));
+    const present = new Set(order);
     defaults.forEach((id) => {
-      if (order.includes(id)) return;
-      if (data.__removed && data.__removed.includes(id)) return;
-      const idx = ORDER.indexOf(id);
+      if (present.has(id) || removed.has(id)) return;
+      present.add(id);
+      const idx = libraryPositions.get(id);
       let at = order.length;
-      for (let i = 0; i < order.length; i++) { if (ORDER.indexOf(order[i]) > idx) { at = i; break; } }
+      for (let i = 0; i < order.length; i++) { if (libraryPositions.get(order[i]) > idx) { at = i; break; } }
       order.splice(at, 0, id);
     });
-    deckEl.innerHTML = '';
-    order.forEach((id) => { const w = lazySlides.enabled ? slideWrap(id) : build(id); if (w) deckEl.appendChild(w); });
+    if (lazySlides.virtual) indexSlides(order);
+    else { deckEl.innerHTML = ''; order.forEach((id) => { const w = lazySlides.enabled ? slideWrap(id) : build(id); if (w) deckEl.appendChild(w); }); }
     listEl.querySelectorAll('input[data-id]').forEach((inp) => { inp.checked = order.includes(inp.dataset.id); });
+  }
+  if (lazySlides.virtual) {
+    // Restore fields/comments into the model without allocating offscreen DOM.
+    lazySlides.wrapperObserver.disconnect(); deckEl.replaceChildren(); lazySlides.slots.clear(); lazySlides.mounted.clear(); lazySlides.fields.clear(); lazySlides.feedback.clear();
+    Object.entries(data).forEach(([id, bits]) => { if (lazySlides.positions.has(id) && Array.isArray(bits)) lazySlides.fields.set(id, { bits, hash: data.__def?.[id] }); });
+    let dropped = false;
+    Object.entries(data.__fb || {}).forEach(([id, v]) => {
+      if (!lazySlides.positions.has(id) || !v.trim()) return;
+      if (DONE_FB.includes(v.trim()) || DONE_FB.includes(id + '::' + v.trim())) { dropped = true; return; }
+      lazySlides.feedback.set(id, v);
+    });
+    virtualWindow(); fbCount(); numberSlides(); flagSaved();
+    if (dropped) snapshot(); return;
   }
   deckEl.querySelectorAll('.slide-wrap').forEach((f) => { const id = f.dataset.id; const bits = data[id]; if (!Array.isArray(bits)) return;
     if (lazySlides.enabled && !f.querySelector('.slide')) { lazySlides.fields.set(id, { bits, hash: data.__def && data.__def[id] }); return; }
@@ -3281,16 +3491,14 @@ function restore() {
 // comments Claude has already acted on: they drop out on the next load, so nobody clears them by hand
 const DONE_FB = [];
 function fbCount() {
-  const n = [...deckEl.querySelectorAll('.fb')].filter((t) => t.value.trim()).length;
+  const n = Object.keys(collectFeedback()).length;
   const f = document.getElementById('fb-flag'); if (f) f.textContent = n ? `${n} slide${n === 1 ? '' : 's'} with feedback for Claude` : '';
 }
 // Everything a reviewer has done, in one object: for "Copy Edits", "Save a copy",
 // and for Claude to read straight from the page (window.__DECK_STATE()).
 window.__WS_STATE = () => window.__DECK_STATE();
 window.__DECK_STATE = () => {
-  const feedback = {};
-  deckEl.querySelectorAll('.slide-wrap').forEach((w) => { const t = w.querySelector('.fb'); if (t && t.value.trim()) feedback[w.dataset.id] = t.value.trim(); });
-  return { version: current, order: [...deckEl.querySelectorAll('.slide-wrap')].map((w) => w.dataset.id), edits: currentData(), feedback };
+  return { version: current, order: deckIds(), edits: currentData(), feedback: collectFeedback() };
 };
 const djb = (str) => { let h = 5381; for (let i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) | 0; return String(h); };
 const defaultHashes = new Map(), slideSaves = new WeakMap();
@@ -3321,6 +3529,13 @@ const saveObserver = new MutationObserver(invalidateSaves);
 saveObserver.observe(deckEl, { subtree: true, childList: true, characterData: true, attributes: true });
 function currentData() {
   invalidateSaves(saveObserver.takeRecords());
+  if (lazySlides.virtual) {
+    lazySlides.slots.forEach(captureSlide);
+    const data = {}, def = {};
+    lazySlides.fields.forEach((saved, id) => { if (lazySlides.positions.has(id)) { data[id] = saved.bits; def[id] = saved.hash; } });
+    Object.assign(data, { __order: deckIds(), __defOrder: PITCHES[current].blocks.slice(), __fb: collectFeedback(), __orig: [...ORIG], __added: [...ADDED], __removed: PITCHES[current].blocks.filter((id) => !lazySlides.positions.has(id)), __def: def });
+    return data;
+  }
   const data = {};
   const wraps = [...deckEl.children].filter((f) => f.classList.contains('slide-wrap'));
   wraps.forEach((f) => {
@@ -3390,22 +3605,31 @@ function recountSidebar() {
     const em = c.querySelector('.cat-label em'); if (em) em.textContent = `${on}/${inputs.length}`;
   });
 }
-const deckIds = () => [...deckEl.querySelectorAll('.slide-wrap')].map((w) => w.dataset.id);
+const deckIds = () => lazySlides.virtual ? lazySlides.order.slice() : [...deckEl.querySelectorAll('.slide-wrap')].map((w) => w.dataset.id);
 const titleOf = (id) => { const b = LIBRARY[id]; return String(b.title || b.q || b.panel || id).replace(/<[^>]+>/g, ''); };
-const inLibraryOrder = (ids, id) => { const rest = ids.slice(); const k = ORDER.indexOf(id); let at = rest.findIndex((x) => ORDER.indexOf(x) > k); if (at < 0) at = rest.length; rest.splice(at, 0, id); return rest; };
+const inLibraryOrder = (ids, id) => { const rest = ids.slice(); const k = libraryPositions.get(id); let at = rest.findIndex((x) => libraryPositions.get(x) > k); if (at < 0) at = rest.length; rest.splice(at, 0, id); return rest; };
 
 // Put the deck in exactly this order.
 function applyOrder(ids, record = true) {
   if (record) { undoStack.push(deckIds()); if (undoStack.length > 80) undoStack.shift(); }
+  if (lazySlides.virtual) {
+    const oldAt = lazySlides.positions.get(lazySlides.current) || 0;
+    indexSlides(ids);
+    lazySlides.order.forEach((id) => { if (LIBRARY[id].alt || LIBRARY[id].fac) ADDED.add(id); });
+    if (!lazySlides.positions.has(lazySlides.current)) lazySlides.current = lazySlides.order[Math.min(oldAt, lazySlides.order.length - 1)];
+    virtualWindow(); numberSlides(); fbCount(); queueSave();
+    window.dispatchEvent(new Event('sb:order')); return;
+  }
+  const included = new Set(ids);
   const have = new Map([...deckEl.querySelectorAll('.slide-wrap')].map((w) => [w.dataset.id, w]));
-  have.forEach((w, id) => { if (!ids.includes(id)) { stash.set(id, w); w.remove(); } });
+  have.forEach((w, id) => { if (!included.has(id)) { stash.set(id, w); w.remove(); } });
   ids.forEach((id) => {
     let w = have.get(id) || stash.get(id) || (lazySlides.enabled ? slideWrap(id) : build(id)); if (!w) return;
     stash.delete(id);
     if (LIBRARY[id].alt || LIBRARY[id].fac) ADDED.add(id);
     deckEl.appendChild(w);
   });
-  listEl.querySelectorAll('input[data-id]').forEach((inp) => { inp.checked = ids.includes(inp.dataset.id); });
+  listEl.querySelectorAll('input[data-id]').forEach((inp) => { inp.checked = included.has(inp.dataset.id); });
   recountSidebar(); numberSlides(); fbCount(); observeLazySlides(); queueSave();
   if (view === 'sorter') renderSorter(); else { fitSlides(); autofitText(); drawTrees(); }
 }
@@ -3580,7 +3804,10 @@ let t0 = 0, pausedAt = 0, pausedTotal = 0, clockTimer = null;
 
 const noteOf = (id) => {
   const w = deckEl.querySelector(`.slide-wrap[data-id="${id}"] .fnote`);
-  const h = w ? w.innerHTML.replace(/^\s*<b>Facilitator:<\/b>\s*/, '').trim() : '';
+  const pending = lazySlides.virtual && lazySlides.fields.get(id);
+  const saved = pending && pending.hash === defHash(id) ? pending.bits.at(-1) : null;
+  const content = w ? w.innerHTML : saved || (lazySlides.virtual ? '<b>Facilitator:</b> ' + (LIBRARY[id].notes || '—') : '');
+  const h = content ? content.replace(/^\s*<b>Facilitator:<\/b>\s*/, '').trim() : '';
   return h && h !== '—' ? h : '';
 };
 function cloneSlide(id, doc) {
@@ -3599,7 +3826,7 @@ function fitInto(box, s) {
 function putSlide(box, id, doc) {
   box.innerHTML = ''; if (!id) return;
   const c = cloneSlide(id, doc); if (!c) return;
-  box.appendChild(c); fitInto(box, c); drawTrees(box);
+  box.appendChild(c); fitInto(box, c); autofitText(box); drawTrees(box);
 }
 
 // planned time for the slide's module, from the sidebar label ("· 0:30 (15 min)")
@@ -3674,6 +3901,7 @@ function endShow() {
   if (pw && !pw.closed) pw.close(); pw = null;
   t0 = 0;
   // land on the slide you ended on
+  if (lazySlides.virtual && window.SlideBuilder) window.SlideBuilder.go(id);
   const w = deckEl.querySelector(`.slide-wrap[data-id="${id}"]`);
   if (w && view === 'slides') window.scrollTo(0, w.getBoundingClientRect().top + window.scrollY - 12);
 }
@@ -3869,7 +4097,10 @@ document.addEventListener('keydown', (e) => {
 
 renderPitch(current); restore(); recountSidebar();
 try { if (sessionStorage.getItem('{{PREFIX}}view') === 'sorter') (document.fonts ? document.fonts.ready : Promise.resolve()).then(() => setTimeout(() => setView('sorter'), 60)); } catch (e) {}
-window.__DECK_READY = (document.fonts ? document.fonts.ready : Promise.resolve()).then(() => { autofitText(); fitSlides(); drawTrees(); });
+window.__DECK_READY = (document.fonts ? document.fonts.ready : Promise.resolve()).then(async () => {
+  if (lazySlides.virtual && !document.body.classList.contains('sb-ready')) await new Promise((resolve) => window.addEventListener('sb:ready', resolve, { once: true }));
+  autofitText(); fitSlides(); drawTrees();
+});
 </script>
 </body>
 </html>

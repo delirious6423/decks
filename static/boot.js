@@ -19,7 +19,7 @@
       const x = new XMLHttpRequest(); x.open('GET', '/_sb/shell.css?v=' + (B.v || ''), false); x.send();
       const sheet = new CSSStyleSheet(); sheet.replaceSync(x.responseText + '\nbody:not(.sb-ready) #deck, body:not(.sb-ready) .stage-head, body:not(.sb-ready) #sb-sorter, body:not(.sb-ready) #sb-checks { visibility: hidden; }');
       document.adoptedStyleSheets = [...document.adoptedStyleSheets, sheet];
-      setTimeout(() => { if (document.body) document.body.classList.add('sb-ready'); document.documentElement.classList.remove('sb-lazy-boot'); }, 4000);   // never leave the deck hidden
+      setTimeout(() => { if (document.body) document.body.classList.add('sb-ready'); document.documentElement.classList.remove('sb-lazy-boot'); window.dispatchEvent(new Event('sb:ready')); }, 4000);   // never leave the deck hidden
     } catch (e) {}
   }
   let ls; try { ls = window.localStorage; ls.getItem('__sb'); } catch (e) { return; }

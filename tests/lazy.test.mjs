@@ -20,7 +20,7 @@ after(async()=>{await browser.close();assert.deepEqual(errors,[]);});
 
 test('initial rendering and repeated focus navigation keep only a small slide window',async()=>{
  const p=await open();assert.equal(await p.evaluate(()=>DeckRenderer.enabled()),true);
- assert.equal(await p.locator('#deck > [data-id]').count(),500);assert.ok(await bodies(p)<=3);
+ assert.equal(await p.evaluate(()=>deckIds().length),500);assert.ok(await p.locator('#deck > [data-id]').count()<=3);assert.ok(await bodies(p)<=3);
  await p.evaluate(()=>{for(let i=0;i<500;i+=17)SlideBuilder.go('large-'+i);});
  assert.ok(await bodies(p)<=3);
  assert.equal(await p.evaluate(()=>SlideBuilder.current()),'large-493');
@@ -32,7 +32,7 @@ test('editing, eviction, save, reload and offscreen comments retain their conten
  await p.evaluate(()=>{
   const t=document.querySelector('[data-id="large-0"] .h-title');t.innerHTML='Edited before eviction';t.dispatchEvent(new Event('input',{bubbles:true}));
   document.querySelector('#deck > [data-id="large-0"] .fnote').innerHTML='Edited facilitator note';
-  document.querySelector('[data-id="large-499"] textarea.fb').value='Offscreen feedback';
+  SlideBuilder.comment('large-499','Offscreen feedback');
   SlideBuilder.go('large-499');
  });
  await save(p);
@@ -41,7 +41,8 @@ test('editing, eviction, save, reload and offscreen comments retain their conten
  await p.evaluate(()=>SlideBuilder.go('large-0'));
  assert.equal(await p.locator('#deck > [data-id="large-0"] .h-title').innerText(),'Edited before eviction');
  assert.equal(await p.locator('#deck > [data-id="large-0"] .fnote').innerText(),'Edited facilitator note');
- assert.equal(await p.locator('#deck > [data-id="large-499"] textarea.fb').inputValue(),'Offscreen feedback');
+ assert.equal(await p.evaluate(()=>SlideBuilder.comment('large-499')),'Offscreen feedback');
+ await p.evaluate(()=>SlideBuilder.go('large-499'));assert.equal(await p.locator('#deck > [data-id="large-499"] textarea.fb').inputValue(),'Offscreen feedback');
  assert.ok(await bodies(p)<=3);
 });
 
@@ -91,9 +92,15 @@ test('direct guide scans inspect unrendered slides without retaining their bodie
  const p=await open();
  const issues=await p.evaluate(()=>{
   LIBRARY['large-499']={cat:'main',layout:'plain',title:'A guide test',body:['<span style="font-size:8px">Tiny text must be reported</span>']};
-  return SBGuides.scan([...document.querySelectorAll('#deck > [data-id]')]).find(r=>r.id==='large-499').issues;
+  return SBGuides.scan().find(r=>r.id==='large-499').issues;
  });
  assert.ok(issues.some(i=>i.kind==='small'));assert.ok(await bodies(p)<=3);
+});
+
+test('body-only lazy diagnostic remains compatible with full wrapper DOM',async()=>{
+ const p=await open('?wrappers=0');assert.equal(await p.evaluate(()=>DeckRenderer.virtual()),false);
+ assert.equal(await p.locator('#deck > [data-id]').count(),500);assert.ok(await bodies(p)<=3);
+ await p.evaluate(()=>SlideBuilder.go('large-499'));assert.match(await p.locator('#deck > .sb-active .h-title').innerText(),/Slide 500/);
 });
 
 test('raw pages, saved-state exports and eager opt-out remain complete',async()=>{

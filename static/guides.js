@@ -116,6 +116,7 @@
   const issues = (slide) => check(slide).filter((f) => f.kind !== 'zone');
   // every slide in the deck, shown or not: each is measured as an unscaled copy off screen
   function scan(wraps) {
+    if (!wraps) wraps = window.DeckRenderer?.ids().map((id) => ({ dataset: { id } })) || [];
     const host = document.createElement('div');
     host.style.cssText = 'position:absolute;left:-30000px;top:0;width:1000px;pointer-events:none;';
     document.body.appendChild(host);

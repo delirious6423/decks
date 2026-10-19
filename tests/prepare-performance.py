@@ -8,7 +8,7 @@ for tid in ('blank','talk','workshop','proposal','consulting'):
     reg=json.loads(sbconfig.REGISTRY.read_text()) if sbconfig.REGISTRY.exists() else {'decks':[]}
     d=next((d for d in reg['decks'] if d['name']==name),None) or newdeck.create_deck(name,tid)
     (Path(d['folder']).expanduser()/d['entry']).write_text(newdeck.assemble(tid,name,d['prefixes'][0]))
-for size in (100,500,1000):
+for size in map(int, os.environ.get('BENCH_SIZES', '100,500,1000').split(',')):
     name='Bench large '+str(size)
     reg=json.loads(sbconfig.REGISTRY.read_text());d=next((d for d in reg['decks'] if d['name']==name),None) or newdeck.create_deck(name,'blank')
     lib={}

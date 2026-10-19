@@ -467,13 +467,76 @@ at 100 slides, 256 ms becomes 223 ms. Small decks remain roughly unchanged
 remains near the display's frame cadence, even though synchronous work drops.
 These results do not establish 100x overall performance.
 
-The final profile leaves 9,099 elements inside the main deck. Wrapper/comment
+That iteration left 9,099 elements inside the main deck. Wrapper/comment
 construction, slide numbering, initial layout, and loading/parsing the full embedded
-library remain costs that grow with deck size. The visible lists are now bounded;
-main-deck wrappers and whole-deck operations still scale with the deck.
+library remain costs that grow with deck size. The visible lists were bounded; main-deck wrappers still scaled with the deck.
 Raw samples, source hashes and validation are in
 [`lists-linux.json`](tests/benchmarks/lists-linux.json); sampled function costs are in
 [`lists-profile-linux.json`](tests/benchmarks/lists-profile-linux.json).
+
+
+The wrapper iteration moves the full logical order, edited fields, and feedback into
+a model independent of mounted DOM. Focus keeps the current wrapper and neighbors;
+Scroll keeps a viewport window, using estimated heights corrected by observed sizes.
+Prefix sums provide logarithmic offset lookup and updates, and height corrections
+preserve the visible anchor. Numbering touches only mounted wrappers; indexes rebuild on structural or width
+changes rather than on every navigation. Review counts scan metadata once, and layout
+avoids resetting widths or rewriting unchanged transforms on every navigation.
+
+`SlideBuilder.slides()` and `__DECK_STATE()` still return the complete deck.
+Use `SlideBuilder.comment(id)` to read a comment and `SlideBuilder.comment(id, text)`
+to update one, including an unmounted slide. `DeckRenderer.ids()` returns a read-only
+logical order; querying `#deck` sees only mounted wrappers. `?wrappers=0` retains the
+previous body-only lazy mode for diagnosis. Raw/readonly exports and standalone
+copies remain eager. Existing files retain their embedded engine; these changes
+apply to newly generated files. Sorter cards and whole-deck checks/exports still do
+work proportional to deck size; leaving bulk views releases their extra DOM.
+
+Five-run medians against `0d14a67`, with matching mixed-layout fixtures:
+
+| Slides | Startup before → after | Navigation JS before → after | Enter Scroll before → after |
+|---:|---:|---:|---:|
+| 1,000 | 320 → 242 ms | 9.2 → 4.4 ms | 107 → 35 ms |
+| 5,000 | 759 → 374 ms | 27.5 → 5.1 ms | 532 → 35 ms |
+| 10,000 | 2,007 → 705 ms | 77.3 → 6.4 ms | 1,601 → 34 ms |
+
+At 10,000 slides, startup improves **2.85x**, synchronous navigation **12.1x**,
+and entering Scroll **46.9x**. Settled main-deck scroll jumps fall from 391 to 33 ms.
+Startup DOM elements fall from 90,669 to 687; mounted wrappers fall from 10,000 to 2
+at startup and stay at seven in these scroll samples. Serialized state sizes match.
+These are specific operations, not a claim of 100x overall application performance.
+
+Small-deck timings varied in the first five-run sweep. A separate 15-run follow-up
+measured blank startup at 212 → 217 ms and workshop at 230 → 235 ms, roughly unchanged.
+With equal 4x CPU throttling at 1,000 slides, startup is 872 → 620 ms and entering
+Scroll is 363 → 55 ms. Both versions use fresh contexts, equally blocked Google font
+CSS, reversed run order on alternate trials, and an already running browser/server.
+Engine initialization timing excludes useful layout deferred to the shell; total
+startup and browser layout metrics are recorded separately.
+
+The final 10,000-slide profile removes the large wrapper-construction/numbering
+costs. Full-library transfer and compilation, initial shell/layout work, and metadata
+scans remain. The sampled source compile time was about 58 ms in both versions;
+wrappers do not make loading the full embedded library constant-time.
+
+Reproduce with this version's `tests/prepare-performance.py` in both checkouts (copy
+only that fixture helper into the baseline checkout), using
+`BENCH_SIZES=100,500,1000,5000,10000`. Start separate scratch servers, then run
+`node tests/benchmark-wrappers.mjs` with `BASELINE_URL`, `SB_URL`, and `SB_CHROME`.
+`BENCH_FIXTURES=1000 CPU_RATE=4` runs the throttled case. Run the browser suites with
+`node --test --test-concurrency=1 tests/browser.test.mjs tests/lazy.test.mjs tests/lists.test.mjs tests/wrappers.test.mjs`;
+they clear disposable fixture state and need Poppler. Separately run
+`node tests/stress-wrappers.mjs` for eight parallel viewport/CPU scenarios, and
+`PROFILE_SLUG=bench-large-10000 node tests/profile-startup.mjs` for diagnostic samples.
+
+Validation includes 41 automated tests, eight parallel 10,000-slide scenarios across
+four viewports and normal/4x CPU throttling, all five template audit/export runs,
+52 matching template PDF pages, eight matching focus frames across resizes, and a
+real 1,000-page print from virtual Scroll with an edited final slide. A print-only
+banner padding bug found by that check is fixed; printing then releases the bulk DOM.
+Raw samples, hashes, follow-up runs and validation are in
+[`wrappers-linux.json`](tests/benchmarks/wrappers-linux.json); sampled function costs
+are in [`wrappers-profile-linux.json`](tests/benchmarks/wrappers-profile-linux.json).
 
 ## License
 
