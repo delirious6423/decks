@@ -49,6 +49,7 @@
   .field-label { display: block; font-size: .64rem; font-weight: 700; text-transform: uppercase; letter-spacing: .09em; color: var(--text-mute); margin: 0 0 .4rem; }
   select.pitch-select { width: 100%; padding: .55rem .7rem; border: 1.5px solid var(--line); border-radius: 6px; font-family: inherit; font-size: .84rem; color: var(--text); background: var(--white); margin-bottom: 1.1rem; cursor: pointer; }
   .opt-row { display: flex; align-items: center; gap: .45rem; font-size: .76rem; color: var(--text); margin-bottom: 1.1rem; cursor: pointer; }
+  html.sb-lazy-boot #deck > [data-id] { display: none !important; }
   .opt-row input { accent-color: var(--red-deep); }
 
   .cat { margin-bottom: .85rem; }
@@ -3050,6 +3051,7 @@ async function preparePrint() {
 function resetLazySlides(ids) {
   if (lazySlides.observer) lazySlides.observer.disconnect();
   lazySlides.enabled = !!window.__SB && !window.__SB.readonly && ids.length >= 80 && new URLSearchParams(location.search).get('lazy') !== '0';
+  document.documentElement.classList.toggle('sb-lazy-boot', lazySlides.enabled && !window.SlideBuilder);
   lazySlides.slots.clear(); lazySlides.mounted.clear(); lazySlides.fields.clear(); lazySlides.visible.clear(); lazySlides.pinned = false;
   lazySlides.current = ids[0];
   if (lazySlides.enabled && !lazySlides.observer) lazySlides.observer = new IntersectionObserver((entries) => {
@@ -3134,7 +3136,8 @@ function renderPitch(key) {
 
   listEl.innerHTML = '';
   const included = new Set(p.blocks);
-  CATS.forEach((cat) => {
+  // The interactive shell supplies the library picker; don't build its hidden twin.
+  if (!lazySlides.enabled) CATS.forEach((cat) => {
     const ids = ORDER.filter((id) => LIBRARY[id].cat === cat);
     if (!ids.length) return;
     const wrap = el('div','cat');
@@ -3155,20 +3158,29 @@ function renderPitch(key) {
 }
 
 // Ticking a slide on inserts it in library order, not at the end.
-listEl.addEventListener('change', (e) => {
-  const inp = e.target; if (!inp.dataset.id) return;
-  const id = inp.dataset.id;
+function toggleLibrary(id, checked) {
+  if (!LIBRARY[id] || !ORDER.includes(id)) return;
+  const inp = listEl.querySelector(`input[data-id="${id}"]`);
+  if (inp) inp.checked = checked;
   const existing = deckEl.querySelector(`.slide-wrap[data-id="${id}"]`);
-  if (inp.checked && !existing) {
+  if (checked && !existing) {
     if (LIBRARY[id].alt || LIBRARY[id].fac) ADDED.add(id);
     const s = lazySlides.enabled ? slideWrap(id) : build(id); if (!s) return;
     const idx = ORDER.indexOf(id);
     let before = null;
     for (const w of deckEl.querySelectorAll('.slide-wrap')) { if (ORDER.indexOf(w.dataset.id) > idx) { before = w; break; } }
     deckEl.insertBefore(s, before); fitSlides(); autofitText(s); drawTrees(s);
-  } else if (!inp.checked && existing) existing.remove();
+  } else if (!checked && existing) existing.remove();
   numberSlides(); recountSidebar(); observeLazySlides(); queueSave();
+}
+listEl.addEventListener('change', (e) => {
+  if (e.target.dataset.id) toggleLibrary(e.target.dataset.id, e.target.checked);
 });
+window.DeckLibrary = {
+  has: (id) => ORDER.includes(id),
+  excluded: () => { const included = new Set(deckIds()); return ORDER.filter((id) => !included.has(id)); },
+  toggle: (id) => toggleLibrary(id, !deckEl.querySelector(`.slide-wrap[data-id="${id}"]`))
+};
 
 deckEl.addEventListener('click', (e) => {
   const btn = e.target.closest('.cbtn'); if (!btn) return;

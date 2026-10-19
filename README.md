@@ -375,6 +375,14 @@ Whole-deck checks, printing, client copies, and headless raw/saved exports still
 all required slides. Add `?lazy=0` to compare with eager rendering. Existing deck files
 keep their embedded engine; newly generated decks get this behavior.
 
+Large filmstrips and excluded-slide shelves mount just their visible rows plus a small
+buffer. Keyboard focus, drag reorder, filters, and distant slide jumps use the full
+logical order. Large interactive decks skip the hidden legacy sidebar and use the
+same library selection model for the filmstrip, sorter, and Add slide picker. Empty
+review controls and insertion buttons are created where needed, and the first layout
+waits for the shell's view classes. `?lists=0` disables list windowing for diagnosis;
+`?lazy=0&lists=0` also restores eager slide bodies.
+
 Saved next to each deck, in `.slidebuilder/`:
 
 - `state.json`: the reviewer's edits, comments, and slide order, mirrored from the page.
@@ -426,10 +434,46 @@ incremental-save version were:
 | Main-deck bodies at startup | 1,000 | 2 |
 
 The first-save result has cold default hashes in the baseline; it is not a claim of
-100x overall application speed. Navigation remained similar, and wrappers, sidebar
-and filmstrip rows still scale with deck size. Save collection excludes debounce,
-network and disk time. Raw samples and source hashes are in
+100x overall application speed. Navigation remained similar in that step. Save
+collection excludes debounce, network and disk time. Raw samples and source hashes are in
 [`tests/benchmarks/lazy-linux.json`](tests/benchmarks/lazy-linux.json).
+
+
+The next iteration profiles and windows the lists. Generate matching fixtures from
+both checkouts and run `node tests/benchmark-lists.mjs` with `BASELINE_URL`, `SB_URL`,
+and `SB_CHROME`. Set `ORIGINAL_URL` to include an unmodified upstream checkout.
+The benchmark reverses run order on alternate trials, uses fresh contexts in an
+existing Chrome process, and blocks Google font CSS equally. It excludes browser
+launch and server startup. `node tests/profile-startup.mjs` captures a separate CPU
+profile; `node --test tests/lists.test.mjs` exercises the virtual lists and clears the
+1,000-slide scratch fixture's saved state.
+
+Five-run medians against `1a31d1a` (the previous lazy-slide version), at 1,000 slides:
+
+| Operation | Previous fork | Windowed lists |
+|---|---:|---:|
+| Page ready + two frames | 619 ms | 301 ms |
+| Engine render and restore | 161.3 ms | 55.6 ms |
+| Synchronous navigation | 17.0 ms | 7.5 ms |
+| Navigation + two frames | 33.5 ms | 33.3 ms |
+| Layout work during startup | 169.2 ms | 57.2 ms |
+| DOM elements at startup | 33,059 | 9,669 |
+| Filmstrip rows at startup | 1,000 | 8 |
+
+Startup improves another **2.06x**, and **6.45x** against fresh runs of upstream
+`8a5179b` (1,942 ms). At 500 slides the previous fork's 429 ms becomes 256 ms;
+at 100 slides, 256 ms becomes 223 ms. Small decks remain roughly unchanged
+(blank: 200 to 206 ms; workshop: 240 to 226 ms). The two-frame navigation measure
+remains near the display's frame cadence, even though synchronous work drops.
+These results do not establish 100x overall performance.
+
+The final profile leaves 9,099 elements inside the main deck. Wrapper/comment
+construction, slide numbering, initial layout, and loading/parsing the full embedded
+library remain costs that grow with deck size. The visible lists are now bounded;
+main-deck wrappers and whole-deck operations still scale with the deck.
+Raw samples, source hashes and validation are in
+[`lists-linux.json`](tests/benchmarks/lists-linux.json); sampled function costs are in
+[`lists-profile-linux.json`](tests/benchmarks/lists-profile-linux.json).
 
 ## License
 

@@ -28,6 +28,8 @@
   let wmap = null;   // id -> slide wrapper, rebuilt when the deck re-renders
   const wrapOf = (id) => { if (!id) return null; const w = wmap && wmap.get(id); if (w && w.parentNode === deck) return w; wmap = new Map(wraps().map((x) => [x.dataset.id, x])); return wmap.get(id) || null; };
   const lib = () => { try { return LIBRARY; } catch (e) { return {}; } };            // eslint-disable-line no-undef
+  const excluded = () => window.DeckLibrary ? window.DeckLibrary.excluded() : [...document.querySelectorAll('#block-list input[data-id]')].filter((i) => !i.checked).map((i) => i.dataset.id);
+  const addFromLibrary = (id) => { if (window.DeckLibrary) window.DeckLibrary.toggle(id); else document.querySelector(`#block-list input[data-id="${CSS.escape(id)}"]`)?.click(); };
   const title = (id) => { let t = ''; try { if (typeof titleOf === 'function') t = titleOf(id); } catch (e) {} if (!t) { const b = lib()[id] || {}; t = String(b.title || b.q || id); } return t.replace(/<[^>]+>/g, '').replace(/\*\*/g, ''); }; // eslint-disable-line no-undef
   const notesOf = (id) => String((lib()[id] || {}).notes || '').replace(/<[^>]+>/g, '');
   const fbOf = (id) => { const w = wrapOf(id); return w && w.querySelector('textarea.fb'); };
@@ -225,25 +227,90 @@
     if (i.changed) d += '<span class="sb-dot x">Changed</span>';
     return d; };
 
+  // Rows have a fixed height only in large decks. Keep the full scroll extent,
+  // but mount just the viewport and three rows on either side.
+  const FILM_ROW = 176;
+  let filmWindow = null, extraWindow = null;
+  function paintFilm() {
+    paintExtras();
+    const f = filmWindow; if (!f) return;
+    const list = $('#sb-film-list'), start = Math.max(0, Math.floor(list.scrollTop / FILM_ROW) - 3);
+    const end = Math.min(f.ids.length, Math.ceil((list.scrollTop + list.clientHeight) / FILM_ROW) + 3);
+    for (const [id, b] of f.rows) {
+      const k = f.index.get(id);
+      if ((k < start || k >= end) && id !== dragId && !b.contains(document.activeElement)) {
+        thumbs.unobserve(b.querySelector('.sb-thumb')); b.remove(); f.rows.delete(id);
+      }
+    }
+    for (let k = start; k < end; k++) {
+      const id = f.ids[k]; if (f.rows.has(id)) continue;
+      const b = f.make(id); b.style.top = (k * FILM_ROW) + 'px';
+      // DOM order follows visual order, including when scrolling backwards.
+      const next = [...f.host.children].find((n) => f.index.get(n.dataset.id) > k);
+      f.host.insertBefore(b, next || null); f.rows.set(id, b); thumbs.observe(b.querySelector('.sb-thumb'));
+    }
+  }
+  function revealFilm(id) {
+    const f = filmWindow; if (!f || !f.index.has(id)) return;
+    const list = $('#sb-film-list'), top = f.index.get(id) * FILM_ROW;
+    if (top < list.scrollTop) list.scrollTop = top;
+    else if (top + FILM_ROW > list.scrollTop + list.clientHeight) list.scrollTop = top + FILM_ROW - list.clientHeight;
+    paintFilm();
+  }
+  $('#sb-film-list').addEventListener('scroll', paintFilm, { passive: true });
+  new ResizeObserver(() => { if ($('#sb-film-list').clientHeight) revealFilm(cur); paintFilm(); }).observe($('#sb-film-list'));
+  $('#sb-film-list').addEventListener('keydown', (e) => {
+    const extra = e.target.closest('.sb-extra-window > .sb-ex');
+    if (extra && extraWindow && e.key === 'Tab' && !e.altKey && !e.ctrlKey && !e.metaKey) {
+      const k = Number(extra.dataset.index) + (e.shiftKey ? -1 : 1), f = extraWindow;
+      if (k < 0 || k >= f.ids.length) return;
+      e.preventDefault();
+      const list = $('#sb-film-list'), top = f.host.getBoundingClientRect().top - list.getBoundingClientRect().top + list.scrollTop + k * 64;
+      if (top < list.scrollTop) list.scrollTop = top;
+      else if (top + 64 > list.scrollTop + list.clientHeight) list.scrollTop = top + 64 - list.clientHeight;
+      paintExtras(); f.rows.get(k)?.querySelector('button').focus({ preventScroll: true }); paintExtras(); return;
+    }
+    const b = e.target.closest('.sb-fi'), f = filmWindow;
+    if (!f || !b || e.key !== 'Tab' || e.altKey || e.ctrlKey || e.metaKey) return;
+    const k = f.index.get(b.dataset.id) + (e.shiftKey ? -1 : 1), id = f.ids[k];
+    if (!id) return;
+    e.preventDefault(); revealFilm(id); f.rows.get(id)?.focus({ preventScroll: true }); paintFilm();
+  });
+  function paintExtras() {
+    const f = extraWindow; if (!f || !f.host.closest('details').open) return;
+    const list = $('#sb-film-list'), offset = f.host.getBoundingClientRect().top - list.getBoundingClientRect().top + list.scrollTop;
+    const start = Math.max(0, Math.floor((list.scrollTop - offset) / 64) - 3);
+    const end = Math.min(f.ids.length, Math.ceil((list.scrollTop + list.clientHeight - offset) / 64) + 3);
+    for (const [k, row] of f.rows) if ((k < start || k >= end) && !row.contains(document.activeElement)) { row.remove(); f.rows.delete(k); }
+    for (let k = start; k < end; k++) if (!f.rows.has(k)) {
+      const row = f.make(f.ids[k]); row.style.top = (k * 64) + 'px';
+      const next = [...f.host.children].find((r) => Number(r.dataset.index) > k);
+      row.dataset.index = k; f.host.insertBefore(row, next || null); f.rows.set(k, row);
+    }
+  }
   let filmKey = '';
   function renderFilm() {
     const list = $('#sb-film-list'), all = wraps().map((w) => w.dataset.id), ids = visible();
     $('#sb-film-h').textContent = filter === 'all' ? `Slides · ${all.length}` : `${ids.length} of ${all.length}`;
-    const outIds = [...document.querySelectorAll('#block-list input[data-id]')].filter((i) => !i.checked).map((i) => i.dataset.id);
+    const outIds = excluded();
     const key = [filter, all.join(','), ids.join(','), outIds.join(',')].join('|');
     if (key === filmKey && list.firstChild) {   // same slides in the same order: refresh labels, keep the thumbnails
       list.querySelectorAll('.sb-fi').forEach((b) => { const id = b.dataset.id, t = title(id), d = b.querySelector('.sb-dots'), fl = b.querySelector('.sb-fl'), html = dotsFor(id);
-        b.classList.toggle('on', id === cur); if (d.innerHTML !== html) d.innerHTML = html; if (fl.textContent !== t) { fl.textContent = t; b.title = t; } });
+        b.classList.toggle('on', id === cur); b.setAttribute('aria-current', id === cur ? 'true' : 'false'); b.setAttribute('aria-label', `Slide ${b.querySelector('.sb-fn').textContent} of ${all.length}: ${t}`); if (d.innerHTML !== html) d.innerHTML = html; if (fl.textContent !== t) { fl.textContent = t; b.title = t; } });
       return;
     }
-    filmKey = key;
+    const oldFilter = filmKey.split('|')[0];
+    filmKey = key; filmWindow = null; extraWindow = null;
     thumbs.disconnect(); list.innerHTML = '';
+    if (oldFilter !== filter) list.scrollTop = 0;
     if (!ids.length) { list.appendChild(h('div', 'sb-empty', 'Nothing here. Pick another filter.')); return; }
     const positions = new Map(all.map((id, i) => [id, i + 1]));
-    ids.forEach((id) => {
+    const makeRow = (id) => {
       const n = positions.get(id);
       const b = h('button', 'sb-fi' + (id === cur ? ' on' : ''));
       b.dataset.id = id; b.title = title(id);
+      b.setAttribute('aria-label', `Slide ${n} of ${all.length}: ${title(id)}`);
+      b.setAttribute('aria-current', id === cur ? 'true' : 'false');
       b.innerHTML = `<span class="sb-fn">${n}</span><span class="sb-thumb" data-id="${esc(id)}"></span><span class="sb-fn"></span><span class="sb-fl">${esc(title(id))}</span><span class="sb-fn"></span><span class="sb-dots">${dotsFor(id)}</span><span class="sb-x" role="button" title="Leave this slide out of this version" aria-label="Leave out">×</span>`;
       if (filter === 'all') {   // drag up and down to reorder
         b.draggable = true;
@@ -258,22 +325,40 @@
         if (e.target.closest('.sb-x')) { e.stopPropagation(); if (window.DeckRenderer) window.DeckRenderer.ensure(id); const w = wrapOf(id), rm = w && w.querySelector('.ctrls [data-a="rm"]'); if (rm) { const k = ids.indexOf(id); if (id === cur) cur = ids[k + 1] || ids[k - 1] || null; rm.click(); } return; }
         go(id);
       });
-      list.appendChild(b);
-      thumbs.observe(b.querySelector('.sb-thumb'));
-    });
-    const out = [...document.querySelectorAll('#block-list input[data-id]')].filter((i) => !i.checked && lib()[i.dataset.id] && !lib()[i.dataset.id].lib && !clientOnly.has(i.dataset.id));
+      return b;
+    };
+    if (all.length >= 80 && new URLSearchParams(location.search).get('lists') !== '0') {
+      const host = h('div', 'sb-film-window'); host.style.height = (ids.length * FILM_ROW) + 'px';
+      list.appendChild(host);
+      filmWindow = { host, ids, index: new Map(ids.map((id, i) => [id, i])), rows: new Map(), make: makeRow };
+      paintFilm();
+    } else ids.forEach((id) => { const b = makeRow(id); list.appendChild(b); thumbs.observe(b.querySelector('.sb-thumb')); });
+    revealFilm(cur);
+    const out = excluded().filter((id) => lib()[id] && !lib()[id].lib && !clientOnly.has(id));
     if (out.length && filter === 'all') {
       const ex = h('details', 'sb-extras'); ex.open = !!ui.extrasOpen;
       ex.innerHTML = `<summary>Not in this version · ${out.length}</summary>`;
-      ex.addEventListener('toggle', () => { ui.extrasOpen = ex.open; saveUi(); });
-      out.forEach((inp) => {
-        const id = inp.dataset.id, b = lib()[id] || {};
+      const makeExtra = (id) => {
+        const b = lib()[id] || {};
         const tag = b.fac ? 'Facilitator' : b.prop ? 'Proposed' : b.alt ? 'Extra' : '';
         const r = h('div', 'sb-ex', `<span>${tag ? `<span class="sb-tag">${tag}</span>` : ''}${esc(title(id))}</span><button class="sb-btn">Add</button>`);
-        r.querySelector('button').addEventListener('click', () => { inp.click(); setTimeout(() => go(id), 250); });
-        ex.appendChild(r);
-      });
-      list.appendChild(ex);
+        r.querySelector('button').addEventListener('click', () => { addFromLibrary(id); setTimeout(() => go(id), 250); });
+        return r;
+      };
+      const large = out.length >= 80 && new URLSearchParams(location.search).get('lists') !== '0';
+      const populate = () => {
+        if (!ex.isConnected) return;
+        if (!ex.open) { if (large) { extraWindow?.host.replaceChildren(); extraWindow?.rows.clear(); } return; }
+        if (large) {
+          if (!extraWindow) {
+            const host = h('div', 'sb-extra-window'); host.style.height = (out.length * 64) + 'px'; ex.appendChild(host);
+            extraWindow = { host, ids: out, rows: new Map(), make: makeExtra };
+          }
+          paintExtras();
+        } else if (!ex.querySelector('.sb-ex')) out.forEach((id) => ex.appendChild(makeExtra(id)));
+      };
+      ex.addEventListener('toggle', () => { if (!ex.isConnected) return; ui.extrasOpen = ex.open; saveUi(); populate(); });
+      list.appendChild(ex); populate();
     }
   }
 
@@ -354,13 +439,13 @@
         const order = ids.filter((x) => x !== dragId); order.splice(order.indexOf(id) + (after ? 1 : 0), 0, dragId); cur = dragId; saveOrder(order); });
       grid.appendChild(c); lazy.observe(c.querySelector('.sb-tb'));
     });
-    const out = [...document.querySelectorAll('#block-list input[data-id]')].filter((i) => !i.checked && lib()[i.dataset.id] && !lib()[i.dataset.id].lib && !clientOnly.has(i.dataset.id));
+    const out = excluded().filter((id) => lib()[id] && !lib()[id].lib && !clientOnly.has(id));
     if (out.length) {
       const shelf = h('div', 'sb-shelf', `<h4>Not in this version · ${out.length}</h4><div class="sb-grid"></div>`);
       const g2 = shelf.querySelector('.sb-grid');
-      out.forEach((inp) => { const id = inp.dataset.id, b = lib()[id] || {}, tag = b.fac ? 'Facilitator' : b.prop ? 'Proposed' : b.alt ? 'Extra' : '';
+      out.forEach((id) => { const b = lib()[id] || {}, tag = b.fac ? 'Facilitator' : b.prop ? 'Proposed' : b.alt ? 'Extra' : '';
         const c = h('div', 'sb-card', `<div class="sb-tb" data-id="${esc(id)}"></div><div class="sb-cap"><span></span><span class="sb-t">${tag ? `<span class="sb-tag" style="font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:#8A4B00;background:#FFF1DC;border-radius:4px;padding:0 4px;margin-right:4px">${tag}</span>` : ''}${esc(title(id))}</span></div><button class="sb-btn sb-add">Add to this version</button>`);
-        c.querySelector('.sb-add').addEventListener('click', () => { inp.click(); });
+        c.querySelector('.sb-add').addEventListener('click', () => { addFromLibrary(id); });
         g2.appendChild(c);
         const box = c.querySelector('.sb-tb'); box.dataset.id = id;
         lazy.observe(box); });
@@ -612,6 +697,7 @@
     document.body.classList.toggle('sb-scroll', v === 'scroll');
     document.body.classList.toggle('sb-sorter', v === 'sorter');
     document.body.classList.toggle('sb-checks', v === 'checks');
+    document.documentElement.classList.remove('sb-lazy-boot');
     if (v !== 'checks') { under.classList.remove('sb-timed-on'); document.body.classList.remove('sb-story', 'sb-test', 'sb-vflow', 'sb-ten', 'sb-gcheck'); clearTimeout(tenTimer); document.querySelectorAll('.slide.sb-cover').forEach((x) => x.classList.remove('sb-cover')); document.querySelectorAll('.sb-count').forEach((x) => x.remove()); const hl = under.parentNode && under.parentNode.querySelector('.sb-hint-line'); if (hl) hl.style.display = 'none'; }
     if (v === 'checks') { if (!cur || !wrapOf(cur)) cur = (wraps()[0] || {}).dataset?.id; renderChecks(); go(cur, true); if (isTimed()) tenReady(); window.scrollTo(0, 0); sideState(); return; }
     if (document.body.classList.contains('view-sorter') && $('[data-view="slides"]')) $('[data-view="slides"]').click();
@@ -658,10 +744,15 @@
   function go(id, force, fromScroll) {
     if (!id || !wrapOf(id)) return;
     if (window.DeckRenderer) window.DeckRenderer.window(id, ui.view);
-    const changedSlide = id !== cur; cur = id;
+    const changedSlide = id !== cur;
+    const previous = changedSlide && wrapOf(cur);
+    if (previous && window.DeckRenderer?.enabled() && !previous.querySelector('textarea.fb')?.value.trim() && !previous.querySelector('.sb-reply')) previous.querySelector('.sb-hold')?.remove();
+    cur = id;
+    holdRow(wrapOf(id));
+    deck.querySelectorAll(':scope > .sb-active').forEach((w) => { if (w.dataset.id !== id) w.classList.remove('sb-active'); });
     if (changedSlide) { const x = $('#sb-edge'); if (x) x.classList.remove('on'); }   // the end-of-filter hint belongs to the slide it was shown on
-    if (ui.view === 'focus') { wraps().forEach((w) => w.classList.toggle('sb-active', w.dataset.id === id)); size(); window.scrollTo(0, 0); }
-    else if (ui.view === 'checks') { wraps().forEach((w) => w.classList.toggle('sb-active', w.dataset.id === id)); size(); window.scrollTo(0, 0);
+    if (ui.view === 'focus') { wrapOf(id).classList.add('sb-active'); size(); window.scrollTo(0, 0); }
+    else if (ui.view === 'checks') { wrapOf(id).classList.add('sb-active'); size(); window.scrollTo(0, 0);
       let hl = under.querySelector('.sb-hint-line'); if (!hl) { hl = h('div', 'sb-hint-line'); under.after(hl); }
       const t = titleEl(id), f = ui.checks === 'vertical' && t ? flags(id, t.innerText.trim()) : []; hl.textContent = f.map((x) => x[0] + ': ' + x[1]).join(' '); hl.style.display = f.length ? '' : 'none';
       if (isTimed() && changedSlide) tenReady(); }
@@ -670,7 +761,8 @@
     history.replaceState(null, '', '#' + (sideSelect ? 'v=' + encodeURIComponent(sideSelect.value) + '&' : '') + 's=' + encodeURIComponent(id));
     const all = wraps().map((w) => w.dataset.id), ids = visible(), k = ids.indexOf(id);
     $('#sb-pos').innerHTML = `Slide ${all.indexOf(id) + 1} of ${all.length}${filter !== 'all' ? ` · ${k + 1} of ${ids.length} ${esc(FILTERS.find((f) => f[0] === filter)[1].toLowerCase())}` : ''} · <kbd>←</kbd> <kbd>→</kbd> to move · <button class="sb-keyhint" data-keys>? shortcuts</button>`;
-    $('#sb-film-list').querySelectorAll('.sb-fi').forEach((b) => b.classList.toggle('on', b.dataset.id === id));
+    revealFilm(id);
+    $('#sb-film-list').querySelectorAll('.sb-fi').forEach((b) => { b.classList.toggle('on', b.dataset.id === id); b.setAttribute('aria-current', b.dataset.id === id ? 'true' : 'false'); });
     const on = $('#sb-film-list .sb-fi.on'); if (on) on.scrollIntoView({ block: 'nearest' });
     if ((changedSlide || force) && (ui.view === 'focus' || ui.view === 'scroll')) renderPanel();
     window.dispatchEvent(new CustomEvent('sb:slide', { detail: id }));   // for guides and anything else that draws on the slide in view
@@ -709,7 +801,8 @@
       if (i.changed) { if (!bd) { bd = h('span', 'sb-badge' + (row ? ' inline' : '')); if (!row && getComputedStyle(fr).position === 'static') fr.style.position = 'relative'; host.appendChild(bd); } bd.textContent = `Changed · round ${i.ch.round || ''}`; }
       else if (bd) bd.remove();
       const fb = w.querySelector('textarea.fb'); if (!fb) return;
-      const hold = holdRow(w); hold.querySelector('input').checked = i.hold;
+      const hold = (!window.DeckRenderer?.enabled() || id === cur || i.text || i.rep || w.querySelector('.sb-hold')) ? holdRow(w) : null;
+      if (hold) hold.querySelector('input').checked = i.hold;
       let rp = w.querySelector('.sb-reply');
       if (i.rep && (i.fresh || i.text)) {   // a reply to a comment saved in another version stays with that version
         if (!rp) { rp = h('div', 'sb-reply'); hold.after(rp); }
@@ -722,7 +815,8 @@
   }
   // "Still drafting" sits under each comment and shows once there is text
   function holdRow(w) {
-    const fb = w.querySelector('textarea.fb'); let r = w.querySelector('.sb-hold');
+    const fb = w.querySelector('textarea.fb'); if (!fb) return null;
+    let r = w.querySelector('.sb-hold');
     if (!r) { r = h('label', 'sb-check sb-hold', '<input type="checkbox"> Still drafting: Claude skips it'); fb.after(r); }
     r.classList.toggle('empty', !fb.value.trim()); return r;
   }
