@@ -156,8 +156,13 @@ Press C, or a number key from any view to run that check on the slide you're on.
    - no text under 12 px on the 1000 px slide;
    - no more than four text sizes on a slide.
 
-   They're guidelines. They flag problems and never block you. `sb audit` runs the same
-   check, plus overflow and overlapping labels.
+   They're guidelines. They flag problems and never block you. **Ask Claude to fix** adds
+   what a slide breaks to its comment (**Comment on all** does every flagged slide), and
+   the agent fixes it next round. `sb audit` runs the same check, plus overflow and
+   overlapping labels.
+
+You can comment from any check except the timed tests: the comment box stays under the
+slide.
 
 ![Checks › Horizontal flow: the deck's titles read in order, as paragraphs](docs/checks.png)
 

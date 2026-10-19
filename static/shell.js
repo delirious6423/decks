@@ -449,9 +449,25 @@
     const res = window.SBGuides.scan(wraps()).filter((r) => r.issues.length);
     box.innerHTML = res.length
       ? `<span class="sb-stat">${res.length} slide${res.length === 1 ? '' : 's'} to look at:</span>` + res.map((r) => `<button class="sb-gitem" data-gjump="${esc(r.id)}" title="${esc(r.issues.map((g) => g.msg).join(' '))}"><b>${r.n}</b> ${esc(r.issues.map((g) => g.short || g.msg).join(' · '))}</button>`).join('')
+        + `<button class="sb-btn sb-gall" data-gall title="Adds what each slide breaks to its comment, so Claude fixes them next round">Comment on all ${res.length}</button>`
       : '<span class="sb-stat">Every slide follows these guidelines.</span>';
   }
   checks.addEventListener('click', (e) => { const b = e.target.closest('[data-gjump]'); if (b) go(b.dataset.gjump, true); });
+  // a guide a slide breaks becomes a comment for Claude, without leaving Checks
+  const guideIssues = (id) => { try { const sl = id && wrapOf(id) && wrapOf(id).querySelector('.slide'); return sl && window.SBGuides ? window.SBGuides.issues(sl) : []; } catch (e) { return []; } };
+  const guideNote = (id) => { const is = guideIssues(id); return is.length ? `Guides: ${is.map((g) => g.msg).join(' ')} Fix it so the slide passes Checks › Guides.` : ''; };
+  function addGuideComment(id) {
+    const note = guideNote(id); if (!note) return false;
+    const now = commentOf(id), lines = now ? now.split('\n').filter((l) => !l.startsWith('Guides: ')) : [];   // a newer guides note replaces an older one
+    setComment(id, [...lines, note].join('\n')); return true;
+  }
+  checks.addEventListener('click', (e) => {
+    if (!e.target.closest('[data-gall]') || !window.SBGuides) return;
+    const res = window.SBGuides.scan(wraps()).filter((r) => r.issues.length);
+    res.forEach((r) => addGuideComment(r.id));
+    say(`<b>Added a comment on ${res.length} slide${res.length === 1 ? '' : 's'}.</b> Click Ask Claude when you’re ready, and Claude fixes them next round.`);
+    renderUnder();
+  });
   function placeNotes() {
     const read = checks.querySelector('.sb-read'), margin = checks.querySelector('.sb-margin'); if (!read || !margin) return;
     margin.innerHTML = ''; const top0 = read.getBoundingClientRect().top; let floor = 0;
@@ -505,7 +521,10 @@
     const K = (k) => `<kbd>${k}</kbd>`;
     if (gch) {
       box = checks.querySelector('#sb-timed'); if (!box) return;
-      box.innerHTML = `<button class="sb-btn" data-u="prev">${K('←')} Previous</button> <button class="sb-btn" data-u="next">Next ${K('→')}</button>`;
+      const is = guideIssues(cur), asked = is.length && commentOf(cur).includes(guideNote(cur));
+      box.innerHTML = `<button class="sb-btn" data-u="prev">${K('←')} Previous</button> `
+        + (is.length ? `<span class="sb-gnow">${esc(is.map((g) => g.short || g.msg).join(' · '))}</span> <button class="sb-btn ${asked ? 'sb-done' : 'red'}" data-u="gfix" ${asked ? 'disabled' : ''} title="Adds what this slide breaks to its comment, so Claude fixes it next round">${asked ? 'In the comment ✓' : 'Ask Claude to fix'}</button> ` : '<span class="sb-gnow ok">This slide follows the guides.</span> ')
+        + `<button class="sb-btn" data-u="next">Next ${K('→')}</button>`;
     } else if (vflow) {
       box = checks.querySelector('#sb-timed'); if (!box) return;
       box.innerHTML = `<button class="sb-btn" data-u="prev">${K('←')} Previous</button> <button class="sb-btn red" data-u="reveal">Reveal ${K('Space')}</button> <button class="sb-btn" data-u="next">Next ${K('→')}</button>`;
@@ -520,6 +539,9 @@
       $('#sb-prev').addEventListener('click', () => step(-1)); $('#sb-next').addEventListener('click', () => step(1)); $('#sb-reveal').addEventListener('click', () => reveal());
     }
   }
+  window.addEventListener('sb:slide', () => { if (ui.view === 'checks' && ui.checks === 'guides') renderUnder(); });
+  document.addEventListener('click', (e) => { const g = e.target.closest('[data-u="gfix"]'); if (!g || !cur) return;
+    if (addGuideComment(cur)) say('<b>Added to the comment under this slide.</b> Click Ask Claude when you’re ready.'); renderUnder(); });
   document.addEventListener('click', (e) => { const b = e.target.closest('[data-u]'); if (!b) return; const u = b.dataset.u;
     if (u === 'start' || u === 'again') tenStart(); else if (u === 'stop') { clearTimeout(tenTimer); tenReady(); } else if (u === 'pass') tenVerdict(true); else if (u === 'fail') tenVerdict(false);
     else if (u === 'reveal') reveal();

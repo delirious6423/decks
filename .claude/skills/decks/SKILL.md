@@ -23,6 +23,7 @@ The user reviews a deck in the browser. They type a comment under a slide (or ed
 - Four views: Focus (F), Scroll (S), Sorter (G), and Checks (C). The filmstrip on the left reorders by drag.
   - In Focus and Scroll, the comment box sits under each slide, with your reply below it. The right bar holds the slide's notes and what changed.
   - Checks has five checks, keys 1 to 5: the 5-second test (first impression), the 10-second test (legibility; a miss leaves a comment on the slide for the next round), horizontal flow (the titles alone, editable in place), vertical flow (the title first, the body hidden until revealed), and Guides.
+  - Comments can come from Checks: "Five-second test: …" and "Ten-second test: …" after a missed timed test, and "Guides: …" from Ask Claude to fix in Checks › Guides, naming what the slide breaks. Fix the slide so it passes, like any comment.
   - H hides everything but the titles. ? lists every shortcut.
 - **Add a slide** (N, "+ Slide", or the + between slides) suggests layouts and can add one the deck carries. Its Copy prompt gives you the deck file, the position, and what the slide should say. When a prompt says "I just added a … slide (LIBRARY['id'])", fill that slide in; when it says "add a new slide …", build it in the deck file at that position.
 - When the reviewer edits a title in Checks, that is an inline edit: bake it like any other.

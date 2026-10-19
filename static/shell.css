@@ -219,7 +219,8 @@ body.sb-checks #sb-checks { display: block; font: 13px/1.4 'DM Sans', -apple-sys
 body.sb-checks.sb-story #deck, body.sb-checks.sb-story .sb-under { display: none !important; }
 body.sb-checks.sb-test .sb-read, body.sb-checks.sb-test .sb-fmt, body.sb-checks.sb-test .sb-note { display: none !important; }
 body.sb-checks #deck > [data-id]:not(.sb-active) { display: none !important; }
-body.sb-checks #deck > [data-id] .fb, body.sb-checks #deck > [data-id] .sb-reply, body.sb-checks #deck > [data-id] .sb-hold, body.sb-checks #deck > [data-id] .fnote, body.sb-checks #deck > [data-id] .ctrls { display: none !important; }
+body.sb-checks #deck > [data-id] .fnote, body.sb-checks #deck > [data-id] .ctrls { display: none !important; }
+body.sb-checks.sb-ten #deck > [data-id] .fb, body.sb-checks.sb-ten #deck > [data-id] .sb-reply, body.sb-checks.sb-ten #deck > [data-id] .sb-hold { display: none !important; }   /* comment from Checks, except mid-test */
 body.sb-checks #deck { margin: 0 auto; }
 body.sb-checks .sb-under { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 12px auto 0; font: 12px 'DM Sans', sans-serif; color: var(--sb-faint); }
 .sb-modebar { display: flex; justify-content: center; align-items: center; gap: 14px; margin-bottom: 26px; flex-wrap: wrap; }
@@ -341,3 +342,9 @@ body.sb-has-next.sb-on { padding-top: calc(var(--sb-top) + 42px) !important; }
 .sb-hist .sb-h-claude { margin-top: 6px; }
 .sb-hist .sb-h-claude b { color: var(--sb-red); }
 .sb-hist .sb-h-end { margin-top: 5px; font-size: 11.5px; color: var(--sb-mute); opacity: .8; }
+
+/* Checks › Guides: what the slide on screen breaks, and the button that asks Claude to fix it */
+.sb-gnow { font: 12.5px/1.35 'DM Sans', sans-serif; color: #7A1F28; background: #FCF1F1; border: 1px solid #F0C9C9; border-radius: 7px; padding: 4px 9px; }
+.sb-gnow.ok { color: #2F6B34; background: #E8F1E8; border-color: #CFE3CF; }
+.sb-gall { margin-left: 6px; }
+.sb-btn.sb-done, .sb-btn.sb-done:disabled { color: #2F6B34; background: #E8F1E8; border-color: #CFE3CF; opacity: 1; cursor: default; }
