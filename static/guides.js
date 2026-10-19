@@ -120,7 +120,8 @@
     host.style.cssText = 'position:absolute;left:-30000px;top:0;width:1000px;pointer-events:none;';
     document.body.appendChild(host);
     const out = wraps.map((w, i) => {
-      const s = w.querySelector('.slide'); if (!s) return { id: w.dataset.id, n: i + 1, issues: [] };
+      const source = window.DeckRenderer ? window.DeckRenderer.preview(w.dataset.id) : w;
+      const s = source && source.querySelector('.slide'); if (!s) return { id: w.dataset.id, n: i + 1, issues: [] };
       const c = s.cloneNode(true); c.style.transform = 'none'; c.classList.remove('sb-cover'); c.classList.add('sb-reveal');
       c.querySelectorAll('.sb-count, .sbg-ov').forEach((x) => x.remove());
       host.appendChild(c); const iss = issues(c); c.remove();

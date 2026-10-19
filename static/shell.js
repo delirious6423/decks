@@ -206,9 +206,9 @@
   $('#sb-reveal').addEventListener('click', () => reveal());
   under.addEventListener('click', (e) => { if (e.target.closest('[data-keys]')) { e.stopPropagation(); more.classList.remove('open'); help.classList.toggle('on'); } });
 
-  const thumbs = new IntersectionObserver((es) => es.forEach((e) => { if (!e.isIntersecting) return; const box = e.target; thumbs.unobserve(box); fillThumb(box); }), { root: $('#sb-film-list'), rootMargin: '300px' });
+  const thumbs = new IntersectionObserver((es) => es.forEach((e) => { const box = e.target; if (!e.isIntersecting) { if (window.DeckRenderer?.enabled()) box.replaceChildren(); return; } if (!window.DeckRenderer?.enabled()) thumbs.unobserve(box); fillThumb(box); }), { root: $('#sb-film-list'), rootMargin: '300px' });
   function fillThumb(box) {
-    const w = wrapOf(box.dataset.id); const s = w && w.querySelector('.slide'); if (!s) return;
+    const w = window.DeckRenderer ? window.DeckRenderer.preview(box.dataset.id) : wrapOf(box.dataset.id); const s = w && w.querySelector('.slide'); if (!s) return;
     const c = s.cloneNode(true);
     c.querySelectorAll('.ctrls, .slide-tag, .sb-badge').forEach((x) => x.remove());
     c.querySelectorAll('[contenteditable]').forEach((x) => x.removeAttribute('contenteditable'));
@@ -237,10 +237,11 @@
       return;
     }
     filmKey = key;
-    list.innerHTML = '';
+    thumbs.disconnect(); list.innerHTML = '';
     if (!ids.length) { list.appendChild(h('div', 'sb-empty', 'Nothing here. Pick another filter.')); return; }
+    const positions = new Map(all.map((id, i) => [id, i + 1]));
     ids.forEach((id) => {
-      const n = all.indexOf(id) + 1;
+      const n = positions.get(id);
       const b = h('button', 'sb-fi' + (id === cur ? ' on' : ''));
       b.dataset.id = id; b.title = title(id);
       b.innerHTML = `<span class="sb-fn">${n}</span><span class="sb-thumb" data-id="${esc(id)}"></span><span class="sb-fn"></span><span class="sb-fl">${esc(title(id))}</span><span class="sb-fn"></span><span class="sb-dots">${dotsFor(id)}</span><span class="sb-x" role="button" title="Leave this slide out of this version" aria-label="Leave out">×</span>`;
@@ -254,7 +255,7 @@
           const order = all.filter((x) => x !== dragId); order.splice(order.indexOf(id) + (after ? 1 : 0), 0, dragId); const moved = dragId; saveOrder(order); setTimeout(() => go(moved, true), 200); });
       }
       b.addEventListener('click', (e) => {
-        if (e.target.closest('.sb-x')) { e.stopPropagation(); const w = wrapOf(id), rm = w && w.querySelector('.ctrls [data-a="rm"]'); if (rm) { const k = ids.indexOf(id); if (id === cur) cur = ids[k + 1] || ids[k - 1] || null; rm.click(); } return; }
+        if (e.target.closest('.sb-x')) { e.stopPropagation(); if (window.DeckRenderer) window.DeckRenderer.ensure(id); const w = wrapOf(id), rm = w && w.querySelector('.ctrls [data-a="rm"]'); if (rm) { const k = ids.indexOf(id); if (id === cur) cur = ids[k + 1] || ids[k - 1] || null; rm.click(); } return; }
         go(id);
       });
       list.appendChild(b);
@@ -313,13 +314,14 @@
   });
 
   // ---------- sorter ----------
-  const fitThumb = (box, k) => { let w = wrapOf(box.dataset.id) || null; if (!w) { try { w = build(box.dataset.id); } catch (e) { w = null; } } const s0 = w && w.querySelector('.slide'); if (!s0) return;
+  const fitThumb = (box, k) => { let w = (window.DeckRenderer ? window.DeckRenderer.preview(box.dataset.id) : wrapOf(box.dataset.id)) || null; if (!w) { try { w = build(box.dataset.id); } catch (e) { w = null; } } const s0 = w && w.querySelector('.slide'); if (!s0) return;
     const c = s0.cloneNode(true);
     c.querySelectorAll('.ctrls, .slide-tag, .sb-badge').forEach((x) => x.remove()); c.querySelectorAll('[contenteditable]').forEach((x) => x.removeAttribute('contenteditable')); c.querySelectorAll('[id]').forEach((x) => x.removeAttribute('id'));
     c.style.transform = `scale(${k})`; box.innerHTML = ''; box.appendChild(c); };
   const lazy = new IntersectionObserver((es) => {   // every thumbnail is the same width: measure once, not once per slide
+    if (window.DeckRenderer?.enabled()) es.filter((e) => !e.isIntersecting).forEach((e) => e.target.replaceChildren());
     const boxes = es.filter((e) => e.isIntersecting).map((e) => e.target); if (!boxes.length) return;
-    const k = boxes[0].clientWidth / 1000; boxes.forEach((b) => { lazy.unobserve(b); fitThumb(b, k); });
+    const k = boxes[0].clientWidth / 1000; boxes.forEach((b) => { if (!window.DeckRenderer?.enabled()) lazy.unobserve(b); fitThumb(b, k); });
   }, { rootMargin: '400px' });
   const refitThumbs = debounce(() => { const boxes = [...sorter.querySelectorAll('.sb-tb')]; if (!boxes.length) return; const k = boxes[0].clientWidth / 1000; boxes.forEach((box) => { const sl = box.querySelector('.slide'); if (sl) sl.style.transform = `scale(${k})`; }); }, 30);
   function saveOrder(ids) {
@@ -331,7 +333,7 @@
   function renderSorter() {
     const ids = wraps().map((w) => w.dataset.id), y = window.scrollY;
     const zw = ui.zoom || 210;
-    sorter.innerHTML = `<div class="sb-sorter-head"><span><b>${ids.length} slides</b> in this version · drag to reorder · click a slide to open it</span><label class="sb-zoom">Smaller <input type="range" min="120" max="520" step="10" value="${zw}" aria-label="Thumbnail size"> Bigger</label></div><div class="sb-grid" id="sb-grid"></div>`;
+    lazy.disconnect(); sorter.innerHTML = `<div class="sb-sorter-head"><span><b>${ids.length} slides</b> in this version · drag to reorder · click a slide to open it</span><label class="sb-zoom">Smaller <input type="range" min="120" max="520" step="10" value="${zw}" aria-label="Thumbnail size"> Bigger</label></div><div class="sb-grid" id="sb-grid"></div>`;
     sorter.style.setProperty('--sb-thumbw', zw + 'px');
     const zoom = sorter.querySelector('.sb-zoom input');
     zoom.addEventListener('input', () => { sorter.style.setProperty('--sb-thumbw', zoom.value + 'px'); refitThumbs(); });
@@ -341,7 +343,7 @@
       const c = h('div', 'sb-card' + (id === cur ? ' on' : '')); c.draggable = true; c.dataset.id = id; c.title = title(id);
       c.innerHTML = `<div class="sb-tb" data-id="${esc(id)}"></div><span class="sb-x" title="Leave this slide out of this version">×</span><div class="sb-cap"><b>${k + 1}</b><span class="sb-t">${esc(title(id))}</span><span class="sb-dots">${dotsFor(id)}</span></div>`;
       c.addEventListener('click', (e) => {
-        if (e.target.closest('.sb-x')) { const rm = wrapOf(id) && wrapOf(id).querySelector('.ctrls [data-a="rm"]'); if (rm) rm.click(); return; }
+        if (e.target.closest('.sb-x')) { if (window.DeckRenderer) window.DeckRenderer.ensure(id); const rm = wrapOf(id) && wrapOf(id).querySelector('.ctrls [data-a="rm"]'); if (rm) rm.click(); return; }
         cur = id; setView('focus');
       });
       c.addEventListener('dragstart', (e) => { dragId = id; c.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', id); });
@@ -603,6 +605,7 @@
 
   // ---------- views, navigation, and sizing ----------
   function setView(v) {
+    if (window.DeckRenderer) window.DeckRenderer.window(cur, v);
     ui.view = v; saveUi();
     top.querySelectorAll('.sb-seg button').forEach((b) => b.classList.toggle('on', b.dataset.v === v));
     document.body.classList.toggle('sb-focus', v === 'focus');
@@ -654,6 +657,7 @@
 
   function go(id, force, fromScroll) {
     if (!id || !wrapOf(id)) return;
+    if (window.DeckRenderer) window.DeckRenderer.window(id, ui.view);
     const changedSlide = id !== cur; cur = id;
     if (changedSlide) { const x = $('#sb-edge'); if (x) x.classList.remove('on'); }   // the end-of-filter hint belongs to the slide it was shown on
     if (ui.view === 'focus') { wraps().forEach((w) => w.classList.toggle('sb-active', w.dataset.id === id)); size(); window.scrollTo(0, 0); }
@@ -662,6 +666,7 @@
       const t = titleEl(id), f = ui.checks === 'vertical' && t ? flags(id, t.innerText.trim()) : []; hl.textContent = f.map((x) => x[0] + ': ' + x[1]).join(' '); hl.style.display = f.length ? '' : 'none';
       if (isTimed() && changedSlide) tenReady(); }
     else if (ui.view === 'scroll' && !fromScroll) { tracking = false; wrapOf(id).scrollIntoView({ block: 'start' }); setTimeout(() => { tracking = true; }, 400); }
+    if (window.DeckRenderer) window.DeckRenderer.layout(id);
     history.replaceState(null, '', '#' + (sideSelect ? 'v=' + encodeURIComponent(sideSelect.value) + '&' : '') + 's=' + encodeURIComponent(id));
     const all = wraps().map((w) => w.dataset.id), ids = visible(), k = ids.indexOf(id);
     $('#sb-pos').innerHTML = `Slide ${all.indexOf(id) + 1} of ${all.length}${filter !== 'all' ? ` · ${k + 1} of ${ids.length} ${esc(FILTERS.find((f) => f[0] === filter)[1].toLowerCase())}` : ''} · <kbd>←</kbd> <kbd>→</kbd> to move · <button class="sb-keyhint" data-keys>? shortcuts</button>`;

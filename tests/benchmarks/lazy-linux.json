@@ -1,0 +1,1085 @@
+{
+  "trials": 5,
+  "methodology": "Same mixed plain/two-column/table slides; external font requests blocked equally to isolate rendering; page loads use fresh contexts. Navigation samples are synchronous go() calls and two-frame settle times. A real title edit precedes first save-state collection; warm collection is the median of nine following calls. Save timers are disabled so fixtures remain unchanged. Timings exclude server startup.",
+  "cases": {
+    "100": {
+      "pre_lazy": {
+        "startup_ms": 389.03744800000004,
+        "engine_ms": 125,
+        "body_count": 100,
+        "nodes": 7509,
+        "build_calls": 100,
+        "navigation_sync_ms": 4.800000000279397,
+        "navigation_settled_ms": 33.3000000002794,
+        "save_collect_json_ms": 24.100000000093132,
+        "warm_save_collect_json_ms": 0.599999999627471,
+        "state_bytes": 36745,
+        "final_body_count": 100,
+        "samples": [
+          {
+            "startup_ms": 430.1095399999999,
+            "engine_ms": 120.29999999981374,
+            "body_count": 100,
+            "nodes": 7509,
+            "build_calls": 100,
+            "navigation": {
+              "sync_ms": 4.800000000279397,
+              "settled_ms": 33.299999999813735,
+              "save_collect_json_ms": 28.5,
+              "warm_save_collect_json_ms": 0.599999999627471,
+              "state_bytes": 36745,
+              "bodies": 100,
+              "nodes": 8820
+            },
+            "heap_bytes": 2641628,
+            "errors": []
+          },
+          {
+            "startup_ms": 390.02343900000005,
+            "engine_ms": 135.10000000009313,
+            "body_count": 100,
+            "nodes": 7509,
+            "build_calls": 100,
+            "navigation": {
+              "sync_ms": 4.899999999906868,
+              "settled_ms": 33.3000000002794,
+              "save_collect_json_ms": 32,
+              "warm_save_collect_json_ms": 0.6000000000931323,
+              "state_bytes": 36745,
+              "bodies": 100,
+              "nodes": 8820
+            },
+            "heap_bytes": 2641464,
+            "errors": []
+          },
+          {
+            "startup_ms": 369.5349449999999,
+            "engine_ms": 125,
+            "body_count": 100,
+            "nodes": 7509,
+            "build_calls": 100,
+            "navigation": {
+              "sync_ms": 4.600000000093132,
+              "settled_ms": 33.299999999813735,
+              "save_collect_json_ms": 24.100000000093132,
+              "warm_save_collect_json_ms": 0.6000000000931323,
+              "state_bytes": 36745,
+              "bodies": 100,
+              "nodes": 8820
+            },
+            "heap_bytes": 2638748,
+            "errors": []
+          },
+          {
+            "startup_ms": 314.3512410000003,
+            "engine_ms": 92.10000000009313,
+            "body_count": 100,
+            "nodes": 7509,
+            "build_calls": 100,
+            "navigation": {
+              "sync_ms": 3.7999999998137355,
+              "settled_ms": 33.39999999990687,
+              "save_collect_json_ms": 20.799999999813735,
+              "warm_save_collect_json_ms": 0.39999999990686774,
+              "state_bytes": 36745,
+              "bodies": 100,
+              "nodes": 8820
+            },
+            "heap_bytes": 2641412,
+            "errors": []
+          },
+          {
+            "startup_ms": 389.03744800000004,
+            "engine_ms": 135.79999999981374,
+            "body_count": 100,
+            "nodes": 7509,
+            "build_calls": 100,
+            "navigation": {
+              "sync_ms": 5.099999999627471,
+              "settled_ms": 33.3000000002794,
+              "save_collect_json_ms": 22.5,
+              "warm_save_collect_json_ms": 0.5,
+              "state_bytes": 36745,
+              "bodies": 100,
+              "nodes": 8820
+            },
+            "heap_bytes": 2641476,
+            "errors": []
+          }
+        ]
+      },
+      "lazy": {
+        "startup_ms": 306.0631110000013,
+        "engine_ms": 59.1999999997206,
+        "body_count": 2,
+        "nodes": 4259,
+        "build_calls": 8,
+        "navigation_sync_ms": 5.399999999906868,
+        "navigation_settled_ms": 33.3000000002794,
+        "save_collect_json_ms": 0.7999999998137355,
+        "warm_save_collect_json_ms": 0.19999999972060323,
+        "state_bytes": 2571,
+        "final_body_count": 3,
+        "samples": [
+          {
+            "startup_ms": 301.45722599999954,
+            "engine_ms": 70.70000000018626,
+            "body_count": 2,
+            "nodes": 4259,
+            "build_calls": 8,
+            "navigation": {
+              "sync_ms": 5.2000000001862645,
+              "settled_ms": 33.3000000002794,
+              "save_collect_json_ms": 0.7999999998137355,
+              "warm_save_collect_json_ms": 0.20000000018626451,
+              "state_bytes": 2571,
+              "bodies": 3,
+              "nodes": 4275
+            },
+            "heap_bytes": 2718688,
+            "errors": []
+          },
+          {
+            "startup_ms": 286.9245689999998,
+            "engine_ms": 45.40000000037253,
+            "body_count": 2,
+            "nodes": 4259,
+            "build_calls": 8,
+            "navigation": {
+              "sync_ms": 5.899999999906868,
+              "settled_ms": 33.39999999990687,
+              "save_collect_json_ms": 1,
+              "warm_save_collect_json_ms": 0.20000000018626451,
+              "state_bytes": 2571,
+              "bodies": 3,
+              "nodes": 4275
+            },
+            "heap_bytes": 2717736,
+            "errors": []
+          },
+          {
+            "startup_ms": 357.4285949999994,
+            "engine_ms": 63,
+            "body_count": 2,
+            "nodes": 4259,
+            "build_calls": 8,
+            "navigation": {
+              "sync_ms": 4.2000000001862645,
+              "settled_ms": 33.3000000002794,
+              "save_collect_json_ms": 1.2999999998137355,
+              "warm_save_collect_json_ms": 0.10000000009313226,
+              "state_bytes": 2571,
+              "bodies": 3,
+              "nodes": 4275
+            },
+            "heap_bytes": 2651540,
+            "errors": []
+          },
+          {
+            "startup_ms": 306.0631110000013,
+            "engine_ms": 59.1999999997206,
+            "body_count": 2,
+            "nodes": 4259,
+            "build_calls": 8,
+            "navigation": {
+              "sync_ms": 5.599999999627471,
+              "settled_ms": 33.299999999813735,
+              "save_collect_json_ms": 0.7000000001862645,
+              "warm_save_collect_json_ms": 0.10000000009313226,
+              "state_bytes": 2571,
+              "bodies": 3,
+              "nodes": 4275
+            },
+            "heap_bytes": 2721540,
+            "errors": []
+          },
+          {
+            "startup_ms": 324.3623430000007,
+            "engine_ms": 55,
+            "body_count": 2,
+            "nodes": 4259,
+            "build_calls": 8,
+            "navigation": {
+              "sync_ms": 5.399999999906868,
+              "settled_ms": 33.299999999813735,
+              "save_collect_json_ms": 0.6999999997206032,
+              "warm_save_collect_json_ms": 0.19999999972060323,
+              "state_bytes": 2571,
+              "bodies": 3,
+              "nodes": 4275
+            },
+            "heap_bytes": 2721540,
+            "errors": []
+          }
+        ]
+      },
+      "candidate_eager": {
+        "startup_ms": 345.1375110000008,
+        "engine_ms": 117.59999999962747,
+        "body_count": 100,
+        "nodes": 7509,
+        "build_calls": 100,
+        "navigation_sync_ms": 4.600000000093132,
+        "navigation_settled_ms": 33.3000000002794,
+        "save_collect_json_ms": 27.59999999962747,
+        "warm_save_collect_json_ms": 0.599999999627471,
+        "state_bytes": 36745,
+        "final_body_count": 100,
+        "samples": [
+          {
+            "startup_ms": 326.4906699999992,
+            "engine_ms": 83.70000000018626,
+            "body_count": 100,
+            "nodes": 7509,
+            "build_calls": 100,
+            "navigation": {
+              "sync_ms": 6.2999999998137355,
+              "settled_ms": 33.3000000002794,
+              "save_collect_json_ms": 33.1999999997206,
+              "warm_save_collect_json_ms": 0.599999999627471,
+              "state_bytes": 36745,
+              "bodies": 100,
+              "nodes": 8820
+            },
+            "heap_bytes": 2665672,
+            "errors": []
+          },
+          {
+            "startup_ms": 332.2242239999996,
+            "engine_ms": 94,
+            "body_count": 100,
+            "nodes": 7509,
+            "build_calls": 100,
+            "navigation": {
+              "sync_ms": 4.600000000093132,
+              "settled_ms": 33.3000000002794,
+              "save_collect_json_ms": 26.899999999906868,
+              "warm_save_collect_json_ms": 0.6999999997206032,
+              "state_bytes": 36745,
+              "bodies": 100,
+              "nodes": 8820
+            },
+            "heap_bytes": 2673444,
+            "errors": []
+          },
+          {
+            "startup_ms": 375.0285409999997,
+            "engine_ms": 136.6999999997206,
+            "body_count": 100,
+            "nodes": 7509,
+            "build_calls": 100,
+            "navigation": {
+              "sync_ms": 4.7999999998137355,
+              "settled_ms": 33.299999999813735,
+              "save_collect_json_ms": 27.59999999962747,
+              "warm_save_collect_json_ms": 0.5,
+              "state_bytes": 36745,
+              "bodies": 100,
+              "nodes": 8820
+            },
+            "heap_bytes": 2670804,
+            "errors": []
+          },
+          {
+            "startup_ms": 345.1375110000008,
+            "engine_ms": 119.39999999990687,
+            "body_count": 100,
+            "nodes": 7509,
+            "build_calls": 100,
+            "navigation": {
+              "sync_ms": 4.5,
+              "settled_ms": 33.3000000002794,
+              "save_collect_json_ms": 24.299999999813735,
+              "warm_save_collect_json_ms": 0.5,
+              "state_bytes": 36745,
+              "bodies": 100,
+              "nodes": 8820
+            },
+            "heap_bytes": 2676608,
+            "errors": []
+          },
+          {
+            "startup_ms": 354.37949500000104,
+            "engine_ms": 117.59999999962747,
+            "body_count": 100,
+            "nodes": 7509,
+            "build_calls": 100,
+            "navigation": {
+              "sync_ms": 4.399999999906868,
+              "settled_ms": 33.3000000002794,
+              "save_collect_json_ms": 29,
+              "warm_save_collect_json_ms": 0.6000000000931323,
+              "state_bytes": 36745,
+              "bodies": 100,
+              "nodes": 8820
+            },
+            "heap_bytes": 2676672,
+            "errors": []
+          }
+        ]
+      }
+    },
+    "500": {
+      "pre_lazy": {
+        "startup_ms": 841.6320889999988,
+        "engine_ms": 442.29999999981374,
+        "body_count": 500,
+        "nodes": 33493,
+        "build_calls": 500,
+        "navigation_sync_ms": 9.300000000279397,
+        "navigation_settled_ms": 33.3000000002794,
+        "save_collect_json_ms": 74.5,
+        "warm_save_collect_json_ms": 1.8999999999068677,
+        "state_bytes": 185345,
+        "final_body_count": 500,
+        "samples": [
+          {
+            "startup_ms": 998.0609530000002,
+            "engine_ms": 544.3999999999069,
+            "body_count": 500,
+            "nodes": 33493,
+            "build_calls": 500,
+            "navigation": {
+              "sync_ms": 10.099999999627471,
+              "settled_ms": 33.299999999813735,
+              "save_collect_json_ms": 85.39999999990687,
+              "warm_save_collect_json_ms": 2.2999999998137355,
+              "state_bytes": 185345,
+              "bodies": 500,
+              "nodes": 34804
+            },
+            "heap_bytes": 3378136,
+            "errors": []
+          },
+          {
+            "startup_ms": 908.6223180000015,
+            "engine_ms": 470.10000000009313,
+            "body_count": 500,
+            "nodes": 33493,
+            "build_calls": 500,
+            "navigation": {
+              "sync_ms": 9.200000000186265,
+              "settled_ms": 33.3000000002794,
+              "save_collect_json_ms": 75.60000000009313,
+              "warm_save_collect_json_ms": 1.7000000001862645,
+              "state_bytes": 185345,
+              "bodies": 500,
+              "nodes": 34804
+            },
+            "heap_bytes": 3377744,
+            "errors": []
+          },
+          {
+            "startup_ms": 841.6320889999988,
+            "engine_ms": 442.29999999981374,
+            "body_count": 500,
+            "nodes": 33493,
+            "build_calls": 500,
+            "navigation": {
+              "sync_ms": 9.299999999813735,
+              "settled_ms": 33.39999999990687,
+              "save_collect_json_ms": 71.79999999981374,
+              "warm_save_collect_json_ms": 1.7000000001862645,
+              "state_bytes": 185345,
+              "bodies": 500,
+              "nodes": 34804
+            },
+            "heap_bytes": 3397920,
+            "errors": []
+          },
+          {
+            "startup_ms": 840.1763629999987,
+            "engine_ms": 436.60000000009313,
+            "body_count": 500,
+            "nodes": 33493,
+            "build_calls": 500,
+            "navigation": {
+              "sync_ms": 9.300000000279397,
+              "settled_ms": 33.3000000002794,
+              "save_collect_json_ms": 74.5,
+              "warm_save_collect_json_ms": 2.1000000000931323,
+              "state_bytes": 185345,
+              "bodies": 500,
+              "nodes": 34804
+            },
+            "heap_bytes": 3642776,
+            "errors": []
+          },
+          {
+            "startup_ms": 832.5837339999998,
+            "engine_ms": 439.39999999990687,
+            "body_count": 500,
+            "nodes": 33493,
+            "build_calls": 500,
+            "navigation": {
+              "sync_ms": 9.899999999906868,
+              "settled_ms": 33.39999999990687,
+              "save_collect_json_ms": 72.10000000009313,
+              "warm_save_collect_json_ms": 1.8999999999068677,
+              "state_bytes": 185345,
+              "bodies": 500,
+              "nodes": 34804
+            },
+            "heap_bytes": 3561492,
+            "errors": []
+          }
+        ]
+      },
+      "lazy": {
+        "startup_ms": 377.2408439999999,
+        "engine_ms": 97.60000000009313,
+        "body_count": 2,
+        "nodes": 17059,
+        "build_calls": 8,
+        "navigation_sync_ms": 9.199999999720603,
+        "navigation_settled_ms": 33.3000000002794,
+        "save_collect_json_ms": 1,
+        "warm_save_collect_json_ms": 0.39999999990686774,
+        "state_bytes": 12364,
+        "final_body_count": 3,
+        "samples": [
+          {
+            "startup_ms": 370.46939900000143,
+            "engine_ms": 98.89999999990687,
+            "body_count": 2,
+            "nodes": 17059,
+            "build_calls": 8,
+            "navigation": {
+              "sync_ms": 9.5,
+              "settled_ms": 33.3000000002794,
+              "save_collect_json_ms": 1.1000000000931323,
+              "warm_save_collect_json_ms": 0.39999999990686774,
+              "state_bytes": 12364,
+              "bodies": 3,
+              "nodes": 17075
+            },
+            "heap_bytes": 3194836,
+            "errors": []
+          },
+          {
+            "startup_ms": 400.76325799999904,
+            "engine_ms": 99.79999999981374,
+            "body_count": 2,
+            "nodes": 17059,
+            "build_calls": 8,
+            "navigation": {
+              "sync_ms": 9.199999999720603,
+              "settled_ms": 33.3000000002794,
+              "save_collect_json_ms": 0.8999999999068677,
+              "warm_save_collect_json_ms": 0.39999999990686774,
+              "state_bytes": 12364,
+              "bodies": 3,
+              "nodes": 17075
+            },
+            "heap_bytes": 2981192,
+            "errors": []
+          },
+          {
+            "startup_ms": 377.2408439999999,
+            "engine_ms": 97.60000000009313,
+            "body_count": 2,
+            "nodes": 17059,
+            "build_calls": 8,
+            "navigation": {
+              "sync_ms": 9.099999999627471,
+              "settled_ms": 33.3000000002794,
+              "save_collect_json_ms": 1,
+              "warm_save_collect_json_ms": 0.3000000002793968,
+              "state_bytes": 12364,
+              "bodies": 3,
+              "nodes": 17075
+            },
+            "heap_bytes": 3236728,
+            "errors": []
+          },
+          {
+            "startup_ms": 390.7310400000024,
+            "engine_ms": 86.1999999997206,
+            "body_count": 2,
+            "nodes": 17059,
+            "build_calls": 8,
+            "navigation": {
+              "sync_ms": 8.899999999906868,
+              "settled_ms": 33.299999999813735,
+              "save_collect_json_ms": 1,
+              "warm_save_collect_json_ms": 0.2999999998137355,
+              "state_bytes": 12364,
+              "bodies": 3,
+              "nodes": 17075
+            },
+            "heap_bytes": 2965224,
+            "errors": []
+          },
+          {
+            "startup_ms": 363.672765000003,
+            "engine_ms": 93.89999999990687,
+            "body_count": 2,
+            "nodes": 17059,
+            "build_calls": 8,
+            "navigation": {
+              "sync_ms": 9.400000000372529,
+              "settled_ms": 33.3000000002794,
+              "save_collect_json_ms": 1,
+              "warm_save_collect_json_ms": 0.39999999990686774,
+              "state_bytes": 12364,
+              "bodies": 3,
+              "nodes": 17075
+            },
+            "heap_bytes": 3225028,
+            "errors": []
+          }
+        ]
+      },
+      "candidate_eager": {
+        "startup_ms": 738.9583259999999,
+        "engine_ms": 285.10000000009313,
+        "body_count": 500,
+        "nodes": 33493,
+        "build_calls": 500,
+        "navigation_sync_ms": 9.5,
+        "navigation_settled_ms": 33.3000000002794,
+        "save_collect_json_ms": 87.8000000002794,
+        "warm_save_collect_json_ms": 1.8999999999068677,
+        "state_bytes": 185345,
+        "final_body_count": 500,
+        "samples": [
+          {
+            "startup_ms": 683.3310930000007,
+            "engine_ms": 278.59999999962747,
+            "body_count": 500,
+            "nodes": 33493,
+            "build_calls": 500,
+            "navigation": {
+              "sync_ms": 9.199999999720603,
+              "settled_ms": 33.3000000002794,
+              "save_collect_json_ms": 87,
+              "warm_save_collect_json_ms": 1.8999999999068677,
+              "state_bytes": 185345,
+              "bodies": 500,
+              "nodes": 34804
+            },
+            "heap_bytes": 3391600,
+            "errors": []
+          },
+          {
+            "startup_ms": 758.7354369999957,
+            "engine_ms": 320.1999999997206,
+            "body_count": 500,
+            "nodes": 33493,
+            "build_calls": 500,
+            "navigation": {
+              "sync_ms": 9.5,
+              "settled_ms": 33.3000000002794,
+              "save_collect_json_ms": 85.10000000009313,
+              "warm_save_collect_json_ms": 1.8000000002793968,
+              "state_bytes": 185345,
+              "bodies": 500,
+              "nodes": 34804
+            },
+            "heap_bytes": 3421180,
+            "errors": []
+          },
+          {
+            "startup_ms": 688.610053999997,
+            "engine_ms": 283.3000000002794,
+            "body_count": 500,
+            "nodes": 33493,
+            "build_calls": 500,
+            "navigation": {
+              "sync_ms": 9.5,
+              "settled_ms": 33.3000000002794,
+              "save_collect_json_ms": 87.8000000002794,
+              "warm_save_collect_json_ms": 2,
+              "state_bytes": 185345,
+              "bodies": 500,
+              "nodes": 34804
+            },
+            "heap_bytes": 3391340,
+            "errors": []
+          },
+          {
+            "startup_ms": 738.9583259999999,
+            "engine_ms": 285.10000000009313,
+            "body_count": 500,
+            "nodes": 33493,
+            "build_calls": 500,
+            "navigation": {
+              "sync_ms": 13.600000000093132,
+              "settled_ms": 33.39999999990687,
+              "save_collect_json_ms": 117.10000000009313,
+              "warm_save_collect_json_ms": 3.1000000000931323,
+              "state_bytes": 185345,
+              "bodies": 500,
+              "nodes": 34804
+            },
+            "heap_bytes": 3394328,
+            "errors": []
+          },
+          {
+            "startup_ms": 992.1922619999968,
+            "engine_ms": 424.70000000018626,
+            "body_count": 500,
+            "nodes": 33493,
+            "build_calls": 500,
+            "navigation": {
+              "sync_ms": 10.300000000279397,
+              "settled_ms": 33.3000000002794,
+              "save_collect_json_ms": 88.09999999962747,
+              "warm_save_collect_json_ms": 1.8999999999068677,
+              "state_bytes": 185345,
+              "bodies": 500,
+              "nodes": 34804
+            },
+            "heap_bytes": 3430156,
+            "errors": []
+          }
+        ]
+      }
+    },
+    "1000": {
+      "pre_lazy": {
+        "startup_ms": 2274.6874680000037,
+        "engine_ms": 1434,
+        "body_count": 1000,
+        "nodes": 66009,
+        "build_calls": 1000,
+        "navigation_sync_ms": 22.90000000037253,
+        "navigation_settled_ms": 39.3000000002794,
+        "save_collect_json_ms": 228.39999999990687,
+        "warm_save_collect_json_ms": 5.399999999906868,
+        "state_bytes": 371235,
+        "final_body_count": 1000,
+        "samples": [
+          {
+            "startup_ms": 2106.0679139999993,
+            "engine_ms": 1269.7999999998137,
+            "body_count": 1000,
+            "nodes": 66009,
+            "build_calls": 1000,
+            "navigation": {
+              "sync_ms": 27.299999999813735,
+              "settled_ms": 49.799999999813735,
+              "save_collect_json_ms": 228.39999999990687,
+              "warm_save_collect_json_ms": 5.899999999906868,
+              "state_bytes": 371235,
+              "bodies": 1000,
+              "nodes": 67320
+            },
+            "heap_bytes": 4542896,
+            "errors": []
+          },
+          {
+            "startup_ms": 7430.337793999999,
+            "engine_ms": 1434,
+            "body_count": 1000,
+            "nodes": 66009,
+            "build_calls": 1000,
+            "navigation": {
+              "sync_ms": 21.799999999813735,
+              "settled_ms": 39.3000000002794,
+              "save_collect_json_ms": 280.3000000002794,
+              "warm_save_collect_json_ms": 6.5,
+              "state_bytes": 371235,
+              "bodies": 1000,
+              "nodes": 67320
+            },
+            "heap_bytes": 4547044,
+            "errors": []
+          },
+          {
+            "startup_ms": 2594.3023360000007,
+            "engine_ms": 1557.1999999997206,
+            "body_count": 1000,
+            "nodes": 66009,
+            "build_calls": 1000,
+            "navigation": {
+              "sync_ms": 24.299999999813735,
+              "settled_ms": 49.6999999997206,
+              "save_collect_json_ms": 253.39999999990687,
+              "warm_save_collect_json_ms": 5.399999999906868,
+              "state_bytes": 371235,
+              "bodies": 1000,
+              "nodes": 67320
+            },
+            "heap_bytes": 4418680,
+            "errors": []
+          },
+          {
+            "startup_ms": 2274.6874680000037,
+            "engine_ms": 1433.2000000001863,
+            "body_count": 1000,
+            "nodes": 66009,
+            "build_calls": 1000,
+            "navigation": {
+              "sync_ms": 22.90000000037253,
+              "settled_ms": 39.299999999813735,
+              "save_collect_json_ms": 201.1999999997206,
+              "warm_save_collect_json_ms": 5.2999999998137355,
+              "state_bytes": 371235,
+              "bodies": 1000,
+              "nodes": 67320
+            },
+            "heap_bytes": 4605468,
+            "errors": []
+          },
+          {
+            "startup_ms": 2205.5492499999964,
+            "engine_ms": 1442.4000000003725,
+            "body_count": 1000,
+            "nodes": 66009,
+            "build_calls": 1000,
+            "navigation": {
+              "sync_ms": 20,
+              "settled_ms": 33.799999999813735,
+              "save_collect_json_ms": 167.60000000009313,
+              "warm_save_collect_json_ms": 5.199999999720603,
+              "state_bytes": 371235,
+              "bodies": 1000,
+              "nodes": 67320
+            },
+            "heap_bytes": 4443552,
+            "errors": []
+          }
+        ]
+      },
+      "lazy": {
+        "startup_ms": 694.4728889999969,
+        "engine_ms": 174.20000000018626,
+        "body_count": 2,
+        "nodes": 33059,
+        "build_calls": 8,
+        "navigation_sync_ms": 22.300000000279397,
+        "navigation_settled_ms": 45.60000000009313,
+        "save_collect_json_ms": 2.099999999627471,
+        "warm_save_collect_json_ms": 0.8999999999068677,
+        "state_bytes": 24174,
+        "final_body_count": 3,
+        "samples": [
+          {
+            "startup_ms": 694.4728889999969,
+            "engine_ms": 174.20000000018626,
+            "body_count": 2,
+            "nodes": 33059,
+            "build_calls": 8,
+            "navigation": {
+              "sync_ms": 22.300000000279397,
+              "settled_ms": 45.60000000009313,
+              "save_collect_json_ms": 2.099999999627471,
+              "warm_save_collect_json_ms": 0.8999999999068677,
+              "state_bytes": 24174,
+              "bodies": 3,
+              "nodes": 33075
+            },
+            "heap_bytes": 3601272,
+            "errors": []
+          },
+          {
+            "startup_ms": 766.7531790000066,
+            "engine_ms": 197.5,
+            "body_count": 2,
+            "nodes": 33059,
+            "build_calls": 8,
+            "navigation": {
+              "sync_ms": 22.299999999813735,
+              "settled_ms": 45.59999999962747,
+              "save_collect_json_ms": 1.8000000002793968,
+              "warm_save_collect_json_ms": 0.7999999998137355,
+              "state_bytes": 24174,
+              "bodies": 3,
+              "nodes": 33075
+            },
+            "heap_bytes": 4943252,
+            "errors": []
+          },
+          {
+            "startup_ms": 693.6637119999941,
+            "engine_ms": 171.90000000037253,
+            "body_count": 2,
+            "nodes": 33059,
+            "build_calls": 8,
+            "navigation": {
+              "sync_ms": 17.200000000186265,
+              "settled_ms": 36,
+              "save_collect_json_ms": 1.8999999999068677,
+              "warm_save_collect_json_ms": 0.7999999998137355,
+              "state_bytes": 24174,
+              "bodies": 3,
+              "nodes": 33075
+            },
+            "heap_bytes": 3583408,
+            "errors": []
+          },
+          {
+            "startup_ms": 656.3132480000058,
+            "engine_ms": 172.60000000009313,
+            "body_count": 2,
+            "nodes": 33059,
+            "build_calls": 8,
+            "navigation": {
+              "sync_ms": 24.700000000186265,
+              "settled_ms": 50,
+              "save_collect_json_ms": 3.5,
+              "warm_save_collect_json_ms": 1.6000000000931323,
+              "state_bytes": 24174,
+              "bodies": 3,
+              "nodes": 33075
+            },
+            "heap_bytes": 5028024,
+            "errors": []
+          },
+          {
+            "startup_ms": 889.7746849999967,
+            "engine_ms": 243.89999999990687,
+            "body_count": 2,
+            "nodes": 33059,
+            "build_calls": 8,
+            "navigation": {
+              "sync_ms": 27,
+              "settled_ms": 50.6999999997206,
+              "save_collect_json_ms": 2.6999999997206032,
+              "warm_save_collect_json_ms": 1.1000000000931323,
+              "state_bytes": 24174,
+              "bodies": 3,
+              "nodes": 33075
+            },
+            "heap_bytes": 3423728,
+            "errors": []
+          }
+        ]
+      },
+      "candidate_eager": {
+        "startup_ms": 1480.283328999998,
+        "engine_ms": 567.3999999999069,
+        "body_count": 1000,
+        "nodes": 66009,
+        "build_calls": 1000,
+        "navigation_sync_ms": 24.699999999720603,
+        "navigation_settled_ms": 47,
+        "save_collect_json_ms": 229.5,
+        "warm_save_collect_json_ms": 5.7000000001862645,
+        "state_bytes": 371235,
+        "final_body_count": 1000,
+        "samples": [
+          {
+            "startup_ms": 1531.5478640000074,
+            "engine_ms": 634.6000000000931,
+            "body_count": 1000,
+            "nodes": 66009,
+            "build_calls": 1000,
+            "navigation": {
+              "sync_ms": 24.800000000279397,
+              "settled_ms": 47.10000000009313,
+              "save_collect_json_ms": 241.20000000018626,
+              "warm_save_collect_json_ms": 6.300000000279397,
+              "state_bytes": 371235,
+              "bodies": 1000,
+              "nodes": 67320
+            },
+            "heap_bytes": 4520816,
+            "errors": []
+          },
+          {
+            "startup_ms": 6589.9166819999955,
+            "engine_ms": 591.8000000002794,
+            "body_count": 1000,
+            "nodes": 66009,
+            "build_calls": 1000,
+            "navigation": {
+              "sync_ms": 24.699999999720603,
+              "settled_ms": 47,
+              "save_collect_json_ms": 229.5,
+              "warm_save_collect_json_ms": 5.5,
+              "state_bytes": 371235,
+              "bodies": 1000,
+              "nodes": 67320
+            },
+            "heap_bytes": 4825240,
+            "errors": []
+          },
+          {
+            "startup_ms": 1480.283328999998,
+            "engine_ms": 567.3999999999069,
+            "body_count": 1000,
+            "nodes": 66009,
+            "build_calls": 1000,
+            "navigation": {
+              "sync_ms": 25.600000000093132,
+              "settled_ms": 50,
+              "save_collect_json_ms": 274,
+              "warm_save_collect_json_ms": 6.399999999906868,
+              "state_bytes": 371235,
+              "bodies": 1000,
+              "nodes": 67320
+            },
+            "heap_bytes": 4664296,
+            "errors": []
+          },
+          {
+            "startup_ms": 1397.2709640000103,
+            "engine_ms": 550.2999999998137,
+            "body_count": 1000,
+            "nodes": 66009,
+            "build_calls": 1000,
+            "navigation": {
+              "sync_ms": 22.59999999962747,
+              "settled_ms": 35.8000000002794,
+              "save_collect_json_ms": 214.29999999981374,
+              "warm_save_collect_json_ms": 5.7000000001862645,
+              "state_bytes": 371235,
+              "bodies": 1000,
+              "nodes": 67320
+            },
+            "heap_bytes": 4317760,
+            "errors": []
+          },
+          {
+            "startup_ms": 1378.141088999997,
+            "engine_ms": 566.8999999999069,
+            "body_count": 1000,
+            "nodes": 66009,
+            "build_calls": 1000,
+            "navigation": {
+              "sync_ms": 21.700000000186265,
+              "settled_ms": 36.10000000009313,
+              "save_collect_json_ms": 220.3000000002794,
+              "warm_save_collect_json_ms": 5.199999999720603,
+              "state_bytes": 371235,
+              "bodies": 1000,
+              "nodes": 67320
+            },
+            "heap_bytes": 4300800,
+            "errors": []
+          }
+        ]
+      }
+    }
+  },
+  "browser": "155.0.8059.85",
+  "baseline_commit": "98ee6e2044a7df8613cf1871b8f6660eafcfa7a2",
+  "upstream_commit": "8a5179b37e5f46aeabc87c7d06de9aca91dd05e8",
+  "candidate_source_sha256": {
+    "templates/_engine/engine.html": "35f01679743ea3f70d924dd503110a89eb530111418449a6327ec9cace3ce19a",
+    "static/shell.js": "0ba7e142744e1bc2a08ad05c9ade8a13451e6e030f04676392e4476dcb200149",
+    "static/guides.js": "f6b664398eaa4061072e9606964913278dcf3d3bc92722f1b01687bc12f2d4d6",
+    "static/clientcopy.js": "57b4a8b5ae1d405f52cee76fe09cca2566c8a8e86363f64494d99639cf3ee244"
+  },
+  "limitations": [
+    "Synthetic mixed-layout fixtures on Linux/Brave; external fonts blocked equally.",
+    "First snapshot has cold default hashes in the baseline; warm results are reported separately.",
+    "Save collection timing excludes debouncing, HTTP and disk writes.",
+    "Slide wrappers and the sidebar/filmstrip remain proportional to deck size.",
+    "Raw/saved exports and whole-deck checks intentionally render all slides."
+  ],
+  "validation": {
+    "python_tests": 5,
+    "existing_browser_tests": 10,
+    "lazy_browser_tests": 8,
+    "pdfs": {
+      "blank": {
+        "pages": 5,
+        "text_equal": true,
+        "compared_pages": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "pixels_equal_at_800px": true
+      },
+      "talk": {
+        "pages": 14,
+        "text_equal": true,
+        "compared_pages": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14
+        ],
+        "pixels_equal_at_800px": true
+      },
+      "workshop": {
+        "pages": 16,
+        "text_equal": true,
+        "compared_pages": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16
+        ],
+        "pixels_equal_at_800px": true
+      },
+      "proposal": {
+        "pages": 9,
+        "text_equal": true,
+        "compared_pages": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9
+        ],
+        "pixels_equal_at_800px": true
+      },
+      "consulting": {
+        "pages": 8,
+        "text_equal": true,
+        "compared_pages": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "pixels_equal_at_800px": true
+      },
+      "large-100": {
+        "pages": 100,
+        "text_equal": true,
+        "compared_pages": [
+          1,
+          50,
+          100
+        ],
+        "pixels_equal_at_800px": true
+      }
+    },
+    "cli_templates": [
+      "blank",
+      "talk",
+      "workshop",
+      "proposal",
+      "consulting"
+    ],
+    "page_errors": []
+  }
+}

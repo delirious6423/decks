@@ -79,13 +79,14 @@ window.addEventListener('resize',fit);window.addEventListener('beforeprint',func
 fit();if(document.fonts&&document.fonts.ready)document.fonts.ready.then(fit);})();`;
 
   function snapshot() {
+    if (window.DeckRenderer) window.DeckRenderer.all();
     const frames = slides();
     const css = [...document.querySelectorAll('style')].filter((s) => !/^sb/.test(s.id || '')).map((s) => s.textContent).join('\n');
     const links = [...document.querySelectorAll('link[rel="stylesheet"], link[rel="preconnect"]')].filter((l) => /^https?:/.test(l.href)).map((l) => l.outerHTML).join('\n');
     const first = frames[0] && frames[0].querySelector('.h-title, h1, h2');
     const title = (first ? first.textContent : document.title).replace(/\s+/g, ' ').trim() || SB.name;
     const body = frames.map((f, k) => `<section class="cc-slide" id="slide-${k + 1}">${clean(f).outerHTML}</section>`).join('\n');
-    return { n: frames.length, html: `<!doctype html>
+    const result = { n: frames.length, html: `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <!-- Made with Decks (https://github.com/paulmil11/decks). Deck engine: Copyright (c) 2026 Paul Millerd, MIT License, https://github.com/paulmil11/decks/blob/main/LICENSE. The slides are yours. -->
 <title>${esc(title)}</title>
@@ -99,6 +100,8 @@ ${body}
 </main>
 <script>${VIEWER_JS}</script>
 </body></html>` };
+    if (window.DeckRenderer) window.DeckRenderer.resume();
+    return result;
   }
 
   async function save() {

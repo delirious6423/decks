@@ -366,6 +366,15 @@ format. Full localStorage snapshots and pending-save backups remain available fo
 offline recovery and portable copies. Local snapshots and disk writes still serialize
 the complete saved state; this is not a new incremental database format.
 
+Interactive decks with at least 80 slides render slide bodies on demand. Focus keeps
+the current slide and its neighbors; Scroll renders near the viewport and releases
+distant bodies. Thumbnail bodies are released when they leave the thumbnail viewport.
+Lightweight wrappers retain order and comments, and edited fields survive eviction,
+undo, version switches, and reload. Untouched slide defaults need no saved field copy.
+Whole-deck checks, printing, client copies, and headless raw/saved exports still render
+all required slides. Add `?lazy=0` to compare with eager rendering. Existing deck files
+keep their embedded engine; newly generated decks get this behavior.
+
 Saved next to each deck, in `.slidebuilder/`:
 
 - `state.json`: the reviewer's edits, comments, and slide order, mirrored from the page.
@@ -396,6 +405,31 @@ With a scratch server and `Bench blank`, `Bench talk`, and `Bench workshop` deck
 The browser tests clear the blank scratch deck's saved state and need Poppler's `pdftotext`. `tests/benchmark.mjs`
 compares real CLI jobs and save requests against an unmodified checkout; its header
 lists the required environment variables.
+
+For large-deck tests, `python3 tests/prepare-performance.py /tmp/decks-perf` creates
+disposable standard templates and mixed-layout 100/500/1000-slide fixtures. Start the
+server with that `SB_DECKS_DIR`, then run `node --test tests/lazy.test.mjs` with `SB_URL`
+and `SB_CHROME`. These tests clear the 500-slide fixture's saved state. To benchmark,
+run `node tests/benchmark-lazy.mjs` with `BASELINE_URL` pointing at the previous version's
+matching fixtures. External font requests are blocked equally during that benchmark
+to isolate rendering work; startup and navigation samples are recorded separately.
+
+For the 1,000-slide mixed-layout fixture, five-run medians against the prior worker /
+incremental-save version were:
+
+| Operation | Before | Lazy rendering |
+|---|---:|---:|
+| Page ready | 2,275 ms | 694 ms |
+| Engine render and restore | 1,434 ms | 174 ms |
+| First save-state collection + JSON | 228.4 ms | 2.1 ms |
+| Warm save-state collection + JSON | 5.4 ms | 0.9 ms |
+| Main-deck bodies at startup | 1,000 | 2 |
+
+The first-save result has cold default hashes in the baseline; it is not a claim of
+100x overall application speed. Navigation remained similar, and wrappers, sidebar
+and filmstrip rows still scale with deck size. Save collection excludes debounce,
+network and disk time. Raw samples and source hashes are in
+[`tests/benchmarks/lazy-linux.json`](tests/benchmarks/lazy-linux.json).
 
 ## License
 
