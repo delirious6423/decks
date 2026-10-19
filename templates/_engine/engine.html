@@ -3016,6 +3016,9 @@ function numberSlides() {
 }
 
 function renderPitch(key) {
+  // Finish the previous version before switching; its debounce may still be pending.
+  if (dirty) { clearTimeout(saveTimer); snapshot(); dirty = false; }
+  defaultHashes.clear();
   current = key;
   const p = PITCHES[key];
   titleEl.textContent = p.name;
@@ -3109,6 +3112,7 @@ function snapshot() {
   try { localStorage.setItem(KEY(), JSON.stringify(currentData())); } catch (e) {}
   flagSaved();
 }
+window.__DECK_FLUSH = () => { clearTimeout(saveTimer); if (dirty) { snapshot(); dirty = false; } };
 function savedFor(key) {
   let data = null;
   if (CAN_STORE) { try { data = JSON.parse(localStorage.getItem('{{PREFIX}}ws_' + key) || 'null'); } catch (e) { data = null; } }
@@ -3166,17 +3170,49 @@ window.__DECK_STATE = () => {
   return { version: current, order: [...deckEl.querySelectorAll('.slide-wrap')].map((w) => w.dataset.id), edits: currentData(), feedback };
 };
 const djb = (str) => { let h = 5381; for (let i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) | 0; return String(h); };
-const defHash = (id) => { const f = build(id); return f ? djb([...f.querySelectorAll('[contenteditable]')].map((n) => n.innerHTML).join('\u0001')) : ''; };
+const defaultHashes = new Map(), slideSaves = new WeakMap();
+const defHash = (id) => {
+  // Definitions normally change only on reload. Including their content also handles
+  // in-page changes, and ORIG/ADDED change how build renders a slide.
+  const signature = JSON.stringify(LIBRARY[id]) + '|' + ORIG.has(id) + '|' + ADDED.has(id);
+  const cached = defaultHashes.get(id);
+  if (cached && cached.signature === signature) return cached.hash;
+  const f = build(id), hash = f ? djb([...f.querySelectorAll('[contenteditable]')].map((n) => n.innerHTML).join('\u0001')) : '';
+  defaultHashes.set(id, { signature, hash }); return hash;
+};
+// Cache editable fields per wrapper. Taking pending observer records makes synchronous
+// currentData()/Save a copy calls see programmatic edits as well as typing and pictures.
+const invalidateSaves = (records) => records.forEach((m) => {
+  if (m.target === deckEl && m.type === 'childList') {
+    // A stashed wrapper can change while detached, outside this observer's subtree.
+    [...m.addedNodes, ...m.removedNodes].forEach((n) => { if (n.nodeType === 1) slideSaves.delete(n); });
+    return;
+  }
+  const target = m.target.nodeType === 1 ? m.target : m.target.parentElement;
+  const wrap = target && target.closest('.slide-wrap'); if (!wrap || wrap.parentElement !== deckEl) return;
+  const editable = target.closest('[contenteditable]');
+  const changedFields = m.type === 'childList' && [...m.addedNodes, ...m.removedNodes].some((n) => n.nodeType === 1 && (n.matches('[contenteditable]') || n.querySelector('[contenteditable]')));
+  if (editable || changedFields || m.attributeName === 'contenteditable') slideSaves.delete(wrap);
+});
+const saveObserver = new MutationObserver(invalidateSaves);
+saveObserver.observe(deckEl, { subtree: true, childList: true, characterData: true, attributes: true });
 function currentData() {
+  invalidateSaves(saveObserver.takeRecords());
   const data = {};
-  deckEl.querySelectorAll('.slide-wrap').forEach((f) => { const bits = []; f.querySelectorAll('[contenteditable]').forEach((n) => bits.push(n.innerHTML)); data[f.dataset.id] = bits; });
-  data.__order = [...deckEl.querySelectorAll('.slide-wrap')].map((f) => f.dataset.id);
+  const wraps = [...deckEl.children].filter((f) => f.classList.contains('slide-wrap'));
+  wraps.forEach((f) => {
+    let bits = slideSaves.get(f);
+    if (!bits) { bits = [...f.querySelectorAll('[contenteditable]')].map((n) => n.innerHTML); slideSaves.set(f, bits); }
+    data[f.dataset.id] = bits;
+  });
+  data.__order = wraps.map((f) => f.dataset.id);
   data.__defOrder = PITCHES[current].blocks.slice();
-  const fb = {}; deckEl.querySelectorAll('.slide-wrap').forEach((w) => { const t = w.querySelector('.fb'); if (t && t.value.trim()) fb[w.dataset.id] = t.value.trim(); });
+  const fb = {}; wraps.forEach((w) => { const t = w.querySelector('.fb'); if (t && t.value.trim()) fb[w.dataset.id] = t.value.trim(); });
   data.__fb = fb;
   data.__orig = [...ORIG];
   data.__added = [...ADDED];
-  data.__removed = PITCHES[current].blocks.filter((id) => !data.__order.includes(id));
+  const present = new Set(data.__order);
+  data.__removed = PITCHES[current].blocks.filter((id) => !present.has(id));
   const def = {}; Object.keys(data).forEach((id) => { if (!id.startsWith('__') && LIBRARY[id]) def[id] = defHash(id); });
   data.__def = def;
   return data;
@@ -3204,9 +3240,10 @@ function nosaveBanner() {
   b.querySelector('button').addEventListener('click', () => document.getElementById('copy-edits').click());
   document.body.appendChild(b);
 }
-deckEl.addEventListener('input', () => { dirty = true; if (!CAN_STORE) nosaveBanner(); clearTimeout(saveTimer); saveTimer = setTimeout(() => { snapshot(); if (CAN_STORE) dirty = false; }, 600); });
+deckEl.addEventListener('input', (e) => { const w = e.target.closest && e.target.closest('.slide-wrap'); if (w) slideSaves.delete(w); dirty = true; if (!CAN_STORE) nosaveBanner(); clearTimeout(saveTimer); saveTimer = setTimeout(() => { snapshot(); if (CAN_STORE) dirty = false; }, 600); });
+window.addEventListener('beforeunload', () => { if (dirty && CAN_STORE) window.__DECK_FLUSH(); });
 window.addEventListener('beforeunload', (e) => { if (dirty && !CAN_STORE) { e.preventDefault(); e.returnValue = ''; } });
-document.getElementById('reload-btn').addEventListener('click', () => { if (confirm('Discard your saved edits for this version and restore the original text?')) { try { localStorage.setItem(KEY(), JSON.stringify({ __reverted: true })); } catch (e) {} renderPitch(current); flagSaved(); } });
+document.getElementById('reload-btn').addEventListener('click', () => { if (confirm('Discard your saved edits for this version and restore the original text?')) { clearTimeout(saveTimer); dirty = false; try { localStorage.setItem(KEY(), JSON.stringify({ __reverted: true })); } catch (e) {} renderPitch(current); flagSaved(); } });
 
 /* ================= sorter: drag-and-drop view =================
    A thumbnail grid of the running order, and a shelf of every library slide
@@ -3704,7 +3741,7 @@ document.addEventListener('keydown', (e) => {
 
 renderPitch(current); restore(); recountSidebar();
 try { if (sessionStorage.getItem('{{PREFIX}}view') === 'sorter') (document.fonts ? document.fonts.ready : Promise.resolve()).then(() => setTimeout(() => setView('sorter'), 60)); } catch (e) {}
-document.fonts && document.fonts.ready.then(() => { autofitText(); fitSlides(); drawTrees(); });
+window.__DECK_READY = (document.fonts ? document.fonts.ready : Promise.resolve()).then(() => { autofitText(); fitSlides(); drawTrees(); });
 </script>
 </body>
 </html>

@@ -153,6 +153,44 @@ def merge_saved(base, mine, theirs):
     return json.dumps(merge3(b, m, t), ensure_ascii=False, separators=(',', ':'))
 
 
+def patch_saved(raw, operations):
+    """Apply only changed object leaves, preserving other tabs' independent edits.
+
+    Arrays (editable fields and slide order) stay atomic, matching merge3. State on
+    disk stays in the original format, so old engines and offline recovery work.
+    """
+    if not isinstance(operations, list) or len(operations) > 10000:
+        raise ValueError('bad state patch')
+    try:
+        value = json.loads(raw) if raw is not None else {}
+    except (TypeError, json.JSONDecodeError):
+        value = {}
+    if not isinstance(value, dict):
+        value = {}
+    for op in operations:
+        if not isinstance(op, dict):
+            raise ValueError('bad state patch operation')
+        path = op.get('path')
+        if not isinstance(path, list) or not 1 <= len(path) <= 20 or any(
+                not isinstance(k, str) or k in ('__proto__', 'constructor', 'prototype') for k in path):
+            raise ValueError('bad state patch path')
+        if not op.get('remove') and 'value' not in op:
+            raise ValueError('missing state patch value')
+        parent = value
+        for key in path[:-1]:
+            if not isinstance(parent.get(key), dict):
+                parent[key] = {}
+            parent = parent[key]
+        key = path[-1]
+        if op.get('remove'):
+            parent.pop(key, None)
+        elif op.get('hadBase') and key in parent:
+            parent[key] = merge3(op.get('base'), op['value'], parent[key])
+        else:
+            parent[key] = op['value']
+    return json.dumps(value, ensure_ascii=False, separators=(',', ':'))
+
+
 def pulse_of(deck):
     sb = sb_dir(deck)
     return {'file': mtime(deck['path'] / deck['entry']), 'review': mtime(sb / 'review.json'),
@@ -585,7 +623,14 @@ class Handler(BaseHTTPRequestHandler):
                     else:
                         keys[k] = v
             for k in body.get('remove') or []:
-                keys.pop(k, None)
+                if any(k.startswith(p) for p in deck.get('prefixes', [])):
+                    keys.pop(k, None)
+            try:
+                for k, operations in (body.get('patch') or {}).items():
+                    if any(k.startswith(p) for p in deck.get('prefixes', [])):
+                        keys[k] = patch_saved(keys.get(k), operations)
+            except (ValueError, AttributeError) as e:
+                return self.json(400, {'error': str(e)})
             st['savedAt'] = time.time()
             write_json(path, st)
             SAVES[deck['slug']] = {'at': st['savedAt'], 'by': str(body.get('tab') or '')[:40]}

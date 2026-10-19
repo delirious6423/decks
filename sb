@@ -212,9 +212,15 @@ def main(argv):
         n = max(nums, default=0) + 1
         out = path / f'{base} (v{n} export).pdf'
         with_edits = '--with-edits' in rest
+        # One worker job checks saved edits, renders the PDF and makes the thumbnail.
+        # The worker keeps Chrome running; its contexts keep raw and saved state separate.
+        result = json.loads(node('export', slug, str(out), '--check-edits', '--thumb', str(path / '.slidebuilder' / 'thumb.png'),
+                                 *(['--version', version] if version else []), *(['--with-edits'] if with_edits else [])))
+        for error in result.get('errors', []):
+            print('PAGE ERROR', error, file=sys.stderr)
         if not with_edits:   # the PDF is the deck file; say so if the browser holds changes it leaves out
             try:
-                e = json.loads(node('edits', slug, *(['--version', version] if version else [])))
+                e = result['edits']
                 left = [f"{len(e['edits'])} text edit{'s' * (len(e['edits']) != 1)}" if e.get('edits') else '',
                         f"{len(e['added'])} added slide{'s' * (len(e['added']) != 1)}" if e.get('added') else '',
                         f"{len(e['removed'])} removed slide{'s' * (len(e['removed']) != 1)}" if e.get('removed') else '',
@@ -225,12 +231,10 @@ def main(argv):
                           f"      Bake them in first (./sb edits {slug}), or export what the browser shows with --with-edits.", file=sys.stderr)
             except (SystemExit, ValueError, KeyError):
                 pass
-        node('export', slug, str(out), *(['--version', version] if version else []), *(['--with-edits'] if with_edits else []))
         archive.mkdir(exist_ok=True)
         for p in path.glob('*.pdf'):
             if pat.match(p.name) and p != out:
                 shutil.move(str(p), archive / p.name)
-        node('thumb', slug, str(path / '.slidebuilder' / 'thumb.png'))
         print(out)
     elif cmd in ('hide', 'show', 'delete'):
         if cmd == 'delete' and '--yes' not in rest:

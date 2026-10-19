@@ -52,15 +52,46 @@
 
   // 4. mirror saves back, debounced; anything unsent is kept under DIRTY until it lands
   let queue = {}, timer = null, inflight = false, retry = 0;
+  // Object leaves (a slide's text array, one comment, an order) are the units of a save.
+  // Keep full snapshots in localStorage for offline copies and recovery, but only send
+  // changed leaves. Old deck engines benefit too; the server still accepts legacy sets.
+  const object = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
+  const changes = (before, after, path = [], out = []) => {
+    for (const key of new Set([...Object.keys(before), ...Object.keys(after)])) {
+      if (['__proto__', 'constructor', 'prototype'].includes(key)) continue;
+      const had = Object.hasOwn(before, key), has = Object.hasOwn(after, key), b = before[key], a = after[key];
+      if (had && has && object(b) && object(a)) changes(b, a, [...path, key], out);
+      else if (!had || !has || JSON.stringify(b) !== JSON.stringify(a)) {
+        const op = { path: [...path, key], hadBase: had };
+        if (had) op.base = b;
+        if (has) op.value = a; else op.remove = true;
+        out.push(op);
+      }
+    }
+    return out;
+  };
+  const requestFor = (batch) => {
+    const body = { set: {}, remove: [], base: {}, patch: {}, tab: TAB };
+    Object.entries(batch).forEach(([k, v]) => {
+      if (v === null) { body.remove.push(k); return; }
+      try {
+        const b = JSON.parse(synced[k]), a = JSON.parse(v);
+        if (object(b) && object(a)) { body.patch[k] = changes(b, a); return; }
+      } catch (e) {}
+      body.set[k] = v; body.base[k] = k in synced ? synced[k] : null;
+    });
+    return body;
+  };
   const keep = () => { try {
     const p = readMap(DIRTY), b = readMap(DBASE);
     Object.keys(queue).forEach((k) => { if (!(k in b)) b[k] = k in synced ? synced[k] : null; });
     set.call(ls, DIRTY, JSON.stringify(Object.assign(p, queue))); set.call(ls, DBASE, JSON.stringify(b)); } catch (e) {} };
   const flush = (keepalive) => {
-    if (inflight && !keepalive) { clearTimeout(timer); timer = setTimeout(() => flush(), 300); return; }
+    // A later keepalive must not race an earlier PUT and overwrite newer changes.
+    // Unsent work is already durable under DIRTY and replays on the next open.
+    if (inflight) { if (!keepalive) { clearTimeout(timer); timer = setTimeout(() => flush(), 300); } return; }
     const batch = queue; queue = {}; if (!Object.keys(batch).length) return;
-    const body = { set: {}, remove: [], base: {}, tab: TAB };
-    Object.entries(batch).forEach(([k, v]) => { if (v === null) body.remove.push(k); else { body.set[k] = v; body.base[k] = k in synced ? synced[k] : null; } });
+    const body = requestFor(batch);
     inflight = true;
     fetch(api, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), keepalive: !!keepalive })
       .then((r) => { if (!r.ok) throw new Error(r.status);
@@ -76,6 +107,6 @@
   if (readonly) { window.__SB = { slug: B.slug, name: B.name, page: B.page, entry: B.entry, folder: B.folder, hideVersions: B.hideVersions || [], pulse: B.pulse, readonly: true, flush: () => {} }; return; }
   Storage.prototype.setItem = function (k, v) { set.call(this, k, v); if (this === ls && ours(String(k))) note(String(k), String(v)); };
   Storage.prototype.removeItem = function (k) { del.call(this, k); if (this === ls && ours(String(k))) note(String(k), null); };
-  window.addEventListener('pagehide', () => flush(true));
+  window.addEventListener('pagehide', () => { if (window.__DECK_FLUSH) window.__DECK_FLUSH(); flush(true); });
   window.__SB = { slug: B.slug, name: B.name, page: B.page, entry: B.entry, folder: B.folder, hideVersions: B.hideVersions || [], pulse: B.pulse, tab: TAB, flush: () => flush() };
 })();

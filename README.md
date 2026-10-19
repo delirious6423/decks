@@ -337,7 +337,8 @@ systemctl --user enable --now decks
 | `newdeck.py` | Themes, templates, and new decks (used by the server and `sb new`) |
 | `templates/` | `_engine/engine.html` (the deck engine), `_engine/basics.js`, and one folder per template |
 | `static/` | The browser shell: `boot.js`, `shell.js`, `shell.css`, `guides.js`, `addslide.js`, `pictures.js`, `clientcopy.js`, and `dashboard.html` |
-| `tools/browser.mjs` | Headless Chrome jobs behind `sb`: titles, edits, shots, audit, PDF, and thumbnails |
+| `tools/browser.mjs` | CLI and private local worker for headless Chrome jobs |
+| `tools/browser-jobs.mjs` | Titles, edits, shots, audit, PDF, and thumbnail jobs, with a fresh browser context per job |
 | `tools/pptx2native.py` | Converts PowerPoint slides into editable native slides (how the consulting starter was made) |
 
 When the server serves a deck page, it adds a small boot script that loads the deck's
@@ -345,6 +346,25 @@ saved state and mirrors later saves back to disk, then removes its own tags befo
 deck runs. The deck file itself never changes, so a saved copy is still a clean file.
 `?raw=1` serves the file without the shell around it. (In a browser that has edited the
 deck, it still shows those saved edits.)
+
+Headless commands start a private worker automatically and reuse its Chrome process.
+Jobs are serialized and get fresh browser contexts, keeping saved edits separate from
+raw exports. Export checks, PDF generation, and the dashboard thumbnail run in one job.
+The worker closes Chrome after two idle minutes; `SB_BROWSER_IDLE_MS` changes that
+timeout. `node tools/browser.mjs worker-status` reports its state and `worker-stop`
+closes it. `SB_BROWSER_WORKER=0` runs without the worker for diagnostics.
+
+Jobs wait for page load, fonts, image decoding, and two animation frames instead of
+fixed sleeps. A deck with asynchronous chart work can publish a promise as
+`window.__DECK_READY`; readiness has a 30-second timeout.
+
+New decks cache unchanged editable fields and default hashes while saving. Existing
+deck files keep their embedded engine; they still get smaller network saves through
+the shared boot script. Saves send changed object leaves (slide fields, individual
+comments, or the order), and the server merges them into the existing `state.json`
+format. Full localStorage snapshots and pending-save backups remain available for
+offline recovery and portable copies. Local snapshots and disk writes still serialize
+the complete saved state; this is not a new incremental database format.
 
 Saved next to each deck, in `.slidebuilder/`:
 
@@ -369,6 +389,13 @@ API (what `sb` uses):
 - `POST /api/decks/<slug>/manage`: `{op: 'hide' | 'show' | 'delete'}`.
 - `POST /api/decks/<slug>/bundle`: a copy of the deck with its pictures and scripts embedded.
 - `POST /api/decks/<slug>/upload`: a picture for a slide, saved in the deck's `img/uploads/`.
+
+Regression checks: `python3 -m unittest discover -s tests` tests state merges.
+With a scratch server and `Bench blank`, `Bench talk`, and `Bench workshop` decks, run
+`SB_URL=http://127.0.0.1:8799 SB_CHROME=/path/to/chrome node --test tests/browser.test.mjs`.
+The browser tests clear the blank scratch deck's saved state and need Poppler's `pdftotext`. `tests/benchmark.mjs`
+compares real CLI jobs and save requests against an unmodified checkout; its header
+lists the required environment variables.
 
 ## License
 
