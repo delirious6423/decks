@@ -4,7 +4,8 @@
    no editing. It is a snapshot of the slides themselves, so none of that is even in its source.
    One file: the server embeds the pictures. It scrolls, prints one slide per page, and presents
    full screen (Present, or P). */
-(function () {
+(async function () {
+  if (window.__SB_ENGINE_READY) await window.__SB_ENGINE_READY;
   const SB = window.__SB, deck = document.getElementById('deck');
   const menu = document.querySelector('#sb-more > div');
   if (!SB || !deck || !menu) return;
@@ -79,6 +80,8 @@ window.addEventListener('resize',fit);window.addEventListener('beforeprint',func
 fit();if(document.fonts&&document.fonts.ready)document.fonts.ready.then(fit);})();`;
 
   function snapshot() {
+    const ids = window.DeckRenderer?.ids() || [];
+    if (window.DeckData && !DeckData.ready(ids)) return DeckData.load(ids).then(snapshot);
     if (window.DeckRenderer) window.DeckRenderer.all();
     const frames = slides();
     const css = [...document.querySelectorAll('style')].filter((s) => !/^sb/.test(s.id || '')).map((s) => s.textContent).join('\n');
@@ -106,7 +109,7 @@ ${body}
 
   async function save() {
     const say = (t) => { try { window.SlideBuilder.say(t); } catch (e) {} };
-    const snap = snapshot();
+    const snap = await snapshot();
     let out = new Blob([snap.html], { type: 'text/html' }), pics = null;
     try {
       const r = await fetch(api('bundle'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ html: snap.html }) });
@@ -119,7 +122,7 @@ ${body}
 
   const b = document.createElement('button'); b.id = 'sb-client-copy'; b.textContent = 'Client copy: slides only';
   b.title = 'The file to send a client: this version’s slides as they look now. No notes, comments, other versions, or editing.';
-  b.addEventListener('click', () => { document.getElementById('sb-more').classList.remove('open'); save(); });
+  b.addEventListener('click', () => { document.getElementById('sb-more').classList.remove('open'); save().catch(window.DeckData?.fail || console.error); });
   menu.insertBefore(b, menu.firstChild);
-  if (window.SlideBuilder) window.SlideBuilder.clientCopy = () => snapshot().html;   // for the tools
+  if (window.SlideBuilder) window.SlideBuilder.clientCopy = () => { const result = snapshot(); return result?.then ? result.then((s) => s.html) : result.html; };   // for the tools
 })();

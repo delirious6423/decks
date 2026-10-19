@@ -1,5 +1,8 @@
 # Decks
 
+**Performance fork:** persistent browser jobs, incremental saves, virtual slide/list
+windows and on-demand slide data. See [measurements and tradeoffs](#performance).
+
 Make slides by commenting on them. You leave a comment under a slide, your coding agent
 (Claude Code or Codex) changes the deck, and it replies on the slide: what it did, a
 question for you, or why it left something alone.
@@ -335,8 +338,9 @@ systemctl --user enable --now decks
 | `sbconfig.py` | Port, address, and decks folder, from `config.json` and `SB_*` variables |
 | `sb` | The agent's command line |
 | `newdeck.py` | Themes, templates, and new decks (used by the server and `sb new`) |
+| `library.py` | Safe data-literal extraction, chunk generation and bounded serving cache |
 | `templates/` | `_engine/engine.html` (the deck engine), `_engine/basics.js`, and one folder per template |
-| `static/` | The browser shell: `boot.js`, `shell.js`, `shell.css`, `guides.js`, `addslide.js`, `pictures.js`, `clientcopy.js`, and `dashboard.html` |
+| `static/` | The browser shell: `boot.js`, `shell.js`, `shell.css`, `library.js` (embedded in new engines), `guides.js`, `addslide.js`, `pictures.js`, `clientcopy.js`, and `dashboard.html` |
 | `tools/browser.mjs` | CLI and private local worker for headless Chrome jobs |
 | `tools/browser-jobs.mjs` | Titles, edits, shots, audit, PDF, and thumbnail jobs, with a fresh browser context per job |
 | `tools/pptx2native.py` | Converts PowerPoint slides into editable native slides (how the consulting starter was made) |
@@ -369,7 +373,7 @@ the complete saved state; this is not a new incremental database format.
 Interactive decks with at least 80 slides render slide bodies on demand. Focus keeps
 the current slide and its neighbors; Scroll renders near the viewport and releases
 distant bodies. Thumbnail bodies are released when they leave the thumbnail viewport.
-Lightweight wrappers retain order and comments, and edited fields survive eviction,
+The logical model retains order and comments while wrappers are unmounted, and edited fields survive eviction,
 undo, version switches, and reload. Untouched slide defaults need no saved field copy.
 Whole-deck checks, printing, client copies, and headless raw/saved exports still render
 all required slides. Add `?lazy=0` to compare with eager rendering. Existing deck files
@@ -407,7 +411,132 @@ API (what `sb` uses):
 - `POST /api/decks/<slug>/bundle`: a copy of the deck with its pictures and scripts embedded.
 - `POST /api/decks/<slug>/upload`: a picture for a slide, saved in the deck's `img/uploads/`.
 
-Regression checks: `python3 -m unittest discover -s tests` tests state merges.
+<!-- library-performance:start -->
+## Performance
+
+This fork combines a persistent headless-browser worker, incremental network saves,
+virtual slide wrappers and lists, and on-demand slide data. The earlier measurements
+below document each step; they are not multiplicative claims about the entire app.
+
+### On-demand slide libraries
+
+Newly generated engines support serving large data-only `LIBRARY` declarations and
+`Object.assign(LIBRARY, ...)` blocks as a metadata index plus content-addressed JSON
+chunks of 64 definitions. Blocks under 256 entries and blocks containing functions,
+references or other unsupported JavaScript expressions remain embedded. The first
+chunk and copyable basic layouts stay available immediately; later bodies, tables,
+pictures and notes load when navigation or a visible thumbnail needs them. Metadata
+still grows with library size, so startup is not constant-time.
+
+The server derives these resources without executing deck code or changing the deck
+file. Its cache holds eight files, checks nanosecond timestamps/inodes/sizes, and drops
+old revisions. Chunk requests use SHA-256 URLs; an unavailable revision returns 409.
+Requests share in-flight work, use at most six concurrent fetches, and retry after
+failures. Late requests, stale Scroll timers and rapid keyboard steps preserve the
+latest requested selection. Gzip reduces large HTML/JSON transfer sizes.
+
+Whole-deck operations wait for their definitions. App printing awaits data, fonts and
+images; native browser-menu printing has a synchronous `beforeprint` fallback because
+that event cannot await a promise. Editable copies fetch and bundle the complete
+original source, including edits, for offline use. Raw/readonly exports remain eager.
+Existing files retain their embedded engine; newly generated files receive this loader.
+
+Agent integrations should `await SlideBuilder.go(id)`, `await SlideBuilder.setView('checks')`,
+`await DeckRenderer.all()`, `await SBGuides.scan()` and `await SlideBuilder.clientCopy()`.
+These work with both immediate and asynchronous results. For a cold preview or direct
+mount, first `await DeckData.load([id])`, then call `DeckRenderer.preview(id)` or
+`DeckRenderer.ensure(id)`. The logical-order and offscreen-comment APIs still work
+without loading a body. `?library=0` disables data splitting; `SB_SPLIT_LIBRARY=0`
+disables it for a scratch server, and `SB_GZIP=0` disables compression.
+
+Five interleaved trials against `7543103`, using matching mixed-layout fixtures,
+fresh browser contexts, 1600×1000 viewports and equal external-font blocking on the
+provided Linux VM (24 logical CPUs, 61 GiB RAM). Startup fixtures have no saved edits;
+the edit/save exercise runs afterward. The table has a warm server transform
+cache and cold browser HTTP caches. Startup ends at `sb-ready` plus two frames;
+browser/server process launch is excluded. Navigation measurements now await the
+actual target body and assert that it is displayed.
+
+| Slides | Startup before → after | HTML body transferred | Decoded HTML |
+|---:|---:|---:|---:|
+| 1,000 | 227 → 208 ms | 758 → 109 kB | 0.76 → 0.50 MB |
+| 5,000 | 318 → 254 ms | 2488 → 141 kB | 2.49 → 1.08 MB |
+| 10,000 | 455 → 276 ms | 4652 → 177 kB | 4.65 → 1.82 MB |
+
+At 10,000 slides this is **1.65× faster startup** and
+**96.2% fewer HTML transfer bytes**.
+Complete definitions at startup fall from 10,077 to 141
+(the latter includes starter/basic layouts). The first distant jump costs
+4.9 → 14.3 ms, including its cold data fetch;
+repeat navigation reuses the loaded group. DOM remains bounded at two startup wrappers.
+
+**Cold cache cost matters.** Invalidating the server transform cache before each open
+measured 416 → 401 ms at 10,000 slides,
+and 285 → 228 ms at 1,000 slides. Small cold opens
+can be slower; cache construction is not hidden in the warm figures. Under 4× browser
+CPU throttling, 10,000-slide startup measured 1694 → 940 ms.
+A separate 15-trial small-deck check measured blank: 199 → 206 ms; workshop: 225 → 226 ms.
+Absolute timings vary across VM passes; compare paired figures from the same pass.
+These results do not establish 100× overall application performance.
+
+### Rust assessment
+
+No Rust rewrite is included. The separate 10,000-slide sample reduced source compile
+time from 63.5 to 11.0 ms by removing work.
+Warm scripting in the timed run takes about 54 ms of 276 ms total;
+even making all of it free would only imply roughly 1.24× in that simplified model.
+That is an inference, not a measured Rust speedup. Browser layout and PDF rendering
+would still run in Chromium. WebAssembly calls browser APIs through JavaScript/bindings,
+as described by [MDN](https://developer.mozilla.org/en-US/docs/WebAssembly/Guides/Concepts)
+and the [wasm-bindgen guide](https://wasm-bindgen.github.io/wasm-bindgen/web-sys/index.html).
+
+Cold index construction is the plausible native-code candidate, but it is paid once
+per changed/evicted file or server restart. Parsing, JSON encoding and hashing
+already use native standard-library routines. A persisted generated index/chunk cache is the next
+lower-complexity experiment. Large imports or geometry batches would need their own
+profile before adding a Rust boundary. Complete title/order metadata and populated
+saved-state bootstrap data remain further measurement targets. The current evidence
+supports reducing data and DOM work rather than rewriting the UI language.
+
+### Reproduce and validate
+
+Generate disposable fixtures in both the baseline and current checkouts with
+`BENCH_SIZES=100,500,1000,5000,10000 python3 tests/prepare-performance.py /tmp/decks-perf`.
+Start separate scratch servers with different ports and `SB_DECKS_DIR` values. Set
+`SB_URL`, `BASELINE_URL` and `SB_CHROME` for:
+
+```sh
+node tests/benchmark-library.mjs
+BENCH_FIXTURES=1000,10000 CPU_RATE=4 node tests/benchmark-library.mjs
+node tests/benchmark-library-cold.mjs
+BENCH_FIXTURES=blank,workshop BENCH_TRIALS=15 node tests/benchmark-library.mjs
+PROFILE_SLUG=bench-large-10000 node tests/profile-startup.mjs
+python3 -m unittest discover -s tests
+node --test --test-concurrency=1 tests/browser.test.mjs tests/lazy.test.mjs tests/lists.test.mjs tests/wrappers.test.mjs tests/library.test.mjs
+node tests/stress-wrappers.mjs
+```
+
+The cold-cache script touches fixture files and must run on the machine hosting the
+scratch servers. Tests clear fixture state. Keep functional stress, profiling and
+export checks separate from timed runs. Historical synchronous-navigation benchmark
+scripts should use `SB_SPLIT_LIBRARY=0`; the library benchmark awaits cold navigation.
+
+Validation: 64 distinct automated tests, focused Scroll-race rechecks, eight parallel
+10,000-slide viewport/CPU scenarios, five template audit/export runs, 52 matching
+PDF pages, identical text for the 100-slide PDF with three raster spot checks, eight
+matching viewport frames, and a real 1,000-page live print containing an edited final
+slide and returning to seven wrappers. Consulting's existing `sample-2x2` text-size
+advisory remains. The new tests also cover offline editable copies, retry behavior,
+stale chunks, request ordering, rapid keys, default notes and gzip negotiation.
+
+Raw samples, source hashes and validation are in
+[`library-linux.json`](tests/benchmarks/library-linux.json), and diagnostic CPU samples
+are in [`library-profile-linux.json`](tests/benchmarks/library-profile-linux.json).
+
+### Earlier iterations
+<!-- library-performance:end -->
+
+Regression checks: `python3 -m unittest discover -s tests` tests state merges and library extraction/cache behavior.
 With a scratch server and `Bench blank`, `Bench talk`, and `Bench workshop` decks, run
 `SB_URL=http://127.0.0.1:8799 SB_CHROME=/path/to/chrome node --test tests/browser.test.mjs`.
 The browser tests clear the blank scratch deck's saved state and need Poppler's `pdftotext`. `tests/benchmark.mjs`

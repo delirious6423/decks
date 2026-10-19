@@ -7,7 +7,8 @@
      when Claude finishes a round (or shows a banner if you are typing).
    It only talks to the deck through its existing DOM: comments still live in each
    slide's .fb box and are saved by the deck itself. */
-(function () {
+(async function () {
+  if (window.__SB_ENGINE_READY) await window.__SB_ENGINE_READY;
   const SB = window.__SB;
   const deck = document.getElementById('deck');
   if (!SB || !deck) return;
@@ -212,8 +213,10 @@
   $('#sb-reveal').addEventListener('click', () => reveal());
   under.addEventListener('click', (e) => { if (e.target.closest('[data-keys]')) { e.stopPropagation(); more.classList.remove('open'); help.classList.toggle('on'); } });
 
-  const thumbs = new IntersectionObserver((es) => es.forEach((e) => { const box = e.target; if (!e.isIntersecting) { if (window.DeckRenderer?.enabled()) box.replaceChildren(); return; } if (!window.DeckRenderer?.enabled()) thumbs.unobserve(box); fillThumb(box); }), { root: $('#sb-film-list'), rootMargin: '300px' });
+  const thumbs = new IntersectionObserver((es) => es.forEach((e) => { const box = e.target; box._sbVisible = e.isIntersecting; if (!e.isIntersecting) { if (window.DeckRenderer?.enabled()) box.replaceChildren(); return; } if (!window.DeckRenderer?.enabled()) thumbs.unobserve(box); fillThumb(box); }), { root: $('#sb-film-list'), rootMargin: '300px' });
   function fillThumb(box) {
+    const id = box.dataset.id;
+    if (window.DeckData && !DeckData.ready([id])) { DeckData.load([id]).then(() => { if (box.isConnected && box._sbVisible !== false && box.dataset.id === id) fillThumb(box); }).catch(DeckData.fail); return; }
     const w = window.DeckRenderer ? window.DeckRenderer.preview(box.dataset.id) : wrapOf(box.dataset.id); const s = w && w.querySelector('.slide'); if (!s) return;
     const c = s.cloneNode(true);
     c.querySelectorAll('.ctrls, .slide-tag, .sb-badge').forEach((x) => x.remove());
@@ -326,6 +329,7 @@
           const order = all.filter((x) => x !== dragId); order.splice(order.indexOf(id) + (after ? 1 : 0), 0, dragId); const moved = dragId; saveOrder(order); setTimeout(() => go(moved, true), 200); });
       }
       b.addEventListener('click', (e) => {
+        if (e.target.closest('.sb-x') && virtual()) { e.stopPropagation(); saveOrder(slideIds().filter((x) => x !== id)); return; }
         if (e.target.closest('.sb-x')) { e.stopPropagation(); if (window.DeckRenderer) window.DeckRenderer.ensure(id); const w = wrapOf(id), rm = w && w.querySelector('.ctrls [data-a="rm"]'); if (rm) { const k = ids.indexOf(id); if (id === cur) cur = ids[k + 1] || ids[k - 1] || null; rm.click(); } return; }
         go(id);
       });
@@ -403,11 +407,12 @@
   });
 
   // ---------- sorter ----------
-  const fitThumb = (box, k) => { let w = (window.DeckRenderer ? window.DeckRenderer.preview(box.dataset.id) : wrapOf(box.dataset.id)) || null; if (!w) { try { w = build(box.dataset.id); } catch (e) { w = null; } } const s0 = w && w.querySelector('.slide'); if (!s0) return;
+  const fitThumb = (box, k) => { const id = box.dataset.id; if (window.DeckData && !DeckData.ready([id])) { DeckData.load([id]).then(() => { if (box.isConnected && box._sbVisible !== false && box.dataset.id === id) fitThumb(box, k); }).catch(DeckData.fail); return; } let w = (window.DeckRenderer ? window.DeckRenderer.preview(box.dataset.id) : wrapOf(box.dataset.id)) || null; if (!w) { try { w = build(box.dataset.id); } catch (e) { w = null; } } const s0 = w && w.querySelector('.slide'); if (!s0) return;
     const c = s0.cloneNode(true);
     c.querySelectorAll('.ctrls, .slide-tag, .sb-badge').forEach((x) => x.remove()); c.querySelectorAll('[contenteditable]').forEach((x) => x.removeAttribute('contenteditable')); c.querySelectorAll('[id]').forEach((x) => x.removeAttribute('id'));
     c.style.transform = `scale(${k})`; box.innerHTML = ''; box.appendChild(c); };
-  const lazy = new IntersectionObserver((es) => {   // every thumbnail is the same width: measure once, not once per slide
+  const lazy = new IntersectionObserver((es) => {
+    es.forEach((e) => { e.target._sbVisible = e.isIntersecting; });   // every thumbnail is the same width: measure once, not once per slide
     if (window.DeckRenderer?.enabled()) es.filter((e) => !e.isIntersecting).forEach((e) => e.target.replaceChildren());
     const boxes = es.filter((e) => e.isIntersecting).map((e) => e.target); if (!boxes.length) return;
     const k = boxes[0].clientWidth / 1000; boxes.forEach((b) => { if (!window.DeckRenderer?.enabled()) lazy.unobserve(b); fitThumb(b, k); });
@@ -432,6 +437,7 @@
       const c = h('div', 'sb-card' + (id === cur ? ' on' : '')); c.draggable = true; c.dataset.id = id; c.title = title(id);
       c.innerHTML = `<div class="sb-tb" data-id="${esc(id)}"></div><span class="sb-x" title="Leave this slide out of this version">×</span><div class="sb-cap"><b>${k + 1}</b><span class="sb-t">${esc(title(id))}</span><span class="sb-dots">${dotsFor(id)}</span></div>`;
       c.addEventListener('click', (e) => {
+        if (e.target.closest('.sb-x') && virtual()) { saveOrder(slideIds().filter((x) => x !== id)); return; }
         if (e.target.closest('.sb-x')) { if (window.DeckRenderer) window.DeckRenderer.ensure(id); const rm = wrapOf(id) && wrapOf(id).querySelector('.ctrls [data-a="rm"]'); if (rm) rm.click(); return; }
         cur = id; setView('focus');
       });
@@ -693,7 +699,12 @@
   window.addEventListener('resize', debounce(masks, 150));
 
   // ---------- views, navigation, and sizing ----------
+  let viewRequest = 0;
   function setView(v) {
+    goRequest++; wantedSlide = null; clearTimeout(trackingTimer); tracking = true; deck.removeAttribute('aria-busy');
+    const request = ++viewRequest;
+    const ids = slideIds();
+    if (v === 'checks' && window.DeckData && !DeckData.ready(ids)) return DeckData.load(ids).then(() => { if (request === viewRequest) return setView(v); }).catch(DeckData.fail);
     if (ui.view === 'sorter' && v !== 'sorter') { lazy.disconnect(); sorter.replaceChildren(); }
     if (ui.view === 'checks' && v !== 'checks') checks.replaceChildren();
     ui.view = v; saveUi();
@@ -710,9 +721,10 @@
     if (document.body.classList.contains('view-sorter') && $('[data-view="slides"]')) $('[data-view="slides"]').click();
     if (v === 'sorter') { wraps().forEach((w) => w.classList.remove('sb-active')); renderSorter(); window.scrollTo(0, 0); sideState(); return; }
     top.querySelectorAll('.sb-seg button').forEach((b) => b.classList.toggle('on', b.dataset.v === v));
-    if (v === 'focus') { if (document.body.classList.contains('view-sorter') && $('[data-view="slides"]')) $('[data-view="slides"]').click(); if (!cur || !hasSlide(cur)) cur = (visible()[0] || slideIds()[0]); go(cur, true); }
+    let selection;
+    if (v === 'focus') { if (document.body.classList.contains('view-sorter') && $('[data-view="slides"]')) $('[data-view="slides"]').click(); if (!cur || !hasSlide(cur)) cur = (visible()[0] || slideIds()[0]); selection = go(cur, true); }
     else { wraps().forEach((w) => w.classList.remove('sb-active')); deck.style.maxWidth = ''; renderFilm(); renderPanel(); requestAnimationFrame(() => { refit(); if (cur) { const w = wrapOf(cur); if (w) w.scrollIntoView({ block: 'start' }); } }); }
-    sideState();
+    sideState(); return selection;
   }
   top.querySelectorAll('.sb-seg button').forEach((b) => b.addEventListener('click', () => setView(b.dataset.v)));
   function sideState() {
@@ -752,8 +764,17 @@
   window.addEventListener('resize', debounce(() => { size(); if (ui.view === 'sorter') refitThumbs(); }, 120));
   new ResizeObserver(debounce(refit, 60)).observe(deck);
 
+  let goRequest = 0, wantedSlide = null;
   function go(id, force, fromScroll) {
-    if (!id || !hasSlide(id)) return;
+    if (!id || !hasSlide(id) || (fromScroll && !tracking)) return;
+    const manualScroll = !fromScroll && ui.view === 'scroll';
+    if (manualScroll) { clearTimeout(trackingTimer); tracking = false; }
+    const request = ++goRequest, idsToLoad = slideIds(), at = positionOf(id, idsToLoad), needed = idsToLoad.slice(Math.max(0, at - 1), at + 2);
+    if (window.DeckData && !DeckData.ready(needed)) {
+      wantedSlide = id; deck.setAttribute('aria-busy', 'true');
+      return DeckData.load(needed).then(() => { if (request === goRequest && hasSlide(id)) return go(id, force, fromScroll); }).catch(DeckData.fail).finally(() => { if (request === goRequest) { wantedSlide = null; deck.removeAttribute('aria-busy'); if (manualScroll) tracking = true; } });
+    }
+    wantedSlide = null; deck.removeAttribute('aria-busy');
     const changedSlide = id !== cur;
     const previous = changedSlide && wrapOf(cur);
     if (previous && window.DeckRenderer?.enabled() && !previous.querySelector('textarea.fb')?.value.trim() && !previous.querySelector('.sb-reply')) previous.querySelector('.sb-hold')?.remove();
@@ -769,7 +790,7 @@
       let hl = under.querySelector('.sb-hint-line'); if (!hl) { hl = h('div', 'sb-hint-line'); under.after(hl); }
       const t = titleEl(id), f = ui.checks === 'vertical' && t ? flags(id, t.innerText.trim()) : []; hl.textContent = f.map((x) => x[0] + ': ' + x[1]).join(' '); hl.style.display = f.length ? '' : 'none';
       if (isTimed() && changedSlide) tenReady(); }
-    else if (ui.view === 'scroll' && !fromScroll) { tracking = false; wrapOf(id).scrollIntoView({ block: 'start' }); setTimeout(() => { tracking = true; }, 400); }
+    else if (ui.view === 'scroll' && !fromScroll) { tracking = false; wrapOf(id).scrollIntoView({ block: 'start' }); trackingTimer = setTimeout(() => { if (request === goRequest) tracking = true; }, 400); }
     if (window.DeckRenderer) window.DeckRenderer.layout(id);
     history.replaceState(null, '', '#' + (sideSelect ? 'v=' + encodeURIComponent(sideSelect.value) + '&' : '') + 's=' + encodeURIComponent(id));
     const all = slideIds(), ids = visible(), k = filter === 'all' ? positionOf(id, all) : ids.indexOf(id);
@@ -781,7 +802,7 @@
     window.dispatchEvent(new CustomEvent('sb:slide', { detail: id }));   // for guides and anything else that draws on the slide in view
   }
   // scroll view: the left bar follows the slide you are looking at
-  let tracking = true;
+  let tracking = true, trackingTimer = null;
   const seen = new IntersectionObserver((es) => {
     if (ui.view !== 'scroll' || !tracking) return;
     const vis = es.filter((e) => e.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
@@ -790,9 +811,9 @@
   const watch = () => { seen.disconnect(); wraps().forEach((w) => seen.observe(w)); };
   function step(d) {
     const ids = visible(); if (!ids.length) return;
-    const k = filter === 'all' ? positionOf(cur, ids) : ids.indexOf(cur), next = ids[k < 0 ? 0 : Math.max(0, Math.min(ids.length - 1, k + d))];
-    if (next === cur) { edge(d); return; }   // nothing further this way: say so instead of redrawing the same slide
-    go(next);
+    const active = wantedSlide || cur, k = filter === 'all' ? positionOf(active, ids) : ids.indexOf(active), next = ids[k < 0 ? 0 : Math.max(0, Math.min(ids.length - 1, k + d))];
+    if (next === active) { edge(d); return; }   // nothing further this way: say so instead of redrawing the same slide
+    return go(next);
   }
   let edgeTimer = null;
   function edge(d) {
@@ -872,9 +893,9 @@
   });
 
   // the deck re-renders on version switches and reorders: follow it
-  const afterDeck = debounce(() => { if (cur && !hasSlide(cur)) cur = null; refresh(); watch(); if (ui.view === 'focus') go(cur || visible()[0] || slideIds()[0], true); }, 150);
+  const afterDeck = debounce(() => { if (cur && !hasSlide(cur)) cur = null; refresh(); watch(); if (ui.view === 'focus' && !wantedSlide) go(cur || visible()[0] || slideIds()[0], true); }, 150);
   new MutationObserver(() => { if (!virtual()) afterDeck(); }).observe(deck, { childList: true });
-  window.addEventListener('sb:order', afterDeck);
+  window.addEventListener('sb:order', () => { goRequest++; wantedSlide = null; deck.removeAttribute('aria-busy'); afterDeck(); });
   window.addEventListener('sb:window', () => { watch(); decorate(); });
   window.addEventListener('sb:comment', afterComment);
 
@@ -914,7 +935,7 @@
   const anchorClick = HTMLAnchorElement.prototype.click;
   let grab = null;
   document.addEventListener('click', (e) => {
-    if (!e.target.closest || !e.target.closest('#save-copy')) return;
+    if (window.DeckData || !e.target.closest || !e.target.closest('#save-copy')) return;
     const mk = URL.createObjectURL;
     grab = { blob: null, restore: () => { URL.createObjectURL = mk; HTMLAnchorElement.prototype.click = anchorClick; } };
     URL.createObjectURL = function (b) { if (grab && !grab.blob && b instanceof Blob) { grab.blob = b; return 'about:blank#sb-copy'; } return mk.call(URL, b); };
@@ -933,6 +954,17 @@
     } catch (err) {}
     saveDl(out, fileName());
     say2(pics === null ? `✓ Saved ${fileName()}. Its pictures stay next to the deck, so send the folder with it.` : `✓ Saved ${fileName()}: one file, with its ${pics} picture${pics === 1 ? '' : 's'} inside. It opens anywhere.`);
+  });
+
+  window.addEventListener('sb:copy', async (e) => {
+    e.preventDefault();
+    let out = new Blob([e.detail.html], { type: 'text/html' });
+    try {
+      const r = await fetch(api('bundle'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ html: e.detail.html }) });
+      if (r.ok) out = new Blob([await r.text()], { type: 'text/html' });
+    } catch (error) {}
+    saveDl(out, fileName());
+    say('Saved ' + esc(fileName()) + '.');
   });
 
   // ---------- live updates ----------
@@ -960,11 +992,11 @@
 
   // ---------- start ----------
   const wantV = decodeURIComponent((location.hash.match(/[#&]v=([^&]+)/) || [])[1] || '');
-  if (wantV && sideSelect && !(SB.hideVersions || []).includes(wantV) && [...sideSelect.options].some((o) => o.value === wantV) && sideSelect.value !== wantV) { sideSelect.value = wantV; sideSelect.dispatchEvent(new Event('change', { bubbles: true })); }
+  if (wantV && sideSelect && !(SB.hideVersions || []).includes(wantV) && [...sideSelect.options].some((o) => o.value === wantV) && sideSelect.value !== wantV) { sideSelect.value = wantV; if (window.DeckData) { await renderPitch(wantV); restore(); } else sideSelect.dispatchEvent(new Event('change', { bubbles: true })); }
   const want = decodeURIComponent((location.hash.match(/[#&]s=([^&]+)/) || [])[1] || '');
   cur = want && hasSlide(want) ? want : null;
   hideBtn().addEventListener('click', () => setHide(!ui.hide));
   setHide(!!ui.hide);
   watch();
-  loadReview().then(() => { setView(['scroll', 'sorter', 'checks'].includes(ui.view) ? ui.view : 'focus'); requestAnimationFrame(() => { document.body.classList.add('sb-ready'); window.dispatchEvent(new Event('sb:ready')); }); });
+  loadReview().then(async () => { await setView(['scroll', 'sorter', 'checks'].includes(ui.view) ? ui.view : 'focus'); if (cur && window.DeckData && !DeckData.ready([cur])) await go(cur, true); requestAnimationFrame(() => { document.body.classList.add('sb-ready'); window.dispatchEvent(new Event('sb:ready')); }); });
 })();

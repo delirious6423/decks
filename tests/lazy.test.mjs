@@ -13,100 +13,100 @@ async function open(query=''){
  await p.goto(url+query);await p.waitForFunction(()=>document.body.classList.contains('sb-ready'));return p;
 }
 const bodies=p=>p.locator('#deck > [data-id] .slide').count();
-const save=p=>p.evaluate(()=>new Promise(resolve=>{clearTimeout(saveTimer);window.addEventListener('sb:saved',()=>setTimeout(resolve,0),{once:true});snapshot();window.__SB.flush();}));
+const save=p=>p.evaluate(async()=>new Promise(resolve=>{clearTimeout(saveTimer);window.addEventListener('sb:saved',()=>setTimeout(resolve,0),{once:true});snapshot();window.__SB.flush();}));
 before(async()=>{browser=await chromium.launch({executablePath:process.env.SB_CHROME,headless:true});await clear();});
 afterEach(async()=>{for(const c of contexts.splice(0))await c.close();await clear();});
 after(async()=>{await browser.close();assert.deepEqual(errors,[]);});
 
 test('initial rendering and repeated focus navigation keep only a small slide window',async()=>{
- const p=await open();assert.equal(await p.evaluate(()=>DeckRenderer.enabled()),true);
- assert.equal(await p.evaluate(()=>deckIds().length),500);assert.ok(await p.locator('#deck > [data-id]').count()<=3);assert.ok(await bodies(p)<=3);
- await p.evaluate(()=>{for(let i=0;i<500;i+=17)SlideBuilder.go('large-'+i);});
+ const p=await open();assert.equal(await p.evaluate(async()=>DeckRenderer.enabled()),true);
+ assert.equal(await p.evaluate(async()=>deckIds().length),500);assert.ok(await p.locator('#deck > [data-id]').count()<=3);assert.ok(await bodies(p)<=3);
+ await p.evaluate(async()=>{for(let i=0;i<500;i+=17)await SlideBuilder.go('large-'+i);});
  assert.ok(await bodies(p)<=3);
- assert.equal(await p.evaluate(()=>SlideBuilder.current()),'large-493');
+ assert.equal(await p.evaluate(async()=>SlideBuilder.current()),'large-493');
  assert.match(await p.locator('#deck > [data-id="large-493"] .slide').innerText(),/Slide 494/);
 });
 
 test('editing, eviction, save, reload and offscreen comments retain their content',async()=>{
  const p=await open();
- await p.evaluate(()=>{
+ await p.evaluate(async()=>{
   const t=document.querySelector('[data-id="large-0"] .h-title');t.innerHTML='Edited before eviction';t.dispatchEvent(new Event('input',{bubbles:true}));
   document.querySelector('#deck > [data-id="large-0"] .fnote').innerHTML='Edited facilitator note';
   SlideBuilder.comment('large-499','Offscreen feedback');
-  SlideBuilder.go('large-499');
+  await SlideBuilder.go('large-499');
  });
  await save(p);
- const st=await p.evaluate(()=>currentData());assert.equal(st['large-0'][0],'Edited before eviction');assert.equal(st.__order.length,500);assert.equal(st.__fb['large-499'],'Offscreen feedback');assert.equal(st['large-250'],undefined);
+ const st=await p.evaluate(async()=>currentData());assert.equal(st['large-0'][0],'Edited before eviction');assert.equal(st.__order.length,500);assert.equal(st.__fb['large-499'],'Offscreen feedback');assert.equal(st['large-250'],undefined);
  await p.reload();await p.waitForFunction(()=>document.body.classList.contains('sb-ready'));
- await p.evaluate(()=>SlideBuilder.go('large-0'));
+ await p.evaluate(async()=>await SlideBuilder.go('large-0'));
  assert.equal(await p.locator('#deck > [data-id="large-0"] .h-title').innerText(),'Edited before eviction');
  assert.equal(await p.locator('#deck > [data-id="large-0"] .fnote').innerText(),'Edited facilitator note');
- assert.equal(await p.evaluate(()=>SlideBuilder.comment('large-499')),'Offscreen feedback');
- await p.evaluate(()=>SlideBuilder.go('large-499'));assert.equal(await p.locator('#deck > [data-id="large-499"] textarea.fb').inputValue(),'Offscreen feedback');
+ assert.equal(await p.evaluate(async()=>SlideBuilder.comment('large-499')),'Offscreen feedback');
+ await p.evaluate(async()=>await SlideBuilder.go('large-499'));assert.equal(await p.locator('#deck > [data-id="large-499"] textarea.fb').inputValue(),'Offscreen feedback');
  assert.ok(await bodies(p)<=3);
 });
 
 test('picture fields survive eviction and untouched defaults stay out of saved fields',async()=>{
  const p=await open();
- await p.evaluate(()=>{
-  LIBRARY['large-2']={cat:'main',layout:'picture',title:'A picture test',body:['Caption']};renderPitch(current);restore();SlideBuilder.go('large-2');
+ await p.evaluate(async()=>{
+  LIBRARY['large-2']={cat:'main',layout:'picture',title:'A picture test',body:['Caption']};renderPitch(current);restore();await SlideBuilder.go('large-2');
   const pic=document.querySelector('#deck > [data-id="large-2"] .pic');pic.querySelector('img').src='data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';pic.dispatchEvent(new Event('input',{bubbles:true}));
-  SlideBuilder.go('large-450');SlideBuilder.go('large-2');
+  await SlideBuilder.go('large-450');await SlideBuilder.go('large-2');
  });
  assert.match(await p.locator('#deck > [data-id="large-2"] .pic img').getAttribute('src'),/^data:image\/gif/);
- const fields=await p.evaluate(()=>currentData());assert.equal(fields['large-0'],undefined);assert.equal(fields['large-100'],undefined);assert.ok(fields['large-2']);
+ const fields=await p.evaluate(async()=>currentData());assert.equal(fields['large-0'],undefined);assert.equal(fields['large-100'],undefined);assert.ok(fields['large-2']);
 });
 
 test('reorder, removal, undo and switching versions preserve lazy slide state',async()=>{
  const p=await open();
- await p.evaluate(()=>{SlideBuilder.go('large-300');const t=document.querySelector('[data-id="large-300"] .h-title');t.innerHTML='Reordered edit';t.dispatchEvent(new Event('input',{bubbles:true}));const order=deckIds();order.splice(300,1);order.unshift('large-300');applyOrder(order);});
- await save(p);assert.equal((await p.evaluate(()=>currentData())).__order[0],'large-300');
- await p.evaluate(()=>{applyOrder(deckIds().filter(id=>id!=='large-300'));applyOrder(undoStack.pop(),false);SlideBuilder.go('large-300');});
+ await p.evaluate(async()=>{await SlideBuilder.go('large-300');const t=document.querySelector('[data-id="large-300"] .h-title');t.innerHTML='Reordered edit';t.dispatchEvent(new Event('input',{bubbles:true}));const order=deckIds();order.splice(300,1);order.unshift('large-300');applyOrder(order);});
+ await save(p);assert.equal((await p.evaluate(async()=>currentData())).__order[0],'large-300');
+ await p.evaluate(async()=>{applyOrder(deckIds().filter(id=>id!=='large-300'));applyOrder(undoStack.pop(),false);await SlideBuilder.go('large-300');});
  assert.equal(await p.locator('#deck > [data-id="large-300"] .h-title').innerText(),'Reordered edit');
  await p.selectOption('#sb-version','all');await p.selectOption('#sb-version','deck');
- await p.evaluate(()=>SlideBuilder.go('large-300'));
+ await p.evaluate(async()=>await SlideBuilder.go('large-300'));
  assert.equal(await p.locator('#deck > [data-id="large-300"] .h-title').innerText(),'Reordered edit');
 });
 
 test('scroll mode hydrates visible bodies and evicts distant bodies',async()=>{
- const p=await open();await p.evaluate(()=>{SlideBuilder.setView('scroll');SlideBuilder.go('large-450');});
+ const p=await open();await p.evaluate(async()=>{await SlideBuilder.setView('scroll');await SlideBuilder.go('large-450');});
  await p.waitForFunction(()=>document.querySelector('[data-id="large-450"] .slide'));
  await p.waitForTimeout(250);
  assert.ok(await bodies(p)<15);
  assert.equal(await p.locator('#deck > [data-id="large-450"] .slide-frame').evaluate(n=>n.getBoundingClientRect().width>0),true);
- await p.evaluate(()=>SlideBuilder.setView('focus'));assert.ok(await bodies(p)<=3);
+ await p.evaluate(async()=>await SlideBuilder.setView('focus'));assert.ok(await bodies(p)<=3);
 });
 
 test('whole-deck checks, client copy, printing and presentation include distant slides',async()=>{
- const p=await open();await p.evaluate(()=>SlideBuilder.setView('checks'));assert.equal(await bodies(p),500);
- await p.evaluate(()=>SlideBuilder.setView('focus'));assert.ok(await bodies(p)<=3);
- const html=await p.evaluate(()=>SlideBuilder.clientCopy());assert.equal((html.match(/class="cc-slide"/g)||[]).length,500);assert.ok(await bodies(p)<=3);
- await p.evaluate(()=>DeckRenderer.preparePrint());assert.equal(await bodies(p),500);
- await p.evaluate(()=>window.dispatchEvent(new Event('beforeprint')));assert.equal(await bodies(p),500);
- await p.evaluate(()=>window.dispatchEvent(new Event('afterprint')));assert.ok(await bodies(p)<=3);
- await p.evaluate(()=>startShow('large-499',{fullscreen:false}));assert.match(await p.locator('.show-stage .h-title').innerText(),/Slide 500/);
- await p.evaluate(()=>endShow());
+ const p=await open();await p.evaluate(async()=>await SlideBuilder.setView('checks'));assert.equal(await bodies(p),500);
+ await p.evaluate(async()=>await SlideBuilder.setView('focus'));assert.ok(await bodies(p)<=3);
+ const html=await p.evaluate(async()=>SlideBuilder.clientCopy());assert.equal((html.match(/class="cc-slide"/g)||[]).length,500);assert.ok(await bodies(p)<=3);
+ await p.evaluate(async()=>DeckRenderer.preparePrint());assert.equal(await bodies(p),500);
+ await p.evaluate(async()=>window.dispatchEvent(new Event('beforeprint')));assert.equal(await bodies(p),500);
+ await p.evaluate(async()=>window.dispatchEvent(new Event('afterprint')));assert.ok(await bodies(p)<=3);
+ await p.evaluate(async()=>startShow('large-499',{fullscreen:false}));assert.match(await p.locator('.show-stage .h-title').innerText(),/Slide 500/);
+ await p.evaluate(async()=>endShow());
 });
 
 test('direct guide scans inspect unrendered slides without retaining their bodies',async()=>{
  const p=await open();
- const issues=await p.evaluate(()=>{
+ const issues=await p.evaluate(async()=>{
   LIBRARY['large-499']={cat:'main',layout:'plain',title:'A guide test',body:['<span style="font-size:8px">Tiny text must be reported</span>']};
-  return SBGuides.scan().find(r=>r.id==='large-499').issues;
+  return (await SBGuides.scan()).find(r=>r.id==='large-499').issues;
  });
  assert.ok(issues.some(i=>i.kind==='small'));assert.ok(await bodies(p)<=3);
 });
 
 test('body-only lazy diagnostic remains compatible with full wrapper DOM',async()=>{
- const p=await open('?wrappers=0');assert.equal(await p.evaluate(()=>DeckRenderer.virtual()),false);
+ const p=await open('?wrappers=0');assert.equal(await p.evaluate(async()=>DeckRenderer.virtual()),false);
  assert.equal(await p.locator('#deck > [data-id]').count(),500);assert.ok(await bodies(p)<=3);
- await p.evaluate(()=>SlideBuilder.go('large-499'));assert.match(await p.locator('#deck > .sb-active .h-title').innerText(),/Slide 500/);
+ await p.evaluate(async()=>await SlideBuilder.go('large-499'));assert.match(await p.locator('#deck > .sb-active .h-title').innerText(),/Slide 500/);
 });
 
 test('raw pages, saved-state exports and eager opt-out remain complete',async()=>{
  for(const q of ['?raw=1','?readonly=1','?lazy=0']){
   const context=await browser.newContext();contexts.push(context);await context.route('https://fonts.googleapis.com/**',r=>r.abort());
-  const p=await context.newPage();p.on('pageerror',e=>errors.push(e.message));await p.goto(url+q);await p.evaluate(()=>window.__DECK_READY);
-  assert.equal(await p.evaluate(()=>DeckRenderer.enabled()),false);assert.equal(await bodies(p),500);
+  const p=await context.newPage();p.on('pageerror',e=>errors.push(e.message));await p.goto(url+q);await p.evaluate(async()=>window.__DECK_READY);
+  assert.equal(await p.evaluate(async()=>DeckRenderer.enabled()),false);assert.equal(await bodies(p),500);
  }
 });

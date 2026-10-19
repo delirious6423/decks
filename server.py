@@ -16,6 +16,7 @@ deck page, and that script removes itself before the builder runs, so "Save a
 copy" still produces a clean file to send.
 """
 import argparse
+import gzip
 import json
 import mimetypes
 import os
@@ -28,6 +29,7 @@ from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlparse
 
 import newdeck
+import library
 import sbconfig
 
 APP = Path(__file__).resolve().parent
@@ -486,13 +488,13 @@ def static_version():
     return int(max((mtime(p) for p in STATIC.glob('*')), default=0))
 
 
-def inject(html, deck, page, snap=None):
+def inject(html, deck, page, snap=None, split_library=False):
     state = read_json(sb_dir(deck) / 'state.json', {'keys': {}, 'savedAt': 0})
     st = settings()
     boot = {'slug': deck['slug'], 'name': deck['name'], 'page': page, 'prefixes': deck.get('prefixes', []),
             'state': state, 'entry': deck['entry'], 'folder': deck['folder'], 'app': sbconfig.tilde(APP),
             'hideVersions': deck.get('clientVersions', []) if st.get('hideClients') else [], 'v': static_version(),
-            'pulse': snap or pulse_of(deck)}
+            'pulse': snap or pulse_of(deck), 'splitLibrary': split_library}
     boot_json = json.dumps(boot, ensure_ascii=False).replace('</', '<\\/')
     v = static_version()
     head = BOOT_TAG.format(boot=boot_json, v=v)
@@ -515,11 +517,18 @@ class Handler(BaseHTTPRequestHandler):
     def send(self, code, body=b'', ctype='text/plain; charset=utf-8', cache=False, extra=None):
         if isinstance(body, str):
             body = body.encode('utf-8')
+        headers = dict(extra or {})
+        accepts_gzip = any(part.strip().split(';')[0] == 'gzip' and not re.search(r';\s*q=0(?:\.0*)?$', part.strip()) for part in self.headers.get('Accept-Encoding', '').split(','))
+        if len(body) >= 65536 and ctype.split(';')[0] in ('text/html', 'application/json'):
+            headers['Vary'] = 'Accept-Encoding'
+            if accepts_gzip and os.environ.get('SB_GZIP') != '0':
+                body = gzip.compress(body, compresslevel=1, mtime=0)
+                headers['Content-Encoding'] = 'gzip'
         self.send_response(code)
         self.send_header('Content-Type', ctype)
         self.send_header('Content-Length', str(len(body)))
         self.send_header('Cache-Control', 'max-age=300' if cache else 'no-store, max-age=0')
-        for k, v in (extra or {}).items():
+        for k, v in headers.items():
             self.send_header(k, v)
         self.end_headers()
         if self.command != 'HEAD':
@@ -595,8 +604,17 @@ class Handler(BaseHTTPRequestHandler):
                     return self.send(403, 'Outside the deck folder')
                 if target.suffix.lower() == '.html' and target.is_file() and 'raw' not in q:
                     snap = pulse_of(deck)   # before reading, so a change made while serving still counts as new
-                    html = target.read_text(encoding='utf-8')
-                    return self.send(200, inject(html, deck, rel, snap), 'text/html; charset=utf-8')
+                    if 'library' in q and q['library'] != ['0']:
+                        _, chunks = library.prepare(target)
+                        payload = ('{' + ','.join(json.dumps(key) + ':' + value for key, value in chunks.items()) + '}') if q['library'] == ['all'] else chunks.get(q['library'][0])
+                        return self.send(200, payload, 'application/json; charset=utf-8', cache=q['library'] != ['all']) if payload is not None else self.send(409, 'Deck changed; reload')
+                    split_library = False
+                    if 'readonly' in q or q.get('library') == ['0'] or q.get('lazy') == ['0'] or os.environ.get('SB_SPLIT_LIBRARY') == '0':
+                        html = target.read_text(encoding='utf-8')
+                    else:
+                        html, chunks = library.prepare(target)
+                        split_library = bool(chunks)
+                    return self.send(200, inject(html, deck, rel, snap, split_library), 'text/html; charset=utf-8')
             except (OSError, ValueError):
                 return self.send(404, 'Not found')
             return self.serve_file(target, cache=target.suffix.lower() in ('.png', '.jpg', '.jpeg', '.svg', '.woff2'))

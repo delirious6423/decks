@@ -1,7 +1,8 @@
 /* Decks: pictures. Click a picture on a slide (or drop an image file on it) to put
    your own in. The picture sits in an editable box, so the new one saves like any text edit, and
    `sb edits` shows it to Claude to bake into the deck file. Uploads go to the deck's img/uploads/. */
-(function () {
+(async function () {
+  if (window.__SB_ENGINE_READY) await window.__SB_ENGINE_READY;
   const SB = window.__SB, deck = document.getElementById('deck');
   if (!SB || !deck || SB.readonly) return;
   const input = document.createElement('input'); input.type = 'file'; input.accept = 'image/png,image/jpeg,image/gif,image/webp,image/svg+xml'; input.hidden = true;

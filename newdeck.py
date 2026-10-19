@@ -226,7 +226,7 @@ def assemble(tid, name, prefix, pieces=None, theme=None, serif=False, logo=None)
     if logo:
         head.append(f'const LOGO = {js_str(logo)}, LOGO_ALT = {js_str(name)};')
     content = '\n'.join(head) + '\n' + content
-    out = (engine.replace('/*{{CONTENT}}*/', content).replace('/*{{PITCHES}}*/', pitches).replace('<!--{{THEME}}-->', theme_css(theme, serif))
+    out = (engine.replace('/*{{CONTENT}}*/', content).replace('/*{{PITCHES}}*/', pitches).replace('/*{{LIBRARY_LOADER}}*/', (TEMPLATES.parent / 'static' / 'library.js').read_text(encoding='utf-8')).replace('<!--{{THEME}}-->', theme_css(theme, serif))
            .replace('<!--{{SCRIPTS}}-->', scripts)
            .replace('{{TITLE}}', html.escape(name)).replace('{{BRAND}}', 'Strategy<span>U</span> · ' + html.escape(name))
            .replace('{{SUB}}', html.escape(t.get('sub', t['name']))).replace('{{PREFIX}}', prefix))

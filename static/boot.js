@@ -108,5 +108,5 @@
   Storage.prototype.setItem = function (k, v) { set.call(this, k, v); if (this === ls && ours(String(k))) note(String(k), String(v)); };
   Storage.prototype.removeItem = function (k) { del.call(this, k); if (this === ls && ours(String(k))) note(String(k), null); };
   window.addEventListener('pagehide', () => { if (window.__DECK_FLUSH) window.__DECK_FLUSH(); flush(true); });
-  window.__SB = { slug: B.slug, name: B.name, page: B.page, entry: B.entry, folder: B.folder, hideVersions: B.hideVersions || [], pulse: B.pulse, tab: TAB, flush: () => flush() };
+  window.__SB = { slug: B.slug, name: B.name, page: B.page, entry: B.entry, folder: B.folder, hideVersions: B.hideVersions || [], pulse: B.pulse, splitLibrary: B.splitLibrary, tab: TAB, flush: () => flush() };
 })();

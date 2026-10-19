@@ -3,7 +3,8 @@
    one in its library (a template's layouts, the basic guided ones, or slides left out of this
    version), Add slide puts it right after the slide you're on. Either way, Copy prompt gives Claude
    (or Codex) everything it needs to build or fill the slide in the deck file. */
-(function () {
+(async function () {
+  if (window.__SB_ENGINE_READY) await window.__SB_ENGINE_READY;
   const SB = window.__SB, deck = document.getElementById('deck'), API = window.SlideBuilder;
   if (!SB || !deck || !API) return;
   const lib = () => { try { return LIBRARY; } catch (e) { return {}; } };   // eslint-disable-line no-undef

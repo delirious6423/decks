@@ -18,47 +18,47 @@ test('filmstrip stays bounded while scrolling both ends, jumping and resizing',a
  const p=await open();assert.equal(await p.locator('#block-list input').count(),0);assert.ok(await rows(p).count()<20);
  await p.locator('#sb-film-list').evaluate(n=>n.scrollTop=990*176);await p.waitForFunction(()=>document.querySelector('#sb-film-list .sb-fi[data-id="large-990"]'));
  assert.ok(await rows(p).count()<20);await p.locator('.sb-fi[data-id="large-990"]').click();
- assert.equal(await p.evaluate(()=>SlideBuilder.current()),'large-990');
- await p.evaluate(()=>SlideBuilder.go('large-0'));await p.waitForFunction(()=>document.querySelector('.sb-fi.on')?.dataset.id==='large-0');
- assert.ok(await rows(p).count()<20);await p.setViewportSize({width:1440,height:720});await p.evaluate(()=>SlideBuilder.go('large-999'));
+ assert.equal(await p.evaluate(async()=>SlideBuilder.current()),'large-990');
+ await p.evaluate(async()=>await SlideBuilder.go('large-0'));await p.waitForFunction(()=>document.querySelector('.sb-fi.on')?.dataset.id==='large-0');
+ assert.ok(await rows(p).count()<20);await p.setViewportSize({width:1440,height:720});await p.evaluate(async()=>await SlideBuilder.go('large-999'));
  const b=p.locator('.sb-fi.on');assert.match(await b.getAttribute('aria-label'),/^Slide 1000 of 1000:/);assert.equal(await b.getAttribute('aria-current'),'true');
  assert.equal(await b.evaluate(n=>{const r=n.getBoundingClientRect(),p=n.closest('#sb-film-list').getBoundingClientRect();return r.top>=p.top&&r.bottom<=p.bottom+1}),true);
 });
 
 test('Tab crosses a virtual boundary in both directions and keyboard navigation reveals far rows',async()=>{
- const p=await open();await p.evaluate(()=>SlideBuilder.go('large-400'));
+ const p=await open();await p.evaluate(async()=>await SlideBuilder.go('large-400'));
  const b=p.locator('.sb-fi[data-id="large-400"]');await b.focus();
  for(let i=0;i<12;i++)await p.keyboard.press('Tab');
- assert.equal(await p.evaluate(()=>document.activeElement.dataset.id),'large-412');
+ assert.equal(await p.evaluate(async()=>document.activeElement.dataset.id),'large-412');
  for(let i=0;i<12;i++)await p.keyboard.press('Shift+Tab');
- assert.equal(await p.evaluate(()=>document.activeElement.dataset.id),'large-400');
- await p.locator('#sb-next').click();assert.equal(await p.evaluate(()=>SlideBuilder.current()),'large-401');
+ assert.equal(await p.evaluate(async()=>document.activeElement.dataset.id),'large-400');
+ await p.locator('#sb-next').click();assert.equal(await p.evaluate(async()=>SlideBuilder.current()),'large-401');
  assert.equal(await p.locator('.sb-fi.on').getAttribute('data-id'),'large-401');
 });
 
 test('filter finds offscreen comments, maintains global slide numbering and refreshes badges',async()=>{
- const p=await open();await p.evaluate(()=>{
+ const p=await open();await p.evaluate(async()=>{
   SlideBuilder.comment('large-900','Review this distant slide');
-  SlideBuilder.filter('open');SlideBuilder.go('large-900');
+  SlideBuilder.filter('open');await SlideBuilder.go('large-900');
  });
  assert.equal(await rows(p).count(),1);assert.equal(await p.locator('.sb-fi .sb-fn').first().innerText(),'901');
  assert.equal(await p.locator('.sb-fi .sb-dot').innerText(),'Comment');
- await p.evaluate(()=>SlideBuilder.filter('all'));assert.ok(await rows(p).count()<20);assert.equal(await p.locator('.sb-fi.on').getAttribute('data-id'),'large-900');
+ await p.evaluate(async()=>SlideBuilder.filter('all'));assert.ok(await rows(p).count()<20);assert.equal(await p.locator('.sb-fi.on').getAttribute('data-id'),'large-900');
 });
 
 test('remove and re-add a far slide through the shelf without legacy inputs',async()=>{
- const p=await open();await p.evaluate(()=>SlideBuilder.go('large-850'));await p.locator('.sb-fi.on').hover();await p.locator('.sb-fi.on .sb-x').click();
+ const p=await open();await p.evaluate(async()=>await SlideBuilder.go('large-850'));await p.locator('.sb-fi.on').hover();await p.locator('.sb-fi.on .sb-x').click();
  await p.waitForFunction(()=>!document.querySelector('#deck > [data-id="large-850"]'));
  await p.waitForFunction(()=>document.querySelector('#sb-film-list .sb-extras'));
  const shelf=p.locator('#sb-film-list .sb-extras');await shelf.evaluate(n=>n.open=true);
  const add=shelf.locator('.sb-ex').filter({hasText:'Slide 851 shows'}).locator('button');await add.click();
  await p.waitForFunction(()=>SlideBuilder.current()==='large-850');
- assert.equal(await p.evaluate(()=>deckIds().length),1000);assert.ok(await rows(p).count()<20);
+ assert.equal(await p.evaluate(async()=>deckIds().length),1000);assert.ok(await rows(p).count()<20);
 });
 
 test('drag reorder, insertion controls and version switches work across virtual windows',async()=>{
- const p=await open();await p.evaluate(()=>SlideBuilder.go('large-500'));
- await p.locator('#sb-film-list').evaluate(n=>n.scrollTop=499*176);await p.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
+ const p=await open();await p.evaluate(async()=>await SlideBuilder.go('large-500'));
+ await p.locator('#sb-film-list').evaluate(n=>n.scrollTop=499*176);await p.evaluate(async()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
  const a=p.locator('.sb-fi[data-id="large-500"]'),b=p.locator('.sb-fi[data-id="large-501"]');
  await a.dragTo(b,{sourcePosition:{x:10,y:15},targetPosition:{x:100,y:150}});
  await p.waitForFunction(()=>SlideBuilder.slides()[501].id==='large-500');
@@ -68,27 +68,27 @@ test('drag reorder, insertion controls and version switches work across virtual 
  const values=await p.locator('#sb-version option').evaluateAll(ns=>ns.map(n=>n.value));
  await p.selectOption('#sb-version',values[1]);await p.waitForTimeout(250);await p.selectOption('#sb-version',values[0]);
  await p.waitForFunction(()=>document.querySelector('#deck > .sb-active .slide')?.getBoundingClientRect().width>0);
- assert.equal(await p.evaluate(()=>document.documentElement.classList.contains('sb-lazy-boot')),false);assert.ok(await rows(p).count()<20);
+ assert.equal(await p.evaluate(async()=>document.documentElement.classList.contains('sb-lazy-boot')),false);assert.ok(await rows(p).count()<20);
 });
 
 test('a large excluded library is windowed and can add a distant slide',async()=>{
- const p=await open();await p.evaluate(()=>SlideBuilder.order(['large-0','large-1','large-2']));
+ const p=await open();await p.evaluate(async()=>SlideBuilder.order(['large-0','large-1','large-2']));
  await p.waitForFunction(()=>document.querySelector('.sb-extras summary')?.textContent.includes('Not in'));
  await p.locator('.sb-extras').evaluate(n=>n.open=true);
  await p.waitForFunction(()=>document.querySelector('.sb-extra-window'));
  assert.ok(await p.locator('.sb-ex').count()<25);
- await p.evaluate(()=>{
+ await p.evaluate(async()=>{
   const ids=DeckLibrary.excluded().filter(id=>LIBRARY[id]&&!LIBRARY[id].lib),k=ids.indexOf('large-800');
   const list=document.querySelector('#sb-film-list'),host=document.querySelector('.sb-extra-window');
   list.scrollTop+=host.getBoundingClientRect().top-list.getBoundingClientRect().top+k*64;
  });
  const add=p.locator('.sb-ex').filter({hasText:'Slide 801 shows'}).locator('button');await add.click();
  await p.waitForFunction(()=>SlideBuilder.current()==='large-800');assert.ok(await p.locator('.sb-ex').count()<25);
- assert.equal(await p.evaluate(()=>deckIds().length),4);
+ assert.equal(await p.evaluate(async()=>deckIds().length),4);
 });
 
 test('the slide picker adds a basic layout through the library model',async()=>{
- const p=await open();await p.evaluate(()=>SlideBuilder.addSlide());
+ const p=await open();await p.evaluate(async()=>SlideBuilder.addSlide());
  await p.locator('#sbx [data-tab="basic"]').click();await p.locator('#sbx [data-base]:not([disabled])').first().click();
  await p.locator('#sbx [data-add]').click();await p.waitForFunction(()=>SlideBuilder.slides().length===1001);
  await p.waitForFunction(()=>SlideBuilder.current()?.startsWith('basic-'));

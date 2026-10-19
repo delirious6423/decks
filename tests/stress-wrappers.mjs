@@ -10,15 +10,15 @@ const results=await Promise.all(cases.map(async scenario=>{
  await p.goto(base+'/d/bench-large-10000/deck.html');await p.waitForFunction(()=>document.body.classList.contains('sb-ready'));await p.evaluate(()=>__DECK_READY);
  let max_wrappers=0;
  for(let i=0;i<24;i++){
-  await p.evaluate(i=>{
-   SlideBuilder.setView(i%3===0?'focus':'scroll');SlideBuilder.go('large-'+((i*997)%10000));
+  await p.evaluate(async i=>{
+   await SlideBuilder.setView(i%3===0?'focus':'scroll');const id='large-'+((i*997)%10000);await SlideBuilder.go(id);if(SlideBuilder.current()!==id||!DeckRenderer.get(id)?.querySelector('.slide'))throw new Error('Incomplete navigation: '+JSON.stringify({id,current:SlideBuilder.current(),mounted:[...document.querySelectorAll('#deck > [data-id]')].map(w=>w.dataset.id),mode:lazySlides.mode,lazyCurrent:lazySlides.current,ready:DeckData.ready([id]),scrollY,body:document.body.className}));
    document.body.classList.toggle('show-notes',i%2===0);
   },i);
   await p.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
   const state=await p.evaluate(()=>({n:deckIds().length,wrappers:document.querySelectorAll('#deck > [data-id]').length,fields:document.querySelectorAll('#deck > [data-id] .slide').length}));
   assert.equal(state.n,10000);assert.ok(state.wrappers<16,JSON.stringify(state));max_wrappers=Math.max(max_wrappers,state.wrappers);
  }
- await p.evaluate(()=>{SlideBuilder.setView('focus');SlideBuilder.go('large-9999');});await p.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
+ await p.evaluate(async()=>{await SlideBuilder.setView('focus');await SlideBuilder.go('large-9999');});await p.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
  assert.equal(await p.locator('#deck > .sb-active .slide-no b').innerText(),'10000');await cdp.send('HeapProfiler.collectGarbage');const dom=await cdp.send('Memory.getDOMCounters');assert.deepEqual(errors,[]);
  const result={...scenario,max_wrappers,final_elements:await p.locator('*').count(),dom,errors};await c.close();return result;
 }));await browser.close();

@@ -1502,6 +1502,7 @@ const ORIGINAL_HTML = '<!doctype html>\n' + document.documentElement.outerHTML;
 const EMBEDDED = (() => { try { return JSON.parse(document.getElementById('saved-edits').textContent) || {}; } catch (e) { return {}; } })();
 
 /*{{CONTENT}}*/
+/*{{LIBRARY_LOADER}}*/
 
 
 /* =========================================================================
@@ -1698,6 +1699,7 @@ function autofitText(root) {
 }
 
 function build(id) {
+  if (!slideData.ready([id])) return null;
   const b0 = LIBRARY[id]; if (!b0) return null;
   const b = (b0.pp && ORIG.has(id)) ? Object.assign({}, b0, { layout:'image' }) : b0;
   const tone = b.dark ? ' dark' : (b.maroon ? ' maroon' : '');
@@ -2974,9 +2976,11 @@ function slideWrap(id, s = null) {
   const b = LIBRARY[id]; if (!b) return null;
   const wrap = el('div','slide-wrap'); wrap.dataset.id = id;
   wrap.classList.toggle('is-unrendered', !s);
+  wrap.classList.toggle('is-data-unloaded', !!b.__sbChunk);
   wrap.appendChild(el('div','slide-no', '<b>—</b><code>' + id + '</code>'));
   const frame = el('div','slide-frame'); if (s) frame.appendChild(s); wrap.appendChild(frame);
   const note = ed('div','fnote', '<b>Facilitator:</b> ' + (b.notes || '—'));
+  if (b.__sbChunk) note.contentEditable = 'false';
   wrap.appendChild(note);
   const fb = document.createElement('textarea'); fb.className = 'fb'; fb.rows = 1;
   fb.placeholder = 'Feedback for Claude on this slide…';
@@ -3059,6 +3063,7 @@ function captureSlide(w) {
   else lazySlides.fields.set(id, { bits, hash });
 }
 function mountSlide(id) {
+  if (!slideData.ready([id])) return null;
   if (!lazySlides.positions.has(id)) return null;
   let w = lazySlides.slots.get(id); if (w) return w;
   w = build(id); if (!w) return null;
@@ -3115,6 +3120,7 @@ function virtualWindow(id = lazySlides.current, mode = lazySlides.mode, viewport
     if (start === undefined) { const at = lazySlides.positions.get(lazySlides.current) || 0; start = Math.max(0, at - 1); end = Math.min(lazySlides.order.length, at + 2); }
     for (let i = start; i < end; i++) keep.add(lazySlides.order[i]);
   }
+  if (!slideData.ready([...keep])) { slideData.load([...keep]).then(() => { if (lazySlides.current === id && lazySlides.mode === mode) virtualWindow(id, mode, viewport); }).catch(slideData.fail); return; }
   for (const [key, w] of lazySlides.slots) if (!keep.has(key)) unmountSlide(w, !lazySlides.positions.has(key));
   keep.forEach(mountSlide);
   // Reordering a handful of mounted nodes preserves their identity and focus.
@@ -3159,6 +3165,7 @@ function ensureSlide(id) {
   const signature = JSON.stringify(LIBRARY[id]) + '|' + ORIG.has(id) + '|' + ADDED.has(id);
   const hash = djb(bits.join('\u0001'));
   defaultHashes.set(id, { signature, hash });
+  if (w.classList.contains('is-data-unloaded')) { const note = w.querySelector('.fnote'); note.innerHTML = fresh.querySelector('.fnote').innerHTML; note.contentEditable = 'true'; w.classList.remove('is-data-unloaded'); }
   w.querySelector('.slide-frame').appendChild(fresh.querySelector('.slide'));
   w.classList.remove('is-unrendered');
   const saved = lazySlides.fields.get(id);
@@ -3190,10 +3197,13 @@ function updateSlideWindow(id = lazySlides.current, mode = lazySlides.mode) {
     const ids = [...deckEl.children].map((w) => w.dataset.id), at = ids.indexOf(id);
     ids.slice(Math.max(0, at - 1), Math.max(0, at) + 2).forEach((x) => keep.add(x));
   }
+  if (!slideData.ready([...keep])) { slideData.load([...keep]).then(() => { if (lazySlides.current === id && lazySlides.mode === mode) updateSlideWindow(id, mode); }).catch(slideData.fail); return; }
   keep.forEach(ensureSlide);
   for (const w of lazySlides.mounted) if (!keep.has(w.dataset.id)) releaseSlide(w);
 }
 function materializeSlides(layout = true) {
+  const ids = lazySlides.virtual ? lazySlides.order : deckIds();
+  if (!slideData.ready(ids)) return slideData.load(ids).then(() => materializeSlides(layout));
   if (!lazySlides.enabled) return;
   const complete = lazySlides.pinned && (!lazySlides.virtual || lazySlides.slots.size === lazySlides.order.length);
   lazySlides.pinned = true;
@@ -3206,7 +3216,7 @@ function materializeSlides(layout = true) {
 }
 function resumeSlides() { lazySlides.pinned = false; updateSlideWindow(); }
 async function preparePrint() {
-  materializeSlides(false);
+  await materializeSlides(false);
   await document.fonts.ready;
   await Promise.all([...document.images].map((im) => im.decode().catch(() => {})));
   fitSlides(); autofitText(); drawTrees();
@@ -3238,6 +3248,7 @@ function observeLazySlides() {
 }
 // Thumbnail clones are transient and don't populate the main deck with hidden bodies.
 function previewSlide(id) {
+  if (!slideData.ready([id])) return null;
   if (lazySlides.virtual && lazySlides.slots.has(id)) return lazySlides.slots.get(id);
   const known = lazySlides.slots.get(id);
   const w = known && known.parentElement === deckEl ? known : deckEl.querySelector(`.slide-wrap[data-id="${id}"]`);
@@ -3257,9 +3268,9 @@ window.DeckRenderer = { ensure: ensureSlide, preview: previewSlide, all: materia
   position: (id) => lazySlides.virtual ? (lazySlides.positions.get(id) ?? -1) : deckIds().indexOf(id), comment: slideComment, setComment: setSlideComment,
   layout: (id) => { const w = ensureSlide(id); if (w && w.getBoundingClientRect().width) { autofitText(w); drawTrees(w); } },
   observe: observeLazySlides, enabled: () => lazySlides.enabled };
-window.addEventListener('beforeprint', materializeSlides);
+window.addEventListener('beforeprint', () => { slideData.printSync(); materializeSlides(); });
 window.addEventListener('afterprint', resumeSlides);
-window.addEventListener('keydown', (e) => { if (lazySlides.enabled && (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'p') { e.preventDefault(); preparePrint().then(() => window.print()); } }, true);
+window.addEventListener('keydown', (e) => { if (lazySlides.enabled && (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'p') { e.preventDefault(); preparePrint().then(() => window.print()).catch(slideData.fail); } }, true);
 
 function tagFor(b) {
   if (b.fac) return '<span class="k fac">facilitator</span>' + (b.alt ? '<span class="k alt">extra</span>' : '');
@@ -3295,7 +3306,11 @@ function numberSlides() {
   if (c) c.textContent = wraps.length + ' slides';
 }
 
+let pitchRequest = 0;
 function renderPitch(key) {
+  const request = ++pitchRequest;
+  const needed = lazySlides.mode === 'checks' ? PITCHES[key].blocks : PITCHES[key].blocks.slice(0, 3);
+  if (!slideData.ready(needed)) return slideData.load(needed).then(() => { if (request === pitchRequest) return renderPitch(key); }).catch(slideData.fail);
   // Finish the previous version before switching; its debounce may still be pending.
   if (dirty) { clearTimeout(saveTimer); snapshot(); dirty = false; }
   defaultHashes.clear(); ORIG.clear(); ADDED.clear();
@@ -3336,6 +3351,7 @@ function renderPitch(key) {
 
 // Ticking a slide on inserts it in library order, not at the end.
 function toggleLibrary(id, checked) {
+  if (checked && !slideData.ready([id])) return slideData.load([id]).then(() => toggleLibrary(id, checked)).catch(slideData.fail);
   if (!LIBRARY[id] || !ORDER.includes(id)) return;
   const inp = listEl.querySelector(`input[data-id="${id}"]`);
   if (inp) inp.checked = checked;
@@ -3389,12 +3405,12 @@ deckEl.addEventListener('click', (e) => {
 
 Object.keys(PITCHES).forEach((k) => { const o = document.createElement('option'); o.value = k; o.textContent = PITCHES[k].name; selEl.appendChild(o); });
 selEl.value = current;
-selEl.addEventListener('change', () => { renderPitch(selEl.value); restore(); });
-document.getElementById('export-btn').addEventListener('click', () => preparePrint().then(() => window.print()));
+selEl.addEventListener('change', async () => { const key = selEl.value; await renderPitch(key); if (current === key && selEl.value === key) restore(); });
+document.getElementById('export-btn').addEventListener('click', () => preparePrint().then(() => window.print()).catch(slideData.fail));
 document.getElementById('notes-toggle').addEventListener('change', (e) => { document.body.classList.toggle('show-notes', e.target.checked); });
 
-document.getElementById('copy-edits').addEventListener('click', () => {
-  materializeSlides();
+document.getElementById('copy-edits').addEventListener('click', async () => {
+  await materializeSlides();
   const slides = {};
   deckEl.querySelectorAll('.slide-wrap').forEach((f) => { const bits = []; f.querySelectorAll('[contenteditable]').forEach((n) => { const t = n.innerHTML.trim(); if (t) bits.push(t); }); slides[f.dataset.id] = bits; });
   const st = window.__DECK_STATE();
@@ -3560,15 +3576,23 @@ function currentData() {
 /* "Save a copy": every version's edits (this one fresh, the others from this
    browser or from the file itself) written into the saved-edits block of a
    byte-identical copy of this file, then downloaded. */
-document.getElementById('save-copy').addEventListener('click', () => {
+document.getElementById('save-copy').addEventListener('click', async () => {
+  // Fetch the authoritative complete source, never save a server-derived index.
+  let original = ORIGINAL_HTML;
+  if (window.__SB?.splitLibrary) {
+    try { const url = new URL(location.href); url.search = '?raw=1'; url.hash = ''; const r = await fetch(url); if (!r.ok) throw new Error('Could not load the complete deck.'); original = await r.text(); } catch (e) { slideData.fail(e); return; }
+  }
   const all = {};
   Object.keys(PITCHES).forEach((k) => { const d = (k === current) ? currentData() : savedFor(k); if (d) all[k] = d; });
   const json = JSON.stringify(all).replace(/<\//g, '<\\/');
-  const html = ORIGINAL_HTML.replace(/(<script id="saved-edits" type="application\/json">)[\s\S]*?(<\/script>)/, (m, a, b) => a + json + b);
-  const blob = new Blob([html], { type: 'text/html' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a'); a.href = url; a.download = 'workshop.html'; document.body.appendChild(a); a.click(); a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 4000);
+  const html = original.replace(/(<script id="saved-edits" type="application\/json">)[\s\S]*?(<\/script>)/, (m, a, b) => a + json + b);
+  const handled = !window.dispatchEvent(new CustomEvent('sb:copy', { cancelable: true, detail: { html } }));
+  if (!handled) {
+    const blob = new Blob([html], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = 'workshop.html'; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+  }
   dirty = false;
   const bn = document.getElementById('nosave-banner'); if (bn) bn.remove();
   const f = document.getElementById('save-flag'); f.textContent = '✓ Saved a copy — replace workshop.html with the download'; f.className = 'save-flag on'; setTimeout(flagSaved, 8000);
@@ -3664,6 +3688,7 @@ function thumb(id, n, onShelf) {
 }
 
 function renderSorter() {
+  if (!slideData.ready(Object.keys(LIBRARY))) return slideData.all().then(renderSorter).catch(slideData.fail);
   const ids = deckIds();
   const keep = sorterEl.querySelector('.so-shelf'); const shelfScroll = keep ? keep.scrollTop : 0;
   sorterEl.innerHTML = '';
@@ -3805,7 +3830,7 @@ let t0 = 0, pausedAt = 0, pausedTotal = 0, clockTimer = null;
 const noteOf = (id) => {
   const w = deckEl.querySelector(`.slide-wrap[data-id="${id}"] .fnote`);
   const pending = lazySlides.virtual && lazySlides.fields.get(id);
-  const saved = pending && pending.hash === defHash(id) ? pending.bits.at(-1) : null;
+  const saved = pending && slideData.ready([id]) && pending.hash === defHash(id) ? pending.bits.at(-1) : null;
   const content = w ? w.innerHTML : saved || (lazySlides.virtual ? '<b>Facilitator:</b> ' + (LIBRARY[id].notes || '—') : '');
   const h = content ? content.replace(/^\s*<b>Facilitator:<\/b>\s*/, '').trim() : '';
   return h && h !== '—' ? h : '';
@@ -3824,6 +3849,8 @@ function fitInto(box, s) {
   Object.assign(s.style, { position: 'absolute', left: ((W - 1000 * k) / 2) + 'px', top: ((H - 562.5 * k) / 2) + 'px', transformOrigin: 'top left', transform: `scale(${k})`, margin: '0' });
 }
 function putSlide(box, id, doc) {
+  box.dataset.loadingId = id || '';
+  if (id && !slideData.ready([id])) { box.textContent = 'Loading slide…'; slideData.load([id]).then(() => { if (box.dataset.loadingId === id) { putSlide(box, id, doc); if (pw && !pw.closed && showIds[idx] === id) renderPresenter(); } }).catch(slideData.fail); return; }
   box.innerHTML = ''; if (!id) return;
   const c = cloneSlide(id, doc); if (!c) return;
   box.appendChild(c); fitInto(box, c); autofitText(box); drawTrees(box);
@@ -4095,9 +4122,10 @@ document.addEventListener('keydown', (e) => {
   e.preventDefault(); startShow(startId(e.shiftKey));
 });
 
-renderPitch(current); restore(); recountSidebar();
+function startDeck() { renderPitch(current); restore(); recountSidebar(); }
+window.__SB_ENGINE_READY = slideData.ready(PITCHES[current].blocks.slice(0, 3)) ? (startDeck(), Promise.resolve()) : slideData.load(PITCHES[current].blocks.slice(0, 3)).then(startDeck);
 try { if (sessionStorage.getItem('{{PREFIX}}view') === 'sorter') (document.fonts ? document.fonts.ready : Promise.resolve()).then(() => setTimeout(() => setView('sorter'), 60)); } catch (e) {}
-window.__DECK_READY = (document.fonts ? document.fonts.ready : Promise.resolve()).then(async () => {
+window.__DECK_READY = Promise.resolve(window.__SB_ENGINE_READY).then(() => (document.fonts ? document.fonts.ready : Promise.resolve())).then(async () => {
   if (lazySlides.virtual && !document.body.classList.contains('sb-ready')) await new Promise((resolve) => window.addEventListener('sb:ready', resolve, { once: true }));
   autofitText(); fitSlides(); drawTrees();
 });

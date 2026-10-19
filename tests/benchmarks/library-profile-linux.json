@@ -1,0 +1,1610 @@
+{
+  "before": {
+    "metrics": {
+      "Timestamp": 10264.597267,
+      "AudioHandlers": 0,
+      "AudioWorkletProcessors": 0,
+      "Documents": 5,
+      "Frames": 2,
+      "JSEventListeners": 182,
+      "LayoutObjects": 897,
+      "MediaKeySessions": 0,
+      "MediaKeys": 0,
+      "Nodes": 2243,
+      "Resources": 13,
+      "ContextLifecycleStateObservers": 22,
+      "V8PerContextDatas": 5,
+      "WorkerGlobalScopes": 0,
+      "UACSSResources": 0,
+      "RTCPeerConnections": 0,
+      "ResourceFetchers": 5,
+      "AdSubframes": 0,
+      "DetachedScriptStates": 2,
+      "ArrayBufferContents": 2,
+      "LayoutCount": 13,
+      "RecalcStyleCount": 17,
+      "LayoutDuration": 0.064519,
+      "RecalcStyleDuration": 0.008996,
+      "DevToolsCommandDuration": 0.013356,
+      "ScriptDuration": 0.076531,
+      "V8CompileDuration": 0.063516,
+      "TaskDuration": 0.350431,
+      "TaskOtherDuration": 0.123513,
+      "ThreadTime": 0.294901,
+      "ProcessTime": 0.45,
+      "JSHeapUsedSize": 11127428,
+      "JSHeapTotalSize": 21327872,
+      "FirstMeaningfulPaint": 0,
+      "DomContentLoaded": 10264.475696,
+      "NavigationStart": 10264.158746
+    },
+    "self": [
+      {
+        "function": "(program)",
+        "url": "",
+        "line": 0,
+        "self_ms": 227.2449999999989,
+        "inclusive_ms": 227.2449999999989
+      },
+      {
+        "function": "(idle)",
+        "url": "",
+        "line": 0,
+        "self_ms": 89.55800000000019,
+        "inclusive_ms": 89.55800000000019
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 1500,
+        "self_ms": 22.278,
+        "inclusive_ms": 39.39900000000001
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/_sb/shell.js?v=1792432664",
+        "line": 738,
+        "self_ms": 16.45199999999999,
+        "inclusive_ms": 16.45199999999999
+      },
+      {
+        "function": "(garbage collector)",
+        "url": "",
+        "line": 0,
+        "self_ms": 12.227000000000004,
+        "inclusive_ms": 12.227000000000004
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/_sb/boot.js?v=1792432664",
+        "line": 10,
+        "self_ms": 8.059999999999997,
+        "inclusive_ms": 8.337999999999997
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/_sb/addslide.js?v=1792432664",
+        "line": 6,
+        "self_ms": 7.4079999999999995,
+        "inclusive_ms": 8.063999999999998
+      },
+      {
+        "function": "build",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 4161,
+        "self_ms": 4.184999999999999,
+        "inclusive_ms": 5.109999999999998
+      },
+      {
+        "function": "renderFilm",
+        "url": "/_sb/shell.js?v=1792432664",
+        "line": 296,
+        "self_ms": 4.022999999999999,
+        "inclusive_ms": 9.936999999999998
+      },
+      {
+        "function": "allCat",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 1615,
+        "self_ms": 3.068,
+        "inclusive_ms": 4.306
+      },
+      {
+        "function": "indexSlides",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 3081,
+        "self_ms": 2.698,
+        "inclusive_ms": 3.761999999999999
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/_sb/shell.js?v=1792432664",
+        "line": 46,
+        "self_ms": 2.6229999999999998,
+        "inclusive_ms": 2.6229999999999998
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/_sb/shell.js?v=1792432664",
+        "line": 10,
+        "self_ms": 1.6989999999999998,
+        "inclusive_ms": 2.767
+      },
+      {
+        "function": "excluded",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 3427,
+        "self_ms": 1.5699999999999998,
+        "inclusive_ms": 3.449999999999999
+      },
+      {
+        "function": "(anonymous)",
+        "url": "",
+        "line": 1,
+        "self_ms": 1.381,
+        "inclusive_ms": 1.381
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 1615,
+        "self_ms": 1.238,
+        "inclusive_ms": 1.238
+      },
+      {
+        "function": "deckIds",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 3671,
+        "self_ms": 1.2329999999999999,
+        "inclusive_ms": 1.2329999999999999
+      },
+      {
+        "function": "px",
+        "url": "/_sb/shell.js?v=1792432664",
+        "line": 733,
+        "self_ms": 1.108,
+        "inclusive_ms": 1.108
+      },
+      {
+        "function": "renderPitch",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 3361,
+        "self_ms": 0.935,
+        "inclusive_ms": 11.29
+      },
+      {
+        "function": "px",
+        "url": "/_sb/shell.js?v=1792432664",
+        "line": 733,
+        "self_ms": 0.928,
+        "inclusive_ms": 0.928
+      },
+      {
+        "function": "info",
+        "url": "/_sb/shell.js?v=1792432664",
+        "line": 62,
+        "self_ms": 0.927,
+        "inclusive_ms": 1.8579999999999997
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/_sb/shell.js?v=1792432664",
+        "line": 846,
+        "self_ms": 0.924,
+        "inclusive_ms": 2.7819999999999996
+      },
+      {
+        "function": "el",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 1637,
+        "self_ms": 0.9010000000000001,
+        "inclusive_ms": 0.9010000000000001
+      },
+      {
+        "function": "InjectedScript",
+        "url": "",
+        "line": 6429,
+        "self_ms": 0.811,
+        "inclusive_ms": 0.811
+      },
+      {
+        "function": "(anonymous)",
+        "url": "",
+        "line": 1,
+        "self_ms": 0.795,
+        "inclusive_ms": 0.795
+      },
+      {
+        "function": "go",
+        "url": "/_sb/shell.js?v=1792432664",
+        "line": 755,
+        "self_ms": 0.76,
+        "inclusive_ms": 19.765999999999988
+      },
+      {
+        "function": "SlideHeights",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 3069,
+        "self_ms": 0.752,
+        "inclusive_ms": 0.752
+      },
+      {
+        "function": "refresh",
+        "url": "/_sb/shell.js?v=1792432664",
+        "line": 860,
+        "self_ms": 0.743,
+        "inclusive_ms": 17.817999999999994
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 3427,
+        "self_ms": 0.647,
+        "inclusive_ms": 0.647
+      },
+      {
+        "function": "revealFilm",
+        "url": "/_sb/shell.js?v=1792432664",
+        "line": 257,
+        "self_ms": 0.525,
+        "inclusive_ms": 0.525
+      },
+      {
+        "function": "cloneNode",
+        "url": "",
+        "line": 0,
+        "self_ms": 0.51,
+        "inclusive_ms": 0.51
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/_sb/addslide.js?v=1792432664",
+        "line": 21,
+        "self_ms": 0.495,
+        "inclusive_ms": 0.495
+      },
+      {
+        "function": "C",
+        "url": "",
+        "line": 1,
+        "self_ms": 0.495,
+        "inclusive_ms": 0.8130000000000001
+      },
+      {
+        "function": "evaluate",
+        "url": "",
+        "line": 284,
+        "self_ms": 0.473,
+        "inclusive_ms": 0.634
+      },
+      {
+        "function": "(anonymous)",
+        "url": "",
+        "line": 2,
+        "self_ms": 0.47,
+        "inclusive_ms": 1.2810000000000001
+      },
+      {
+        "function": "commentOf",
+        "url": "/_sb/shell.js?v=1792432664",
+        "line": 40,
+        "self_ms": 0.469,
+        "inclusive_ms": 0.931
+      },
+      {
+        "function": "build",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 1763,
+        "self_ms": 0.469,
+        "inclusive_ms": 2.1470000000000002
+      },
+      {
+        "function": "L",
+        "url": "",
+        "line": 1,
+        "self_ms": 0.46599999999999997,
+        "inclusive_ms": 0.46599999999999997
+      },
+      {
+        "function": "setView",
+        "url": "/_sb/shell.js?v=1792432664",
+        "line": 696,
+        "self_ms": 0.46299999999999997,
+        "inclusive_ms": 20.99799999999998
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/_sb/shell.js?v=1792432664",
+        "line": 337,
+        "self_ms": 0.46199999999999997,
+        "inclusive_ms": 0.46199999999999997
+      }
+    ],
+    "inclusive": [
+      {
+        "function": "(root)",
+        "url": "",
+        "line": 0,
+        "self_ms": 0,
+        "inclusive_ms": 438.84699999999856
+      },
+      {
+        "function": "(program)",
+        "url": "",
+        "line": 0,
+        "self_ms": 227.2449999999989,
+        "inclusive_ms": 227.2449999999989
+      },
+      {
+        "function": "(idle)",
+        "url": "",
+        "line": 0,
+        "self_ms": 89.55800000000019,
+        "inclusive_ms": 89.55800000000019
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 1500,
+        "self_ms": 22.278,
+        "inclusive_ms": 39.39900000000001
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/_sb/shell.js?v=1792432664",
+        "line": 969,
+        "self_ms": 0.153,
+        "inclusive_ms": 21.150999999999982
+      },
+      {
+        "function": "setView",
+        "url": "/_sb/shell.js?v=1792432664",
+        "line": 696,
+        "self_ms": 0.46299999999999997,
+        "inclusive_ms": 20.99799999999998
+      },
+      {
+        "function": "go",
+        "url": "/_sb/shell.js?v=1792432664",
+        "line": 755,
+        "self_ms": 0.76,
+        "inclusive_ms": 19.765999999999988
+      },
+      {
+        "function": "refresh",
+        "url": "/_sb/shell.js?v=1792432664",
+        "line": 860,
+        "self_ms": 0.743,
+        "inclusive_ms": 17.817999999999994
+      },
+      {
+        "function": "loadReview",
+        "url": "/_sb/shell.js?v=1792432664",
+        "line": 862,
+        "self_ms": 0,
+        "inclusive_ms": 17.817999999999994
+      },
+      {
+        "function": "setReview",
+        "url": "/_sb/shell.js?v=1792432664",
+        "line": 861,
+        "self_ms": 0,
+        "inclusive_ms": 17.817999999999994
+      },
+      {
+        "function": "size",
+        "url": "/_sb/shell.js?v=1792432664",
+        "line": 730,
+        "self_ms": 0,
+        "inclusive_ms": 17.688999999999993
+      },
+      {
+        "function": "below",
+        "url": "/_sb/shell.js?v=1792432664",
+        "line": 738,
+        "self_ms": 0.155,
+        "inclusive_ms": 16.606999999999992
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/_sb/shell.js?v=1792432664",
+        "line": 738,
+        "self_ms": 16.45199999999999,
+        "inclusive_ms": 16.45199999999999
+      },
+      {
+        "function": "(garbage collector)",
+        "url": "",
+        "line": 0,
+        "self_ms": 12.227000000000004,
+        "inclusive_ms": 12.227000000000004
+      },
+      {
+        "function": "renderPitch",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 3361,
+        "self_ms": 0.935,
+        "inclusive_ms": 11.29
+      },
+      {
+        "function": "renderFilm",
+        "url": "/_sb/shell.js?v=1792432664",
+        "line": 296,
+        "self_ms": 4.022999999999999,
+        "inclusive_ms": 9.936999999999998
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/_sb/boot.js?v=1792432664",
+        "line": 10,
+        "self_ms": 8.059999999999997,
+        "inclusive_ms": 8.337999999999997
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/_sb/boot.js?v=1792432664",
+        "line": 1,
+        "self_ms": 0,
+        "inclusive_ms": 8.337999999999997
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/_sb/addslide.js?v=1792432664",
+        "line": 6,
+        "self_ms": 7.4079999999999995,
+        "inclusive_ms": 8.063999999999998
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/_sb/addslide.js?v=1792432664",
+        "line": 1,
+        "self_ms": 0,
+        "inclusive_ms": 8.063999999999998
+      },
+      {
+        "function": "ensureSlide",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 3213,
+        "self_ms": 0.153,
+        "inclusive_ms": 5.538999999999998
+      },
+      {
+        "function": "mountSlide",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 3124,
+        "self_ms": 0,
+        "inclusive_ms": 5.3859999999999975
+      },
+      {
+        "function": "build",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 4161,
+        "self_ms": 4.184999999999999,
+        "inclusive_ms": 5.109999999999998
+      },
+      {
+        "function": "allCat",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 1615,
+        "self_ms": 3.068,
+        "inclusive_ms": 4.306
+      },
+      {
+        "function": "resetLazySlides",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 3277,
+        "self_ms": 0.305,
+        "inclusive_ms": 4.066999999999999
+      },
+      {
+        "function": "size",
+        "url": "/_sb/shell.js?v=1792432664",
+        "line": 730,
+        "self_ms": 0,
+        "inclusive_ms": 3.8699999999999997
+      },
+      {
+        "function": "indexSlides",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 3081,
+        "self_ms": 2.698,
+        "inclusive_ms": 3.761999999999999
+      },
+      {
+        "function": "excluded",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 3427,
+        "self_ms": 1.5699999999999998,
+        "inclusive_ms": 3.449999999999999
+      },
+      {
+        "function": "excluded",
+        "url": "/_sb/shell.js?v=1792432664",
+        "line": 35,
+        "self_ms": 0,
+        "inclusive_ms": 3.449999999999999
+      },
+      {
+        "function": "counts",
+        "url": "/_sb/shell.js?v=1792432664",
+        "line": 843,
+        "self_ms": 0.152,
+        "inclusive_ms": 3.088999999999999
+      },
+      {
+        "function": "fillThumb",
+        "url": "/_sb/shell.js?v=1792432664",
+        "line": 216,
+        "self_ms": 0.17,
+        "inclusive_ms": 2.826999999999999
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/_sb/shell.js?v=1792432664",
+        "line": 215,
+        "self_ms": 0,
+        "inclusive_ms": 2.826999999999999
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/_sb/shell.js?v=1792432664",
+        "line": 215,
+        "self_ms": 0,
+        "inclusive_ms": 2.826999999999999
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/_sb/shell.js?v=1792432664",
+        "line": 846,
+        "self_ms": 0.924,
+        "inclusive_ms": 2.7819999999999996
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/_sb/shell.js?v=1792432664",
+        "line": 10,
+        "self_ms": 1.6989999999999998,
+        "inclusive_ms": 2.767
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/_sb/shell.js?v=1792432664",
+        "line": 1,
+        "self_ms": 0,
+        "inclusive_ms": 2.767
+      },
+      {
+        "function": "refit",
+        "url": "/_sb/shell.js?v=1792432664",
+        "line": 48,
+        "self_ms": 0,
+        "inclusive_ms": 2.762
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/_sb/shell.js?v=1792432664",
+        "line": 46,
+        "self_ms": 2.6229999999999998,
+        "inclusive_ms": 2.6229999999999998
+      },
+      {
+        "function": "fitIn",
+        "url": "/_sb/shell.js?v=1792432664",
+        "line": 46,
+        "self_ms": 0,
+        "inclusive_ms": 2.6229999999999998
+      },
+      {
+        "function": "build",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 1763,
+        "self_ms": 0.469,
+        "inclusive_ms": 2.1470000000000002
+      },
+      {
+        "function": "previewSlide",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 3303,
+        "self_ms": 0,
+        "inclusive_ms": 2.1470000000000002
+      },
+      {
+        "function": "build",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 4161,
+        "self_ms": 0,
+        "inclusive_ms": 2.1470000000000002
+      },
+      {
+        "function": "info",
+        "url": "/_sb/shell.js?v=1792432664",
+        "line": 62,
+        "self_ms": 0.927,
+        "inclusive_ms": 1.8579999999999997
+      },
+      {
+        "function": "O",
+        "url": "",
+        "line": 1,
+        "self_ms": 0.155,
+        "inclusive_ms": 1.8459999999999999
+      },
+      {
+        "function": "paintFilm",
+        "url": "/_sb/shell.js?v=1792432664",
+        "line": 238,
+        "self_ms": 0.45399999999999996,
+        "inclusive_ms": 1.385
+      },
+      {
+        "function": "(anonymous)",
+        "url": "",
+        "line": 1,
+        "self_ms": 1.381,
+        "inclusive_ms": 1.381
+      },
+      {
+        "function": "(anonymous)",
+        "url": "",
+        "line": 2,
+        "self_ms": 0.47,
+        "inclusive_ms": 1.2810000000000001
+      },
+      {
+        "function": "(anonymous)",
+        "url": "",
+        "line": 1,
+        "self_ms": 0,
+        "inclusive_ms": 1.2810000000000001
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 1615,
+        "self_ms": 1.238,
+        "inclusive_ms": 1.238
+      },
+      {
+        "function": "deckIds",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 3671,
+        "self_ms": 1.2329999999999999,
+        "inclusive_ms": 1.2329999999999999
+      },
+      {
+        "function": "px",
+        "url": "/_sb/shell.js?v=1792432664",
+        "line": 733,
+        "self_ms": 1.108,
+        "inclusive_ms": 1.108
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/_sb/shell.js?v=1792432664",
+        "line": 160,
+        "self_ms": 0.32,
+        "inclusive_ms": 0.9470000000000001
+      },
+      {
+        "function": "commentOf",
+        "url": "/_sb/shell.js?v=1792432664",
+        "line": 40,
+        "self_ms": 0.469,
+        "inclusive_ms": 0.931
+      },
+      {
+        "function": "px",
+        "url": "/_sb/shell.js?v=1792432664",
+        "line": 733,
+        "self_ms": 0.928,
+        "inclusive_ms": 0.928
+      },
+      {
+        "function": "build",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 1763,
+        "self_ms": 0.153,
+        "inclusive_ms": 0.925
+      },
+      {
+        "function": "el",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 1637,
+        "self_ms": 0.9010000000000001,
+        "inclusive_ms": 0.9010000000000001
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 2981,
+        "self_ms": 0,
+        "inclusive_ms": 0.9010000000000001
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 2981,
+        "self_ms": 0,
+        "inclusive_ms": 0.9010000000000001
+      },
+      {
+        "function": "ed",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 1638,
+        "self_ms": 0,
+        "inclusive_ms": 0.9010000000000001
+      },
+      {
+        "function": "C",
+        "url": "",
+        "line": 1,
+        "self_ms": 0.495,
+        "inclusive_ms": 0.8130000000000001
+      }
+    ],
+    "navigation": {
+      "name": "http://127.0.0.1:18800/d/bench-large-10000/deck.html",
+      "entryType": "navigation",
+      "startTime": 0,
+      "duration": 331.7999999988824,
+      "navigationId": 1092,
+      "initiatorType": "navigation",
+      "deliveryType": "",
+      "nextHopProtocol": "http/1.0",
+      "renderBlockingStatus": "non-blocking",
+      "contentType": "text/html",
+      "contentEncoding": "",
+      "workerStart": 0,
+      "workerRouterEvaluationStart": 0,
+      "workerCacheLookupStart": 0,
+      "workerMatchedSourceType": "",
+      "workerFinalSourceType": "",
+      "redirectStart": 0,
+      "redirectEnd": 0,
+      "fetchStart": 1.099999999627471,
+      "domainLookupStart": 6.399999998509884,
+      "domainLookupEnd": 6.399999998509884,
+      "connectStart": 6.399999998509884,
+      "secureConnectionStart": 0,
+      "connectEnd": 6.5,
+      "requestStart": 6.599999999627471,
+      "responseStart": 35.29999999888241,
+      "firstInterimResponseStart": 0,
+      "finalResponseHeadersStart": 35.29999999888241,
+      "responseEnd": 114.79999999888241,
+      "transferSize": 4651871,
+      "encodedBodySize": 4651571,
+      "decodedBodySize": 4651571,
+      "responseStatus": 200,
+      "serverTiming": [],
+      "unloadEventStart": 0,
+      "unloadEventEnd": 0,
+      "domInteractive": 288.8999999985099,
+      "domContentLoadedEventStart": 316.8999999985099,
+      "domContentLoadedEventEnd": 316.8999999985099,
+      "domComplete": 330.19999999925494,
+      "loadEventStart": 331.7999999988824,
+      "loadEventEnd": 331.7999999988824,
+      "type": "navigate",
+      "redirectCount": 0,
+      "activationStart": 0,
+      "criticalCHRestart": 0,
+      "notRestoredReasons": null,
+      "confidence": {
+        "randomizedTriggerRate": 0.4994798,
+        "value": "low"
+      }
+    },
+    "dom": {
+      "*": 687,
+      "#block-list *": 0,
+      "#sb-film-list *": 341,
+      "#deck *": 117,
+      ".sb-hold": 1
+    }
+  },
+  "after": {
+    "metrics": {
+      "Timestamp": 10265.014428,
+      "AudioHandlers": 0,
+      "AudioWorkletProcessors": 0,
+      "Documents": 5,
+      "Frames": 2,
+      "JSEventListeners": 183,
+      "LayoutObjects": 897,
+      "MediaKeySessions": 0,
+      "MediaKeys": 0,
+      "Nodes": 2242,
+      "Resources": 13,
+      "ContextLifecycleStateObservers": 22,
+      "V8PerContextDatas": 5,
+      "WorkerGlobalScopes": 0,
+      "UACSSResources": 0,
+      "RTCPeerConnections": 0,
+      "ResourceFetchers": 5,
+      "AdSubframes": 0,
+      "DetachedScriptStates": 2,
+      "ArrayBufferContents": 2,
+      "LayoutCount": 13,
+      "RecalcStyleCount": 17,
+      "LayoutDuration": 0.051624,
+      "RecalcStyleDuration": 0.007972,
+      "DevToolsCommandDuration": 0.014135,
+      "ScriptDuration": 0.048071,
+      "V8CompileDuration": 0.010991,
+      "TaskDuration": 0.213975,
+      "TaskOtherDuration": 0.081182,
+      "ThreadTime": 0.171691,
+      "ProcessTime": 0.29,
+      "JSHeapUsedSize": 11184676,
+      "JSHeapTotalSize": 17453056,
+      "FirstMeaningfulPaint": 0,
+      "DomContentLoaded": 10264.896501,
+      "NavigationStart": 10264.706302
+    },
+    "self": [
+      {
+        "function": "(program)",
+        "url": "",
+        "line": 0,
+        "self_ms": 115.0140000000001,
+        "inclusive_ms": 115.0140000000001
+      },
+      {
+        "function": "(idle)",
+        "url": "",
+        "line": 0,
+        "self_ms": 94.93100000000011,
+        "inclusive_ms": 94.93100000000011
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/_sb/shell.js?v=1792434572",
+        "line": 750,
+        "self_ms": 19.793000000000003,
+        "inclusive_ms": 19.793000000000003
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 1500,
+        "self_ms": 13.810999999999995,
+        "inclusive_ms": 25.720999999999997
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/_sb/boot.js?v=1792434572",
+        "line": 10,
+        "self_ms": 8.001999999999997,
+        "inclusive_ms": 8.158999999999995
+      },
+      {
+        "function": "(garbage collector)",
+        "url": "",
+        "line": 0,
+        "self_ms": 6.7299999999999995,
+        "inclusive_ms": 6.7299999999999995
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/_sb/addslide.js?v=1792434572",
+        "line": 6,
+        "self_ms": 5.232,
+        "inclusive_ms": 6.157999999999999
+      },
+      {
+        "function": "build",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 4231,
+        "self_ms": 2.9009999999999994,
+        "inclusive_ms": 3.520999999999999
+      },
+      {
+        "function": "allCat",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 1659,
+        "self_ms": 2.203,
+        "inclusive_ms": 3.222
+      },
+      {
+        "function": "renderFilm",
+        "url": "/_sb/shell.js?v=1792434572",
+        "line": 299,
+        "self_ms": 2.1119999999999997,
+        "inclusive_ms": 5.200999999999999
+      },
+      {
+        "function": "indexSlides",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 3128,
+        "self_ms": 1.54,
+        "inclusive_ms": 2.522
+      },
+      {
+        "function": "info",
+        "url": "/_sb/shell.js?v=1792434572",
+        "line": 63,
+        "self_ms": 1.537,
+        "inclusive_ms": 2.166
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/_sb/shell.js?v=1792434572",
+        "line": 47,
+        "self_ms": 1.2329999999999999,
+        "inclusive_ms": 1.2329999999999999
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/_sb/shell.js?v=1792434572",
+        "line": 10,
+        "self_ms": 1.058,
+        "inclusive_ms": 1.979
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 1659,
+        "self_ms": 1.019,
+        "inclusive_ms": 1.019
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/_sb/shell.js?v=1792434572",
+        "line": 867,
+        "self_ms": 0.935,
+        "inclusive_ms": 3.101
+      },
+      {
+        "function": "excluded",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 3486,
+        "self_ms": 0.92,
+        "inclusive_ms": 2.013
+      },
+      {
+        "function": "go",
+        "url": "/_sb/shell.js?v=1792434572",
+        "line": 768,
+        "self_ms": 0.903,
+        "inclusive_ms": 22.851000000000003
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/_sb/shell.js?v=1792434572",
+        "line": 750,
+        "self_ms": 0.898,
+        "inclusive_ms": 0.898
+      },
+      {
+        "function": "px",
+        "url": "/_sb/shell.js?v=1792434572",
+        "line": 745,
+        "self_ms": 0.743,
+        "inclusive_ms": 0.743
+      },
+      {
+        "function": "setView",
+        "url": "/_sb/shell.js?v=1792434572",
+        "line": 703,
+        "self_ms": 0.647,
+        "inclusive_ms": 24.552
+      },
+      {
+        "function": "(anonymous)",
+        "url": "",
+        "line": 1,
+        "self_ms": 0.639,
+        "inclusive_ms": 0.797
+      },
+      {
+        "function": "InjectedScript",
+        "url": "",
+        "line": 6429,
+        "self_ms": 0.633,
+        "inclusive_ms": 0.633
+      },
+      {
+        "function": "Q",
+        "url": "",
+        "line": 1,
+        "self_ms": 0.633,
+        "inclusive_ms": 0.633
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/_sb/addslide.js?v=1792434572",
+        "line": 22,
+        "self_ms": 0.618,
+        "inclusive_ms": 0.618
+      },
+      {
+        "function": "deckIds",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 3738,
+        "self_ms": 0.616,
+        "inclusive_ms": 0.616
+      },
+      {
+        "function": "paintFilm",
+        "url": "/_sb/shell.js?v=1792434572",
+        "line": 241,
+        "self_ms": 0.616,
+        "inclusive_ms": 0.77
+      },
+      {
+        "function": "(anonymous)",
+        "url": "",
+        "line": 1,
+        "self_ms": 0.611,
+        "inclusive_ms": 0.611
+      },
+      {
+        "function": "SlideHeights",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 3116,
+        "self_ms": 0.536,
+        "inclusive_ms": 0.536
+      },
+      {
+        "function": "el",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 1681,
+        "self_ms": 0.497,
+        "inclusive_ms": 0.497
+      },
+      {
+        "function": "refresh",
+        "url": "/_sb/shell.js?v=1792434572",
+        "line": 881,
+        "self_ms": 0.485,
+        "inclusive_ms": 11.359999999999998
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 1686,
+        "self_ms": 0.48,
+        "inclusive_ms": 0.48
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 3486,
+        "self_ms": 0.477,
+        "inclusive_ms": 0.477
+      },
+      {
+        "function": "(anonymous)",
+        "url": "",
+        "line": 2,
+        "self_ms": 0.469,
+        "inclusive_ms": 1.102
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 1669,
+        "self_ms": 0.46699999999999997,
+        "inclusive_ms": 0.46699999999999997
+      },
+      {
+        "function": "renderPitch",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 3416,
+        "self_ms": 0.46499999999999997,
+        "inclusive_ms": 7.288
+      },
+      {
+        "function": "px",
+        "url": "/_sb/shell.js?v=1792434572",
+        "line": 745,
+        "self_ms": 0.46299999999999997,
+        "inclusive_ms": 0.46299999999999997
+      },
+      {
+        "function": "counts",
+        "url": "/_sb/shell.js?v=1792434572",
+        "line": 864,
+        "self_ms": 0.43100000000000005,
+        "inclusive_ms": 3.686
+      },
+      {
+        "function": "build",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 1807,
+        "self_ms": 0.382,
+        "inclusive_ms": 1.321
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/_sb/shell.js?v=1792434572",
+        "line": 223,
+        "self_ms": 0.365,
+        "inclusive_ms": 0.365
+      }
+    ],
+    "inclusive": [
+      {
+        "function": "(root)",
+        "url": "",
+        "line": 0,
+        "self_ms": 0,
+        "inclusive_ms": 306.19199999999967
+      },
+      {
+        "function": "(program)",
+        "url": "",
+        "line": 0,
+        "self_ms": 115.0140000000001,
+        "inclusive_ms": 115.0140000000001
+      },
+      {
+        "function": "(idle)",
+        "url": "",
+        "line": 0,
+        "self_ms": 94.93100000000011,
+        "inclusive_ms": 94.93100000000011
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 1500,
+        "self_ms": 13.810999999999995,
+        "inclusive_ms": 25.720999999999997
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/_sb/shell.js?v=1792434572",
+        "line": 1001,
+        "self_ms": 0.154,
+        "inclusive_ms": 24.706
+      },
+      {
+        "function": "setView",
+        "url": "/_sb/shell.js?v=1792434572",
+        "line": 703,
+        "self_ms": 0.647,
+        "inclusive_ms": 24.552
+      },
+      {
+        "function": "go",
+        "url": "/_sb/shell.js?v=1792434572",
+        "line": 768,
+        "self_ms": 0.903,
+        "inclusive_ms": 22.851000000000003
+      },
+      {
+        "function": "size",
+        "url": "/_sb/shell.js?v=1792434572",
+        "line": 742,
+        "self_ms": 0,
+        "inclusive_ms": 20.689000000000004
+      },
+      {
+        "function": "below",
+        "url": "/_sb/shell.js?v=1792434572",
+        "line": 750,
+        "self_ms": 0.153,
+        "inclusive_ms": 19.946
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/_sb/shell.js?v=1792434572",
+        "line": 750,
+        "self_ms": 19.793000000000003,
+        "inclusive_ms": 19.793000000000003
+      },
+      {
+        "function": "setReview",
+        "url": "/_sb/shell.js?v=1792434572",
+        "line": 882,
+        "self_ms": 0.154,
+        "inclusive_ms": 11.513999999999996
+      },
+      {
+        "function": "loadReview",
+        "url": "/_sb/shell.js?v=1792434572",
+        "line": 883,
+        "self_ms": 0,
+        "inclusive_ms": 11.513999999999996
+      },
+      {
+        "function": "refresh",
+        "url": "/_sb/shell.js?v=1792434572",
+        "line": 881,
+        "self_ms": 0.485,
+        "inclusive_ms": 11.359999999999998
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/_sb/boot.js?v=1792434572",
+        "line": 10,
+        "self_ms": 8.001999999999997,
+        "inclusive_ms": 8.158999999999995
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/_sb/boot.js?v=1792434572",
+        "line": 1,
+        "self_ms": 0,
+        "inclusive_ms": 8.158999999999995
+      },
+      {
+        "function": "startDeck",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 4231,
+        "self_ms": 0.156,
+        "inclusive_ms": 7.599
+      },
+      {
+        "function": "renderPitch",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 3416,
+        "self_ms": 0.46499999999999997,
+        "inclusive_ms": 7.288
+      },
+      {
+        "function": "(garbage collector)",
+        "url": "",
+        "line": 0,
+        "self_ms": 6.7299999999999995,
+        "inclusive_ms": 6.7299999999999995
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/_sb/addslide.js?v=1792434572",
+        "line": 6,
+        "self_ms": 5.232,
+        "inclusive_ms": 6.157999999999999
+      },
+      {
+        "function": "renderFilm",
+        "url": "/_sb/shell.js?v=1792434572",
+        "line": 299,
+        "self_ms": 2.1119999999999997,
+        "inclusive_ms": 5.200999999999999
+      },
+      {
+        "function": "counts",
+        "url": "/_sb/shell.js?v=1792434572",
+        "line": 864,
+        "self_ms": 0.43100000000000005,
+        "inclusive_ms": 3.686
+      },
+      {
+        "function": "ensureSlide",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 3262,
+        "self_ms": 0,
+        "inclusive_ms": 3.674999999999999
+      },
+      {
+        "function": "mountSlide",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 3171,
+        "self_ms": 0,
+        "inclusive_ms": 3.674999999999999
+      },
+      {
+        "function": "build",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 4231,
+        "self_ms": 2.9009999999999994,
+        "inclusive_ms": 3.520999999999999
+      },
+      {
+        "function": "allCat",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 1659,
+        "self_ms": 2.203,
+        "inclusive_ms": 3.222
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/_sb/shell.js?v=1792434572",
+        "line": 867,
+        "self_ms": 0.935,
+        "inclusive_ms": 3.101
+      },
+      {
+        "function": "resetLazySlides",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 3330,
+        "self_ms": 0.162,
+        "inclusive_ms": 2.6839999999999997
+      },
+      {
+        "function": "indexSlides",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 3128,
+        "self_ms": 1.54,
+        "inclusive_ms": 2.522
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/_sb/shell.js?v=1792434572",
+        "line": 216,
+        "self_ms": 0.163,
+        "inclusive_ms": 2.175
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/_sb/shell.js?v=1792434572",
+        "line": 216,
+        "self_ms": 0,
+        "inclusive_ms": 2.175
+      },
+      {
+        "function": "info",
+        "url": "/_sb/shell.js?v=1792434572",
+        "line": 63,
+        "self_ms": 1.537,
+        "inclusive_ms": 2.166
+      },
+      {
+        "function": "excluded",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 3486,
+        "self_ms": 0.92,
+        "inclusive_ms": 2.013
+      },
+      {
+        "function": "excluded",
+        "url": "/_sb/shell.js?v=1792434572",
+        "line": 36,
+        "self_ms": 0,
+        "inclusive_ms": 2.013
+      },
+      {
+        "function": "fillThumb",
+        "url": "/_sb/shell.js?v=1792434572",
+        "line": 217,
+        "self_ms": 0.326,
+        "inclusive_ms": 2.012
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/_sb/shell.js?v=1792434572",
+        "line": 10,
+        "self_ms": 1.058,
+        "inclusive_ms": 1.979
+      },
+      {
+        "function": "size",
+        "url": "/_sb/shell.js?v=1792434572",
+        "line": 742,
+        "self_ms": 0,
+        "inclusive_ms": 1.6959999999999997
+      },
+      {
+        "function": "build",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 1807,
+        "self_ms": 0.382,
+        "inclusive_ms": 1.321
+      },
+      {
+        "function": "previewSlide",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 3356,
+        "self_ms": 0,
+        "inclusive_ms": 1.321
+      },
+      {
+        "function": "build",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 4231,
+        "self_ms": 0,
+        "inclusive_ms": 1.321
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/_sb/shell.js?v=1792434572",
+        "line": 47,
+        "self_ms": 1.2329999999999999,
+        "inclusive_ms": 1.2329999999999999
+      },
+      {
+        "function": "refit",
+        "url": "/_sb/shell.js?v=1792434572",
+        "line": 49,
+        "self_ms": 0,
+        "inclusive_ms": 1.2329999999999999
+      },
+      {
+        "function": "fitIn",
+        "url": "/_sb/shell.js?v=1792434572",
+        "line": 47,
+        "self_ms": 0,
+        "inclusive_ms": 1.2329999999999999
+      },
+      {
+        "function": "(anonymous)",
+        "url": "",
+        "line": 2,
+        "self_ms": 0.469,
+        "inclusive_ms": 1.102
+      },
+      {
+        "function": "(anonymous)",
+        "url": "",
+        "line": 1,
+        "self_ms": 0,
+        "inclusive_ms": 1.102
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/_sb/shell.js?v=1792434572",
+        "line": 161,
+        "self_ms": 0.156,
+        "inclusive_ms": 1.059
+      },
+      {
+        "function": "sideState",
+        "url": "/_sb/shell.js?v=1792434572",
+        "line": 730,
+        "self_ms": 0,
+        "inclusive_ms": 1.054
+      },
+      {
+        "function": "size",
+        "url": "/_sb/shell.js?v=1792434572",
+        "line": 742,
+        "self_ms": 0,
+        "inclusive_ms": 1.054
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 1659,
+        "self_ms": 1.019,
+        "inclusive_ms": 1.019
+      },
+      {
+        "function": "C",
+        "url": "",
+        "line": 1,
+        "self_ms": 0.326,
+        "inclusive_ms": 0.9590000000000001
+      },
+      {
+        "function": "(anonymous)",
+        "url": "",
+        "line": 1,
+        "self_ms": 0,
+        "inclusive_ms": 0.9590000000000001
+      },
+      {
+        "function": "size",
+        "url": "/_sb/shell.js?v=1792434572",
+        "line": 742,
+        "self_ms": 0.156,
+        "inclusive_ms": 0.903
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/_sb/shell.js?v=1792434572",
+        "line": 750,
+        "self_ms": 0.898,
+        "inclusive_ms": 0.898
+      },
+      {
+        "function": "below",
+        "url": "/_sb/shell.js?v=1792434572",
+        "line": 750,
+        "self_ms": 0,
+        "inclusive_ms": 0.898
+      },
+      {
+        "function": "(anonymous)",
+        "url": "",
+        "line": 1,
+        "self_ms": 0.163,
+        "inclusive_ms": 0.801
+      },
+      {
+        "function": "(anonymous)",
+        "url": "",
+        "line": 1,
+        "self_ms": 0.639,
+        "inclusive_ms": 0.797
+      },
+      {
+        "function": "(anonymous)",
+        "url": "",
+        "line": 1,
+        "self_ms": 0,
+        "inclusive_ms": 0.797
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 4234,
+        "self_ms": 0.157,
+        "inclusive_ms": 0.795
+      },
+      {
+        "function": "ed",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 1682,
+        "self_ms": 0.283,
+        "inclusive_ms": 0.78
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 3026,
+        "self_ms": 0,
+        "inclusive_ms": 0.78
+      },
+      {
+        "function": "(anonymous)",
+        "url": "/d/bench-large-10000/deck.html",
+        "line": 3026,
+        "self_ms": 0,
+        "inclusive_ms": 0.78
+      }
+    ],
+    "navigation": {
+      "name": "http://127.0.0.1:18799/d/bench-large-10000/deck.html",
+      "entryType": "navigation",
+      "startTime": 0,
+      "duration": 203.69999999925494,
+      "navigationId": 2382,
+      "initiatorType": "navigation",
+      "deliveryType": "",
+      "nextHopProtocol": "http/1.0",
+      "renderBlockingStatus": "non-blocking",
+      "contentType": "text/html",
+      "contentEncoding": "gzip",
+      "workerStart": 0,
+      "workerRouterEvaluationStart": 0,
+      "workerCacheLookupStart": 0,
+      "workerMatchedSourceType": "",
+      "workerFinalSourceType": "",
+      "redirectStart": 0,
+      "redirectEnd": 0,
+      "fetchStart": 0.599999999627471,
+      "domainLookupStart": 7.199999999254942,
+      "domainLookupEnd": 7.199999999254942,
+      "connectStart": 7.199999999254942,
+      "secureConnectionStart": 0,
+      "connectEnd": 7.399999998509884,
+      "requestStart": 7.5,
+      "responseStart": 29,
+      "firstInterimResponseStart": 0,
+      "finalResponseHeadersStart": 29,
+      "responseEnd": 33.399999998509884,
+      "transferSize": 177021,
+      "encodedBodySize": 176721,
+      "decodedBodySize": 1816081,
+      "responseStatus": 200,
+      "serverTiming": [],
+      "unloadEventStart": 0,
+      "unloadEventEnd": 0,
+      "domInteractive": 165.09999999962747,
+      "domContentLoadedEventStart": 190.19999999925494,
+      "domContentLoadedEventEnd": 190.2999999988824,
+      "domComplete": 203.2999999988824,
+      "loadEventStart": 203.69999999925494,
+      "loadEventEnd": 203.69999999925494,
+      "type": "navigate",
+      "redirectCount": 0,
+      "activationStart": 0,
+      "criticalCHRestart": 0,
+      "notRestoredReasons": null,
+      "confidence": {
+        "randomizedTriggerRate": 0.4994798,
+        "value": "high"
+      }
+    },
+    "dom": {
+      "*": 687,
+      "#block-list *": 0,
+      "#sb-film-list *": 341,
+      "#deck *": 117,
+      ".sb-hold": 1
+    }
+  }
+}
