@@ -208,7 +208,7 @@
     <h2>About</h2><div class="side" id="about">Decks is made by Paul Millerd at <a href="https://strategyu.co/?utm_source=decks&utm_medium=app&utm_campaign=dashboard" target="_blank" rel="noopener">StrategyU</a>, where he teaches the consulting method it is built on. The consulting template comes from his <a href="https://strategyu.co/strategy-consulting-powerpoint-templates/?utm_source=decks&utm_medium=app&utm_campaign=dashboard" target="_blank" rel="noopener">free consulting PowerPoint templates</a>.</div>
   </aside>
 </main>
-<footer>Decks · <a href="https://github.com/paulmil11/decks/blob/main/LICENSE" target="_blank" rel="noopener">MIT license</a> · Made by <a href="https://strategyu.co/?utm_source=decks&utm_medium=app&utm_campaign=footer" target="_blank" rel="noopener">StrategyU</a></footer>
+<footer><span id="ver">Decks</span> · <a href="https://github.com/paulmil11/decks/blob/main/LICENSE" target="_blank" rel="noopener">MIT license</a> · Made by <a href="https://strategyu.co/?utm_source=decks&utm_medium=app&utm_campaign=footer" target="_blank" rel="noopener">StrategyU</a></footer>
 <script>
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const ago = (t) => { if (!t) return ''; const s = Date.now() / 1000 - t; if (s < 90) return 'just now'; if (s < 3600) return Math.round(s / 60) + ' min ago'; if (s < 86400) return Math.round(s / 3600) + 'h ago'; return new Date(t * 1000).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }); };
@@ -353,6 +353,7 @@ async function load() {
   if (document.querySelector('.dmenu.open') || document.getElementById('del-back').classList.contains('on')) return;   // not under an open menu
   let data; try { data = await (await fetch('/api/decks', { cache: 'no-store' })).json(); } catch (e) { document.getElementById('active').innerHTML = '<div class="empty">The server is not responding.</div>'; return; }
   hideClients = !!(data.settings && data.settings.hideClients); decksDir = data.decksDir || '';
+  if (data.version) document.getElementById('ver').innerHTML = `Decks ${esc(data.version)} (<a href="https://github.com/paulmil11/decks/blob/main/CHANGELOG.md" target="_blank" rel="noopener">what's new</a>)`;
   const cb = document.getElementById('clients'); cb.classList.toggle('on', hideClients); cb.textContent = hideClients ? 'Client work hidden' : 'Hide client work';
   decks = data.decks;
   const by = (g) => data.decks.filter((d) => d.group === g && !d.hidden && !(hideClients && d.client));

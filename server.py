@@ -34,6 +34,7 @@ APP = Path(__file__).resolve().parent
 STATIC = APP / 'static'
 LOCK = threading.Lock()
 STARTED = time.time()
+VERSION = '0.2.0'   # see CHANGELOG.md
 
 
 # ---------- decks and files ----------
@@ -516,7 +517,7 @@ class Handler(BaseHTTPRequestHandler):
             reg, st = load_registry(), settings()
             decks = [d for d in reg['decks'] if not (st.get('hideClients') and d.get('client'))]
             return self.json(200, {'decks': [deck_summary(d) for d in decks], 'started': STARTED, 'port': sbconfig.PORT,
-                                   'decksDir': sbconfig.tilde(sbconfig.DECKS), 'settings': st})
+                                   'decksDir': sbconfig.tilde(sbconfig.DECKS), 'settings': st, 'version': VERSION})
         if path == '/api/settings':
             return self.json(200, settings())
         if path == '/api/templates':
@@ -702,7 +703,7 @@ def main():
     if demo:
         make_thumb(demo)
         print(f'Made a demo deck in {demo["folder"]}', flush=True)
-    print(f'Decks on http://localhost:{a.port}/  (decks in {sbconfig.tilde(sbconfig.DECKS)})', flush=True)
+    print(f'Decks {VERSION} on http://localhost:{a.port}/  (decks in {sbconfig.tilde(sbconfig.DECKS)})', flush=True)
     srv.serve_forever()
 
 

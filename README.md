@@ -100,6 +100,13 @@ thumbnails use Node.js and a headless Chrome. `setup.sh` installs `playwright-co
 Linux, if screenshots or PDFs fail, Chrome is missing system libraries:
 `(cd tools && sudo npx playwright-core install-deps chromium)`.
 
+### Updates
+
+Decks has numbered versions. [CHANGELOG.md](CHANGELOG.md) says what changed in each, and the
+dashboard footer shows the version you're running. To update, run `git pull` here and
+restart the server. To hear about new versions, watch the repository on GitHub
+(Watch › Custom › Releases).
+
 ### Settings
 
 Defaults: port 8790, listening on 127.0.0.1, decks in `~/slide-decks`. To change them,
