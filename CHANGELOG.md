@@ -4,6 +4,13 @@ What changed in each version of Decks. To update, run `git pull` in your Decks f
 restart the server. To hear about new versions, watch this repository on GitHub
 (Watch › Custom › Releases).
 
+## 0.3.0 (October 19, 2026)
+
+- The dashboard tells you when a new version is out, with a link to what's new. Once a day the
+  server asks GitHub which release is newest (one small request; nothing about your decks is
+  sent). Hide the notice until the next version with ×, or turn the check off with
+  `"check_updates": false` in `config.json` or `SB_CHECK_UPDATES=0`.
+
 ## 0.2.0 (October 19, 2026)
 
 **Checks**

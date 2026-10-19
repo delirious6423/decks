@@ -34,7 +34,9 @@ APP = Path(__file__).resolve().parent
 STATIC = APP / 'static'
 LOCK = threading.Lock()
 STARTED = time.time()
-VERSION = '0.2.0'   # see CHANGELOG.md
+VERSION = '0.3.0'   # see CHANGELOG.md
+UPDATE_REPO = 'paulmil11/decks'   # where new versions are released (a fork points this at its own)
+LATEST = {}   # the newest release, from GitHub once a day (sbconfig.CHECK_UPDATES)
 
 
 # ---------- decks and files ----------
@@ -517,7 +519,7 @@ class Handler(BaseHTTPRequestHandler):
             reg, st = load_registry(), settings()
             decks = [d for d in reg['decks'] if not (st.get('hideClients') and d.get('client'))]
             return self.json(200, {'decks': [deck_summary(d) for d in decks], 'started': STARTED, 'port': sbconfig.PORT,
-                                   'decksDir': sbconfig.tilde(sbconfig.DECKS), 'settings': st, 'version': VERSION})
+                                   'decksDir': sbconfig.tilde(sbconfig.DECKS), 'settings': st, 'version': VERSION, 'update': update_info()})
         if path == '/api/settings':
             return self.json(200, settings())
         if path == '/api/templates':
@@ -681,6 +683,38 @@ def first_run():
         return None
 
 
+def vtuple(v):
+    return tuple(int(x) for x in re.findall(r'\d+', str(v))[:3])
+
+
+def check_latest():
+    """Which release is newest: one HEAD request to GitHub, read from where it redirects
+    (/releases/latest -> /releases/tag/v0.3.0). Nothing about your decks is sent."""
+    import http.client
+    try:
+        c = http.client.HTTPSConnection('github.com', timeout=6)
+        c.request('HEAD', f'/{UPDATE_REPO}/releases/latest', headers={'User-Agent': f'Decks/{VERSION}'})
+        loc = c.getresponse().getheader('Location') or ''
+        c.close()
+        m = re.search(r'/releases/tag/v?(\d+\.\d+\.\d+)', loc)
+        if m:
+            LATEST.update({'version': m.group(1), 'url': f'https://github.com/{UPDATE_REPO}/releases/tag/v{m.group(1)}', 'at': time.time()})
+    except (OSError, http.client.HTTPException):
+        pass   # offline, or GitHub didn't answer: try again tomorrow
+
+
+def update_loop():
+    time.sleep(5)   # after startup, so the first page never waits on it
+    while True:
+        check_latest()
+        time.sleep(24 * 3600)
+
+
+def update_info():
+    v = LATEST.get('version')
+    return {'version': v, 'url': LATEST['url']} if v and vtuple(v) > vtuple(VERSION) else None
+
+
 def main():
     ap = argparse.ArgumentParser(description='Decks server. Defaults come from config.json and SB_* environment variables (see sbconfig.py).')
     ap.add_argument('--host', default=sbconfig.HOST)
@@ -700,6 +734,8 @@ def main():
             threading.Thread(target=V6(('::1', a.port), Handler).serve_forever, daemon=True).start()
         except OSError:
             pass
+    if sbconfig.CHECK_UPDATES:
+        threading.Thread(target=update_loop, daemon=True).start()
     if demo:
         make_thumb(demo)
         print(f'Made a demo deck in {demo["folder"]}', flush=True)

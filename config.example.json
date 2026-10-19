@@ -1,5 +1,6 @@
 {
   "port": 8790,
   "host": "127.0.0.1",
-  "decks_dir": "~/slide-decks"
+  "decks_dir": "~/slide-decks",
+  "check_updates": true
 }

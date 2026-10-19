@@ -121,6 +121,12 @@
   .nd.ok .nd-done { display: block; }
   .nd-prompt { margin-top: 10px; background: var(--paper); border-radius: 8px; padding: 10px 12px; font: 12.5px/1.55 ui-monospace, Menlo, monospace; color: var(--ink); white-space: pre-wrap; }
   #clients.on { background: var(--ink); border-color: var(--ink); color: #fff; }
+  .upd { grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; background: #FFF6E5; border: 1px solid #F0D9A8; border-radius: 10px; padding: 10px 14px; font-size: 13.5px; color: var(--ink); }
+  .upd[hidden] { display: none; }
+  .upd .t { flex: 1; }
+  .upd a { color: var(--red); text-decoration: underline; text-underline-offset: 2px; }
+  .upd code { font-size: 12.5px; background: #fff; border: 1px solid #F0D9A8; border-radius: 4px; padding: 1px 5px; }
+  .upd button { border: 0; background: none; font-size: 18px; line-height: 1; color: var(--faint); cursor: pointer; }
   .howto { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) auto; gap: 14px; align-items: start; background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; }
   .howto .st { display: flex; gap: 10px; font-size: 13.5px; color: var(--mute); line-height: 1.5; }
   .howto .st i { flex: none; width: 24px; height: 24px; border-radius: 50%; background: var(--red); color: #fff; font: 700 12.5px/24px 'DM Sans', sans-serif; text-align: center; font-style: normal; }
@@ -190,6 +196,7 @@
   </div>
 </div>
 <main>
+  <div class="upd" id="upd" role="status" hidden><span class="t"></span><button aria-label="Hide until the next version" title="Hide until the next version">×</button></div>
   <div class="howto" id="howto" hidden>
     <div class="st"><i>1</i><div><b>Start a deck.</b> Click New deck, answer a few questions, and paste the prompt it copies into Claude Code or Codex.</div></div>
     <div class="st"><i>2</i><div><b>Comment on slides.</b> Click any text on a slide to edit it, or leave a comment under the slide.</div></div>
@@ -353,6 +360,9 @@ async function load() {
   if (document.querySelector('.dmenu.open') || document.getElementById('del-back').classList.contains('on')) return;   // not under an open menu
   let data; try { data = await (await fetch('/api/decks', { cache: 'no-store' })).json(); } catch (e) { document.getElementById('active').innerHTML = '<div class="empty">The server is not responding.</div>'; return; }
   hideClients = !!(data.settings && data.settings.hideClients); decksDir = data.decksDir || '';
+  { const u = data.update, box = document.getElementById('upd'); let gone = ''; try { gone = localStorage.getItem('__decks_upd_hidden') || ''; } catch (e) {}
+    box.hidden = !u || gone === u.version;   // a newer release on GitHub, until you hide it
+    if (u) box.querySelector('.t').innerHTML = `<b>Decks ${esc(u.version)} is out</b> (<a href="${esc(u.url)}" target="_blank" rel="noopener">what's new</a>). To update, run <code>git pull</code> in your Decks folder, then restart the server.`; }
   if (data.version) document.getElementById('ver').innerHTML = `Decks ${esc(data.version)} (<a href="https://github.com/paulmil11/decks/blob/main/CHANGELOG.md" target="_blank" rel="noopener">what's new</a>)`;
   const cb = document.getElementById('clients'); cb.classList.toggle('on', hideClients); cb.textContent = hideClients ? 'Client work hidden' : 'Hide client work';
   decks = data.decks;
@@ -404,6 +414,7 @@ document.getElementById('del-x').addEventListener('click', closeDel);
 document.getElementById('del-back').addEventListener('click', (e) => { if (e.target.id === 'del-back') closeDel(); });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeDel(); document.querySelectorAll('.dmenu.open').forEach((x) => x.classList.remove('open')); } });
 
+document.querySelector('#upd button').addEventListener('click', () => { try { localStorage.setItem('__decks_upd_hidden', (document.querySelector('#upd b').textContent.match(/[\d.]+\d/) || [''])[0]); } catch (e) {} document.getElementById('upd').hidden = true; });
 load(); setInterval(load, 5000);
 </script>
 </body>

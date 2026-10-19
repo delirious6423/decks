@@ -4,9 +4,13 @@ Settings come from, in order (later wins):
 
   1. defaults: port 8790, host 127.0.0.1, decks in ~/slide-decks
   2. config.json next to this file, or the file named by SB_CONFIG
-  3. environment: SB_PORT, SB_HOST, SB_DECKS_DIR
+  3. environment: SB_PORT, SB_HOST, SB_DECKS_DIR, SB_CHECK_UPDATES
 
-    { "port": 8790, "host": "127.0.0.1", "decks_dir": "~/slide-decks" }
+    { "port": 8790, "host": "127.0.0.1", "decks_dir": "~/slide-decks", "check_updates": true }
+
+check_updates: once a day the server asks GitHub which release of Decks is newest, so the
+dashboard can say when there's a new version. Set it to false (or SB_CHECK_UPDATES=0) to
+turn that off.
 
 The deck registry (decks.json) and settings.json live in the decks folder, next to
 the decks themselves, so the app folder never holds your work. Command line tools
@@ -17,8 +21,8 @@ import os
 from pathlib import Path
 
 APP = Path(__file__).resolve().parent
-DEFAULTS = {'port': 8790, 'host': '127.0.0.1', 'decks_dir': '~/slide-decks'}
-ENV = {'port': 'SB_PORT', 'host': 'SB_HOST', 'decks_dir': 'SB_DECKS_DIR'}
+DEFAULTS = {'port': 8790, 'host': '127.0.0.1', 'decks_dir': '~/slide-decks', 'check_updates': True}
+ENV = {'port': 'SB_PORT', 'host': 'SB_HOST', 'decks_dir': 'SB_DECKS_DIR', 'check_updates': 'SB_CHECK_UPDATES'}
 
 
 def load():
@@ -31,6 +35,7 @@ def load():
         if os.environ.get(var):
             cfg[key] = os.environ[var]
     cfg['port'] = int(cfg['port'])
+    cfg['check_updates'] = str(cfg['check_updates']).strip().lower() not in ('0', 'false', 'no', 'off')
     cfg['decks_dir'] = Path(os.path.expanduser(str(cfg['decks_dir']))).resolve()
     return cfg
 
@@ -41,6 +46,7 @@ HOST = CONFIG['host']
 DECKS = CONFIG['decks_dir']
 REGISTRY = DECKS / 'decks.json'
 SETTINGS = DECKS / 'settings.json'
+CHECK_UPDATES = CONFIG['check_updates']
 
 
 def url():

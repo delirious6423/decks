@@ -103,9 +103,14 @@ Linux, if screenshots or PDFs fail, Chrome is missing system libraries:
 ### Updates
 
 Decks has numbered versions. [CHANGELOG.md](CHANGELOG.md) says what changed in each, and the
-dashboard footer shows the version you're running. To update, run `git pull` here and
-restart the server. To hear about new versions, watch the repository on GitHub
-(Watch › Custom › Releases).
+dashboard footer shows the version you're running. When a new version is out, the dashboard
+says so. To update, run `git pull` here and restart the server. To hear by email, watch the
+repository on GitHub (Watch › Custom › Releases).
+
+To know about new versions, the server asks GitHub once a day which release is newest: one
+small request, read from a redirect. GitHub sees your IP address and that a check happened.
+Nothing about your decks is sent. To turn it off, set `"check_updates": false` in
+`config.json`, or `SB_CHECK_UPDATES=0`.
 
 ### Settings
 
@@ -117,6 +122,7 @@ copy `config.example.json` to `config.json`, or set environment variables (they 
 | Port | `port` | `SB_PORT` |
 | Address to listen on | `host` | `SB_HOST` |
 | Decks folder (also holds `decks.json` and `settings.json`) | `decks_dir` | `SB_DECKS_DIR` |
+| Ask GitHub once a day for new versions (`true`) | `check_updates` | `SB_CHECK_UPDATES` |
 | A different config file | | `SB_CONFIG` |
 | Where `sb` finds the server | | `SB_URL` |
 | Chrome for the headless jobs | | `SB_CHROME` |
