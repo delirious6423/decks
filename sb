@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""sb: the agent's command line for Decks (Claude Code, Codex, or you).
+"""sb: the agent's command line for Decks Performance Fork (Claude Code, Codex, or you).
 
   sb decks                                  every deck, with open comments
   sb comments <deck> [--all]                comments to act on (numbered like the deck); --all adds drafts
   sb edits <deck> [--version v]             the reviewer's inline text edits and slide moves (read-only)
-  sb working <deck> <slide> [note]          show "Claude working" on a slide
+  sb working <deck> <slide> [note]          show "Agent working" on a slide
   sb reply <deck> <slide> <done|question|skipped> <text>
   sb status <deck> <text> [--done N --total M]   the live line in the reviewer's top bar
   sb idle <deck>                            clear the live line
@@ -56,7 +56,7 @@ def call(method, path, data=None):
         except Exception: msg = str(e)
         sys.exit(f"{msg} ({method} {path}). Try: sb decks" if e.code == 404 else msg)
     except urllib.error.URLError as e:
-        sys.exit(f'Decks server not reachable at {BASE} ({e}). Start it: python3 {APP / "server.py"}')
+        sys.exit(f'Decks Performance Fork server not reachable at {BASE} ({e}). Start it: python3 {APP / "server.py"}')
 
 
 def node(*args):
@@ -249,7 +249,7 @@ def main(argv):
         print(node('thumb', slug, str(path / '.slidebuilder' / 'thumb.png')), end='')
     elif cmd == 'commit':
         _, path = folder(slug)
-        msg = ' '.join(rest) or 'Decks round'
+        msg = ' '.join(rest) or 'Decks Performance Fork round'
         subprocess.run(['git', '-C', str(path), 'add', '-A'], check=True)
         res = subprocess.run(['git', '-C', str(path), 'commit', '-q', '-m', msg], capture_output=True, text=True)
         print(res.stdout.strip() or res.stderr.strip() or 'committed')

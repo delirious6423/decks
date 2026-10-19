@@ -1,5 +1,5 @@
 #!/bin/sh
-# One-time setup for Decks on macOS or Linux.
+# One-time setup for Decks Performance Fork on macOS or Linux.
 # The server itself needs only Python 3. This installs what `sb shot`, `sb audit`,
 # `sb export`, and the dashboard thumbnails use: playwright-core (in tools/) and
 # Chrome for Testing (in Playwright's cache: ~/Library/Caches/ms-playwright on macOS,
@@ -11,7 +11,7 @@ need() { command -v "$1" >/dev/null 2>&1 || { echo "Missing $1: $2"; exit 1; }; 
 need python3 "install Python 3.9 or newer"
 need node "install Node.js 18 or newer (https://nodejs.org)"
 need npm "it comes with Node.js"
-command -v git >/dev/null 2>&1 || echo "Note: git not found. Decks work, but they won't get version history (sb commit)."
+command -v git >/dev/null 2>&1 || echo "Note: git not found. Decks Performance Fork runs, but decks won't get version history (sb commit)."
 
 python3 -c 'import sys; sys.exit(0 if sys.version_info >= (3, 9) else 1)' || { echo "Python 3.9 or newer is needed"; exit 1; }
 node -e 'process.exit(+process.versions.node.split(".")[0] >= 18 ? 0 : 1)' || { echo "Node.js 18 or newer is needed"; exit 1; }

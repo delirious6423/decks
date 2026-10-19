@@ -187,7 +187,7 @@ def template(tid):
 
 def pieces_js(pieces, template_pitches):
     """Versions for the pieces the user picked (the first is the main deck), then the template's own extra versions.
-    A piece other than the main one starts as one placeholder slide (only:true, in:[piece]) until Claude builds it;
+    A piece other than the main one starts as one placeholder slide (only:true, in:[piece]) until the agent builds it;
     a facilitator pack is the engine's facilitator version (the agenda plus fac:true slides)."""
     main, rest = pieces[0], pieces[1:]
     js = ['const TEMPLATE_PITCHES = (() => {', template_pitches, '  return PITCHES;', '})();',
@@ -197,8 +197,8 @@ def pieces_js(pieces, template_pitches):
             continue
         title = f"{pc['name']}: {pc.get('desc', '').rstrip('.')}" if pc.get('desc') else pc['name']
         js.append(f"LIBRARY[{js_str(pc['id'] + '-start')}] = {{ cat: CATS[CATS.length - 1], layout: 'plain', only: true, in: [{js_str(pc['id'])}], "
-                  f"title: {js_str(title)}, body: ['Claude builds this version from the main deck and the brief.', 'Pick it from the version menu at the top to see it.'], "
-                  f"notes: 'Placeholder: Claude replaces this slide when it builds this version.' }};")
+                  f"title: {js_str(title)}, body: ['Your agent builds this version from the main deck and the brief.', 'Pick it from the version menu at the top to see it.'], "
+                  f"notes: 'Placeholder: Your agent replaces this slide when it builds this version.' }};")
     v = [f"  {js_str(main['id'])}: {{ name: {js_str(main['name'])}, default: true, blocks: (Object.values(TEMPLATE_PITCHES).find((x) => x.default) || {{}}).blocks || CATS.flatMap(byCat) }},"]
     for pc in rest:
         blocks = 'facPack()' if pc['id'] == 'facilitator' else f"pieceOnly({js_str(pc['id'])})"
@@ -228,7 +228,7 @@ def assemble(tid, name, prefix, pieces=None, theme=None, serif=False, logo=None)
     content = '\n'.join(head) + '\n' + content
     out = (engine.replace('/*{{CONTENT}}*/', content).replace('/*{{PITCHES}}*/', pitches).replace('/*{{LIBRARY_LOADER}}*/', (TEMPLATES.parent / 'static' / 'library.js').read_text(encoding='utf-8')).replace('<!--{{THEME}}-->', theme_css(theme, serif))
            .replace('<!--{{SCRIPTS}}-->', scripts)
-           .replace('{{TITLE}}', html.escape(name)).replace('{{BRAND}}', 'Strategy<span>U</span> · ' + html.escape(name))
+           .replace('{{TITLE}}', html.escape(name)).replace('{{BRAND}}', 'Decks <span>Performance Fork</span> · ' + html.escape(name))
            .replace('{{SUB}}', html.escape(t.get('sub', t['name']))).replace('{{PREFIX}}', prefix))
     assert '{{' not in out.replace('{{ ', ''), 'unfilled placeholder'
     return out
@@ -262,7 +262,7 @@ def tmpl_phrase(tmpl):
 
 
 def prompt_for(deck, brief, tmpl, pieces=None):
-    bits = [f'New deck “{deck["name"]}” in Decks, from {tmpl_phrase(tmpl)}']
+    bits = [f'New deck “{deck["name"]}” in Decks Performance Fork, from {tmpl_phrase(tmpl)}']
     if brief.get('length'):
         bits[0] += f', {brief["length"]}'
     if brief.get('audience'):
@@ -441,11 +441,11 @@ def create_deck(name, tid, brief=None, pieces=None, logo=None, registry_path=Non
 def create_demo(registry_path=None):
     """The deck a fresh install starts with: the talk template, with a brief about trying Decks."""
     return create_deck('Demo talk', 'talk', {
-        'audience': 'people trying Decks for the first time',
+        'audience': 'people trying Decks Performance Fork for the first time',
         'point': 'Comment on a slide, ask your agent, and read its reply under the slide.',
         'length': '20 min',
         'style': 'Navy',
-        'notes': 'A practice deck. Leave a comment under any slide, then click Ask Claude and paste the prompt into Claude Code or Codex.',
+        'notes': 'A practice deck. Leave a comment under any slide, then click Ask agent and paste the prompt into your coding agent.',
     }, registry_path=registry_path)
 
 

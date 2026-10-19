@@ -1,7 +1,7 @@
-# Optional (Linux): keep Decks running as a systemd user service.
+# Optional (Linux): keep Decks Performance Fork running as a systemd user service.
 # Install: see "Run it at login" in README.md. __APP__ is filled in then.
 [Unit]
-Description=Decks
+Description=Decks Performance Fork
 After=network.target
 
 [Service]

@@ -2,7 +2,7 @@ const CATS = ['open', 'why', 'how', 'who', 'next'];
 const CAT_LABELS = { open: 'Opening', why: 'Why this work', how: 'How we would do it', who: 'Team and fees', next: 'Next steps' };
 const CAT_SHORT = { open: 'Open', why: 'Why', how: 'How', who: 'Who', next: 'Next' };
 const FIGS = {};
-const DRAFT = 'Placeholder text drafted by Claude: replace it.';
+const DRAFT = 'Draft placeholder text for your agent to replace.';
 
 const LIBRARY = {
   'title': { cat:'open', layout:'title', title:'{{NAME_JS}}', date:'Prepared for the client · the date',

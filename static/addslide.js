@@ -1,7 +1,7 @@
 /* Decks: Add a slide (key N, or + in the filmstrip and the sorter).
    "Help me choose" asks what you're trying to show and suggests a few layouts. If the deck carries
    one in its library (a template's layouts, the basic guided ones, or slides left out of this
-   version), Add slide puts it right after the slide you're on. Either way, Copy prompt gives Claude
+   version), Add slide puts it right after the slide you're on. Either way, Copy prompt gives your agent
    (or Codex) everything it needs to build or fill the slide in the deck file. */
 (async function () {
   if (window.__SB_ENGINE_READY) await window.__SB_ENGINE_READY;
@@ -186,17 +186,17 @@
       const picks = picksFor();
       if (picks.length) {
         if (!picks.some((p) => p.k.k === (st.kind && st.kind.k))) { st.kind = picks[0].k; st.id = picks[0].id; }
-        h += `<label>Try one of these</label><div class="picks">${picks.map((p) => `<button class="pick${p.k.k === st.kind.k ? ' on' : ''}" data-kind="${p.k.k}"><div class="tb" data-tb="${esc(p.id || '')}">${p.id ? '' : sketch(p.k.sk)}</div><b>${esc(p.k.name)}</b><small>${esc(p.k.why)}</small><em>${p.id ? 'In this deck’s layouts' : 'Claude builds this one'}</em></button>`).join('')}</div>`;
+        h += `<label>Try one of these</label><div class="picks">${picks.map((p) => `<button class="pick${p.k.k === st.kind.k ? ' on' : ''}" data-kind="${p.k.k}"><div class="tb" data-tb="${esc(p.id || '')}">${p.id ? '' : sketch(p.k.sk)}</div><b>${esc(p.k.name)}</b><small>${esc(p.k.why)}</small><em>${p.id ? 'In this deck’s layouts' : 'Your agent builds this one'}</em></button>`).join('')}</div>`;
       }
     } else if (st.tab === 'basic') {
       const L = lib(), bases = Object.keys(L).filter((k) => L[k].lib && !L[k].copyOf);
-      if (!bases.length) h += '<div class="empty">This deck doesn’t carry the basic layouts yet. Ask Claude to “backfit the basic layouts” into it, or use Help me choose and Copy prompt.</div>';
+      if (!bases.length) h += '<div class="empty">This deck doesn’t carry the basic layouts yet. Ask agent to “backfit the basic layouts” into it, or use Help me choose and Copy prompt.</div>';
       else h += '<div class="grid">' + bases.map((b) => { const free = take(b), n = used(b);
         return `<button class="pick${st.id && (st.id === b || L[st.id] && L[st.id].copyOf === b) ? ' on' : ''}" data-base="${esc(b)}"${free ? '' : ' disabled'}><div class="tb" data-tb="${esc(b)}"></div><small style="margin-top:5px">${esc(L[b].title || API.title(b)).slice(0, 70)}</small><em>${n ? `${n} in this deck` : 'Basic layout'}${free ? '' : ' · no copies left'}</em></button>`; }).join('') + '</div>';
     } else {
       const L = lib(), cl = labels(), cats = (() => { try { return CATS; } catch (e) { return []; } })();   // eslint-disable-line no-undef
       const out = Object.keys(L).filter((k) => addable(k) && !L[k].lib).sort((x, y) => (cats.indexOf(L[x].cat) - cats.indexOf(L[y].cat)));
-      if (!out.length) h += '<div class="empty">This deck has no layouts waiting outside this version. Use Help me choose, and Copy prompt asks Claude to build the slide.</div>';
+      if (!out.length) h += '<div class="empty">This deck has no layouts waiting outside this version. Use Help me choose, and Copy prompt asks your agent to build the slide.</div>';
       else {
         let last = null; h += '<div class="grid">';
         out.forEach((id) => { const g = L[id].lib ? 'Basic layouts' : (cl[L[id].cat] || L[id].cat || ''); if (g !== last) { h += `<div class="grp">${esc(String(g).replace(/ · \d+:\d+.*$/, '').replace(/ — .*$/, ''))}</div>`; last = g; }
@@ -208,7 +208,7 @@
     const pos = (() => { const ids = API.slides(), a = st.after === undefined ? API.current() : st.after, k = ids.findIndex((x) => x.id === a); return a === null ? 'at the start of the deck' : k >= 0 ? `after slide ${k + 1}` : 'at the end'; })();
     h += `<label for="sbx-what">What should it say? <span style="color:#948C88">(optional)</span></label><input type="text" id="sbx-what" value="${esc(st.what)}" placeholder="Three vendors on price, speed, and support; ours wins on support">`;
     const canAdd = ready && st.id && addable(st.id);
-    h += `<div class="ft"><span class="note">${!ready ? '' : canAdd ? `Goes in ${pos}.` : 'This deck doesn’t carry this layout yet: copy the prompt and Claude adds it.'}</span><span><button class="b" data-copy${ready ? '' : ' disabled'}>Copy prompt for Claude or Codex</button> <button class="b red" data-add${canAdd ? '' : ' disabled'}>Add slide</button></span></div>`;
+    h += `<div class="ft"><span class="note">${!ready ? '' : canAdd ? `Goes in ${pos}.` : 'This deck doesn’t carry this layout yet: copy the prompt and your agent adds it.'}</span><span><button class="b" data-copy${ready ? '' : ' disabled'}>Copy prompt for your agent</button> <button class="b red" data-add${canAdd ? '' : ' disabled'}>Add slide</button></span></div>`;
     panel.innerHTML = h;
     const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { io.unobserve(e.target); thumb(e.target, e.target.dataset.tb); } }), { root: panel.querySelector('.grid') || null, rootMargin: '200px' });
     panel.querySelectorAll('[data-tb]').forEach((el) => { if (el.dataset.tb) io.observe(el); });
@@ -248,7 +248,7 @@
     if (t.dataset.kind) { const p = picksFor().find((x) => x.k.k === t.dataset.kind); st.kind = p.k; st.id = p.id; return render(); }
     if (t.dataset.id) { st.id = t.dataset.id; return render(); }
     if (t.dataset.base) { st.id = take(t.dataset.base); st.kind = null; return render(); }
-    if (t.matches('[data-copy]')) { const ok = await copy(prompt()); t.textContent = ok ? 'Copied: paste it to Claude or Codex' : 'Copy failed'; setTimeout(() => { if (t.isConnected) t.textContent = 'Copy prompt for Claude or Codex'; }, 2400); return; }
+    if (t.matches('[data-copy]')) { const ok = await copy(prompt()); t.textContent = ok ? 'Copied: paste it into your coding agent' : 'Copy failed'; setTimeout(() => { if (t.isConnected) t.textContent = 'Copy prompt for your agent'; }, 2400); return; }
     if (t.matches('[data-add]')) { const p = prompt(true); add(); close(); await copy(p); return; }
   });
   back.addEventListener('mousedown', (e) => { if (e.target === back) close(); });

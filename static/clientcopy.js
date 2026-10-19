@@ -91,7 +91,7 @@ fit();if(document.fonts&&document.fonts.ready)document.fonts.ready.then(fit);})(
     const body = frames.map((f, k) => `<section class="cc-slide" id="slide-${k + 1}">${clean(f).outerHTML}</section>`).join('\n');
     const result = { n: frames.length, html: `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<!-- Made with Decks (https://github.com/paulmil11/decks). Deck engine: Copyright (c) 2026 Paul Millerd, MIT License, https://github.com/paulmil11/decks/blob/main/LICENSE. The slides are yours. -->
+<!-- Made with Decks Performance Fork (https://github.com/delirious6423/decks), an independent fork of Decks (https://github.com/paulmil11/decks). Deck engine: Copyright (c) 2026 Paul Millerd, MIT License, https://github.com/paulmil11/decks/blob/main/LICENSE. The slides are yours. -->
 <title>${esc(title)}</title>
 ${links}
 <style>${css.replace(/<\/style/gi, '<\\/style')}</style>

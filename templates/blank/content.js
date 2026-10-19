@@ -11,10 +11,10 @@ const LIBRARY = {
   'point-1': { cat:'main', layout:'plain', title:'Each title says the point of its slide as one plain sentence',
     body:['The body proves the title. Keep only what the audience needs to believe the sentence above.',
           'A title takes two lines at most. Checks › Guides (key 5) shows that limit and the protected border.'],
-    notes:'Placeholder text drafted by Claude: replace it.' },
+    notes:'Draft placeholder text for your agent to replace.' },
   'point-2': { cat:'main', layout:'twocol', title:'Put two things side by side when the difference is the point',
     cols:[{ h:'Today', body:['What happens now.'] }, { h:'Proposed', body:['What changes, and why it is better.'] }],
-    notes:'Placeholder text drafted by Claude: replace it.' },
+    notes:'Draft placeholder text for your agent to replace.' },
 
   'closing': { cat:'close', layout:'closing', dark:true, title:'Thank you', contacts:['Your name', 'your-site.com'], site:'', notes:'Replace with your name and where people can reach you.' },
 };

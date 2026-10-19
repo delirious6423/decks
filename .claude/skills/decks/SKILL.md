@@ -1,15 +1,15 @@
 ---
 name: decks
-description: Run feedback rounds and build slides in Decks, HTML slide decks reviewed in the browser at http://localhost:8790 (or the configured port). Use when the user says "process changes", "read my feedback", "check my comments", pastes an "Ask Claude" prompt from a deck, asks to find, open, or export a deck, or wants a new deck built. Covers the round procedure, the sb command line, the deck file, slide style rules, and the StrategyU slide method it applies to every slide (action titles, vertical and horizontal flow, the five- and ten-second tests, charts that prove the title).
+description: Run feedback rounds and build slides in Decks Performance Fork, HTML slide decks reviewed in the browser at http://localhost:8790 (or the configured port). Use when the user says "process changes", "read my feedback", "check my comments", pastes an "Ask agent" prompt from a deck, asks to find, open, or export a deck, or wants a new deck built. Covers the round procedure, the sb command line, the deck file, slide style rules, and the StrategyU slide method it applies to every slide (action titles, vertical and horizontal flow, the five- and ten-second tests, charts that prove the title).
 ---
 
-# Decks
+# Decks Performance Fork
 
-The user reviews a deck in the browser. They type a comment under a slide (or edit text right on it), then say "process changes" or click **Ask Claude** in the deck, which copies a prompt naming the deck file and the `sb` steps below; treat that prompt as "process changes" for that deck. You act on every comment, reply on the slide itself, check your work, and export. Keep the chat summary short: the replies on the slides carry the detail.
+The user reviews a deck in the browser. They type a comment under a slide (or edit text right on it), then say "process changes" or click **Ask agent** in the deck, which copies a prompt naming the deck file and the `sb` steps below; treat that prompt as "process changes" for that deck. You act on every comment, reply on the slide itself, check your work, and export. Keep the chat summary short: the replies on the slides carry the detail.
 
 ## Where things are
 
-- The app folder is the Decks repository: the folder this skill ships in (`.claude/skills/decks/` inside it), or, for a copy of this skill in `~/.claude/skills/`, wherever the user cloned it. The Ask Claude prompt names it. It has `server.py`, the `sb` command line, the browser shell in `static/`, templates in `templates/`, and headless tools in `tools/`. Run `sb` from there: `./sb ...`.
+- The app folder is the Decks Performance Fork repository: the folder this skill ships in (`.claude/skills/decks/` inside it), or, for a copy of this skill in `~/.claude/skills/`, wherever the user cloned it. The Ask agent prompt names it. It has `server.py`, the `sb` command line, the browser shell in `static/`, templates in `templates/`, and headless tools in `tools/`. Run `sb` from there: `./sb ...`.
 - The server: `python3 server.py`, at http://localhost:8790/ unless `config.json` or `SB_PORT` says otherwise. If `sb` says the server is not reachable, start it (in the background) and try again. `sb` finds it at `SB_URL`, or at the configured port.
 - Decks live in the decks folder (default `~/slide-decks`), one folder per deck, listed in `decks.json` there. `./sb decks` lists them with their addresses.
 - Open a deck at `http://localhost:<port>/d/<slug>/<entry>`. `#s=<slide-id>` jumps to a slide, and `#v=<version>&s=<id>` picks a version.
@@ -23,7 +23,7 @@ The user reviews a deck in the browser. They type a comment under a slide (or ed
 - Four views: Focus (F), Scroll (S), Sorter (G), and Checks (C). The filmstrip on the left reorders by drag.
   - In Focus and Scroll, the comment box sits under each slide, with your reply below it. The right bar holds the slide's notes and what changed.
   - Checks has five checks, keys 1 to 5: the 5-second test (first impression), the 10-second test (legibility; a miss leaves a comment on the slide for the next round), horizontal flow (the titles alone, editable in place), vertical flow (the title first, the body hidden until revealed), and Guides.
-  - Comments can come from Checks: "Five-second test: …" and "Ten-second test: …" after a missed timed test, and "Guides: …" from Ask Claude to fix in Checks › Guides, naming what the slide breaks. Fix the slide so it passes, like any comment.
+  - Comments can come from Checks: "Five-second test: …" and "Ten-second test: …" after a missed timed test, and "Guides: …" from Ask agent to fix in Checks › Guides, naming what the slide breaks. Fix the slide so it passes, like any comment.
   - H hides everything but the titles. ? lists every shortcut.
 - **Add a slide** (N, "+ Slide", or the + between slides) suggests layouts and can add one the deck carries. Its Copy prompt gives you the deck file, the position, and what the slide should say. When a prompt says "I just added a … slide (LIBRARY['id'])", fill that slide in; when it says "add a new slide …", build it in the deck file at that position.
 - When the reviewer edits a title in Checks, that is an inline edit: bake it like any other.
@@ -74,7 +74,7 @@ The reviewer clears handled comments with "Looks good". Don't add them to `DONE_
 
 ## The method
 
-Decks is built on the method Paul Millerd teaches at StrategyU. Apply it to every slide you write or fix. If the `strategy-slides` skill is installed, it has the full version: use it for storylines, titles, and feedback.
+The inherited slide method comes from Paul Millerd at StrategyU. This independent fork keeps that method and credits its source. Apply it to every slide you write or fix. If the `strategy-slides` skill is installed, it has the full version: use it for storylines, titles, and feedback.
 
 **Answer first.** Lead with the recommendation, then the context, then the evidence. Build up to the recommendation (situation and complication, then the key ideas) only for a skeptical audience.
 

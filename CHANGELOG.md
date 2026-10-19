@@ -1,8 +1,32 @@
 # Changelog
 
-What changed in each version of Decks. To update, run `git pull` in your Decks folder, then
-restart the server. To hear about new versions, watch this repository on GitHub
-(Watch › Custom › Releases).
+Changes to Decks Performance Fork are maintained in
+[delirious6423/decks](https://github.com/delirious6423/decks). Update this fork's
+checkout and restart the server. Release notifications follow this repository.
+
+## 0.4.0 (October 20, 2026, fork)
+
+This fork builds on upstream Decks 0.3.0. The changes below belong to the independently
+maintained performance fork, not an upstream release.
+
+- Persistent headless-browser worker with fresh contexts for each job.
+- Incremental network saves, with the existing merge and offline-recovery format.
+- Lazy slide bodies, virtual slide wrappers, and virtual sidebar/filmstrip lists.
+- On-demand chunks for supported large slide libraries, plus gzip responses.
+- Decks Performance Fork identity across the dashboard, app menu, generated prompts
+  and export provenance. User-facing controls say “Ask agent” and “Agent”.
+- Fork release checks and changelog links point to `delirious6423/decks`.
+- Rewritten README, separate development/API guide and preserved benchmark history.
+- Template draft notes and companion-version placeholders use agent-neutral wording.
+
+No Rust rewrite is included. Operation-specific measurements and their limitations
+are in [docs/PERFORMANCE.md](docs/PERFORMANCE.md). Existing deck files, storage keys,
+CLI commands and API compatibility fields keep their format.
+
+## Upstream history
+
+The entries below describe Paul Millerd's original Decks releases. Their historical
+UI labels and original release behavior are retained here for provenance.
 
 ## 0.3.0 (October 19, 2026)
 
@@ -43,7 +67,7 @@ restart the server. To hear about new versions, watch this repository on GitHub
 - The dashboard footer shows the version you're running, with a link to this file.
 - The dashboard links to StrategyU and to the free consulting PowerPoint templates the
   consulting template is built from.
-- The README explains why I built this, the setup I use, and the method, with screenshots.
+- The upstream README explains the original author’s motivation, setup and method, with screenshots.
 
 ## 0.1.0 (October 18, 2026)
 

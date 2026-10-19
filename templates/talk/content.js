@@ -2,7 +2,7 @@ const CATS = ['open', 'p1', 'p2', 'p3', 'close'];
 const CAT_LABELS = { open: 'Opening · 0:00 (5 min)', p1: 'Part 1 · 0:05 (15 min)', p2: 'Part 2 · 0:20 (15 min)', p3: 'Part 3 · 0:35 (15 min)', close: 'Close · 0:50 (10 min)' };
 const CAT_SHORT = { open: 'Open', p1: '1', p2: '2', p3: '3', close: 'Close' };
 const FIGS = {};
-const DRAFT = 'Placeholder text drafted by Claude: replace it.';
+const DRAFT = 'Draft placeholder text for your agent to replace.';
 
 const LIBRARY = {
   'title': { cat:'open', layout:'title', title:'{{NAME_JS}}', date:'Who it is for · the date',

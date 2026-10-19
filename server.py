@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Decks server.
+"""Decks Performance Fork server.
 
 Serves every deck at one fixed local address, keeps each reviewer's edits and
 comments on disk (next to the deck, in .slidebuilder/), and gives the agent
@@ -36,8 +36,8 @@ APP = Path(__file__).resolve().parent
 STATIC = APP / 'static'
 LOCK = threading.Lock()
 STARTED = time.time()
-VERSION = '0.3.0'   # see CHANGELOG.md
-UPDATE_REPO = 'paulmil11/decks'   # where new versions are released (a fork points this at its own)
+VERSION = '0.4.0'   # see CHANGELOG.md
+UPDATE_REPO = 'delirious6423/decks'   # where new versions are released (a fork points this at its own)
 LATEST = {}   # the newest release, from GitHub once a day (sbconfig.CHECK_UPDATES)
 
 
@@ -506,7 +506,7 @@ def inject(html, deck, page, snap=None, split_library=False):
 
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = 'Decks/1.0'
+    server_version = 'DecksPerformanceFork/' + VERSION
 
     def log_message(self, fmt, *args):
         p = getattr(self, 'path', '') or ''   # unset when the request line itself was malformed
@@ -756,7 +756,7 @@ def check_latest():
     import http.client
     try:
         c = http.client.HTTPSConnection('github.com', timeout=6)
-        c.request('HEAD', f'/{UPDATE_REPO}/releases/latest', headers={'User-Agent': f'Decks/{VERSION}'})
+        c.request('HEAD', f'/{UPDATE_REPO}/releases/latest', headers={'User-Agent': f'DecksPerformanceFork/{VERSION}'})
         loc = c.getresponse().getheader('Location') or ''
         c.close()
         m = re.search(r'/releases/tag/v?(\d+\.\d+\.\d+)', loc)
@@ -779,7 +779,7 @@ def update_info():
 
 
 def main():
-    ap = argparse.ArgumentParser(description='Decks server. Defaults come from config.json and SB_* environment variables (see sbconfig.py).')
+    ap = argparse.ArgumentParser(description='Decks Performance Fork server. Defaults come from config.json and SB_* environment variables (see sbconfig.py).')
     ap.add_argument('--host', default=sbconfig.HOST)
     ap.add_argument('--port', type=int, default=sbconfig.PORT)
     a = ap.parse_args()
@@ -802,7 +802,7 @@ def main():
     if demo:
         make_thumb(demo)
         print(f'Made a demo deck in {demo["folder"]}', flush=True)
-    print(f'Decks {VERSION} on http://localhost:{a.port}/  (decks in {sbconfig.tilde(sbconfig.DECKS)})', flush=True)
+    print(f'Decks Performance Fork {VERSION} on http://localhost:{a.port}/  (decks in {sbconfig.tilde(sbconfig.DECKS)})', flush=True)
     srv.serve_forever()
 
 

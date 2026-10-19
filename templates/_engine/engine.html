@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en">
 <head>
-<!-- Made with Decks (https://github.com/paulmil11/decks). Deck engine: Copyright (c) 2026 Paul Millerd, MIT License, https://github.com/paulmil11/decks/blob/main/LICENSE. The slides are yours. -->
+<!-- Made with Decks Performance Fork (https://github.com/delirious6423/decks), an independent fork of Decks (https://github.com/paulmil11/decks). Deck engine: Copyright (c) 2026 Paul Millerd, MIT License, https://github.com/paulmil11/decks/blob/main/LICENSE. The slides are yours. -->
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>{{TITLE}}</title>
@@ -107,7 +107,7 @@
   .fnote { display: none; margin-top: .5rem; background: #FFF8E6; border: 1px solid #EFD9A6; border-radius: 6px; padding: .6rem .85rem; font-size: .78rem; line-height: 1.5; color: #4A3B14; }
   .fnote b { color: #7A4A12; }
   body.show-notes .fnote { display: block; }
-  /* feedback for Claude, per slide: screen only, travels with Copy Edits / Save a copy */
+  /* feedback for your agent, per slide: screen only, travels with Copy Edits / Save a copy */
   .fb { display: block; width: 100%; margin-top: .45rem; min-height: 2.2rem; padding: .45rem .7rem; font: .78rem/1.45 var(--sans); color: var(--text); background: #fff; border: 1px dashed var(--line); border-radius: 6px; resize: vertical; }
   .fb:focus { outline: none; border-style: solid; border-color: var(--red-deep); box-shadow: 0 0 0 2px rgba(206,54,66,.18); }
   .fb.has { border-style: solid; border-color: #B25C00; background: #FFF8E6; }
@@ -2983,7 +2983,7 @@ function slideWrap(id, s = null) {
   if (b.__sbChunk) note.contentEditable = 'false';
   wrap.appendChild(note);
   const fb = document.createElement('textarea'); fb.className = 'fb'; fb.rows = 1;
-  fb.placeholder = 'Feedback for Claude on this slide…';
+  fb.placeholder = 'Feedback for your agent on this slide…';
   fb.addEventListener('input', () => { fb.classList.toggle('has', !!fb.value.trim()); fbCount(); });
   wrap.appendChild(fb);
   return wrap;
@@ -3504,14 +3504,14 @@ function restore() {
   fbCount(); fitSlides(); autofitText(); drawTrees(); numberSlides(); observeLazySlides(); flagSaved();
   if (droppedFb) snapshot();
 }
-// comments Claude has already acted on: they drop out on the next load, so nobody clears them by hand
+// comments Agent has already acted on: they drop out on the next load, so nobody clears them by hand
 const DONE_FB = [];
 function fbCount() {
   const n = Object.keys(collectFeedback()).length;
-  const f = document.getElementById('fb-flag'); if (f) f.textContent = n ? `${n} slide${n === 1 ? '' : 's'} with feedback for Claude` : '';
+  const f = document.getElementById('fb-flag'); if (f) f.textContent = n ? `${n} slide${n === 1 ? '' : 's'} with feedback for your agent` : '';
 }
 // Everything a reviewer has done, in one object: for "Copy Edits", "Save a copy",
-// and for Claude to read straight from the page (window.__DECK_STATE()).
+// and for your agent to read straight from the page (window.__DECK_STATE()).
 window.__WS_STATE = () => window.__DECK_STATE();
 window.__DECK_STATE = () => {
   return { version: current, order: deckIds(), edits: currentData(), feedback: collectFeedback() };

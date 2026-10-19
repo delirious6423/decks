@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Decks</title>
+<title>Decks Performance Fork</title>
 <link rel="icon" href="/_sb/favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Lato:wght@700;900&display=swap" rel="stylesheet">
@@ -142,7 +142,7 @@
 <body>
 <header>
   <img src="/_sb/logo.svg" alt="">
-  <span class="app">Decks</span>
+  <span class="app">Decks Performance Fork</span>
   <span class="grow"></span>
   <span class="addr" id="addr"></span>
   <button class="btn" id="clients" title="Hide client decks and client pitches, for recording or streaming">Hide client work</button>
@@ -171,9 +171,9 @@
         <details class="nd-more" id="nd-more"><summary>Length, structure, colors, logo, and notes</summary>
           <div class="nd-grid">
             <div><label for="nd-length">Length</label><select id="nd-length" data-k="length"></select></div>
-            <div><label for="nd-atype">Kind of audience</label><select id="nd-atype" data-k="audienceType"><option value="">Claude picks</option><option>Executives</option><option>A client</option><option>My team</option><option>Workshop participants</option><option>A conference</option></select></div>
-            <div><label for="nd-structure">Structure</label><select id="nd-structure" data-k="structure"><option value="">Claude picks</option><option>Answer first</option><option>Situation, complication, resolution</option><option>A story in a few parts</option><option>Teach, practice, reflect</option></select></div>
-            <div><label for="nd-density">Density</label><select id="nd-density" data-k="density"><option value="">Claude picks</option><option>Sparse</option><option>Balanced</option><option>Detailed</option></select></div>
+            <div><label for="nd-atype">Kind of audience</label><select id="nd-atype" data-k="audienceType"><option value="">Agent picks</option><option>Executives</option><option>A client</option><option>My team</option><option>Workshop participants</option><option>A conference</option></select></div>
+            <div><label for="nd-structure">Structure</label><select id="nd-structure" data-k="structure"><option value="">Agent picks</option><option>Answer first</option><option>Situation, complication, resolution</option><option>A story in a few parts</option><option>Teach, practice, reflect</option></select></div>
+            <div><label for="nd-density">Density</label><select id="nd-density" data-k="density"><option value="">Agent picks</option><option>Sparse</option><option>Balanced</option><option>Detailed</option></select></div>
             <div><label for="nd-style">Colors</label><select id="nd-style" data-k="style"><option>Navy</option><option>Dark</option><option>Minimal</option><option>Forest</option><option>Teal</option><option>Plum</option></select></div>
             <div><label for="nd-titles">Title font</label><select id="nd-titles" data-k="titles"><option>Sans serif</option><option>Serif</option></select></div>
           </div>
@@ -182,7 +182,7 @@
           <label for="nd-notes">Notes or source material</label>
           <textarea id="nd-notes" placeholder="Paste notes, or a folder path"></textarea>
         </details>
-        <div class="nd-foot"><button class="btn" id="nd-backbtn">Back</button><span><button class="btn" id="nd-copy" title="Copy a prompt that asks Claude to set the deck up and build it">Copy prompt</button> <button class="btn red" id="nd-go">Create deck</button></span></div>
+        <div class="nd-foot"><button class="btn" id="nd-backbtn">Back</button><span><button class="btn" id="nd-copy" title="Copy a prompt that asks your agent to set the deck up and build it">Copy prompt</button> <button class="btn red" id="nd-go">Create deck</button></span></div>
       </div>
     </div>
     <div class="nd-done" id="nd-done"></div>
@@ -198,9 +198,9 @@
 <main>
   <div class="upd" id="upd" role="status" hidden><span class="t"></span><button aria-label="Hide until the next version" title="Hide until the next version">×</button></div>
   <div class="howto" id="howto" hidden>
-    <div class="st"><i>1</i><div><b>Start a deck.</b> Click New deck, answer a few questions, and paste the prompt it copies into Claude Code or Codex.</div></div>
+    <div class="st"><i>1</i><div><b>Start a deck.</b> Click New deck, answer a few questions, and paste the prompt it copies into your coding agent.</div></div>
     <div class="st"><i>2</i><div><b>Comment on slides.</b> Click any text on a slide to edit it, or leave a comment under the slide.</div></div>
-    <div class="st"><i>3</i><div><b>Ask Claude.</b> Click Ask Claude in the deck, or say “process changes” in Claude Code. It edits the deck, replies under each comment, and exports a PDF.</div></div>
+    <div class="st"><i>3</i><div><b>Ask agent.</b> Click Ask agent in the deck, or ask your coding agent to “process changes”. It edits the deck, replies under each comment, and exports a PDF.</div></div>
     <button class="x" id="howto-x" aria-label="Hide how it works" title="Hide">×</button>
   </div>
   <section>
@@ -212,10 +212,10 @@
   <aside>
     <h2>Recent rounds</h2><div id="rounds"><div class="empty">No rounds yet.</div></div>
     <h2>Server</h2><div class="side" id="server"></div>
-    <h2>About</h2><div class="side" id="about">Decks is made by Paul Millerd at <a href="https://strategyu.co/?utm_source=decks&utm_medium=app&utm_campaign=dashboard" target="_blank" rel="noopener">StrategyU</a>, where he teaches the consulting method it is built on. The consulting template comes from his <a href="https://strategyu.co/strategy-consulting-powerpoint-templates/?utm_source=decks&utm_medium=app&utm_campaign=dashboard" target="_blank" rel="noopener">free consulting PowerPoint templates</a>.</div>
+    <h2>About this fork</h2><div class="side" id="about">Decks Performance Fork is maintained by <a href="https://github.com/delirious6423/decks" target="_blank" rel="noopener">delirious6423</a>, with performance improvements for large decks and repeated browser jobs. It is independently maintained from <a href="https://github.com/paulmil11/decks" target="_blank" rel="noopener">Decks by Paul Millerd</a>. The consulting method and original templates come from <a href="https://strategyu.co/strategy-consulting-powerpoint-templates/" target="_blank" rel="noopener">StrategyU</a>.</div>
   </aside>
 </main>
-<footer><span id="ver">Decks</span> · <a href="https://github.com/paulmil11/decks/blob/main/LICENSE" target="_blank" rel="noopener">MIT license</a> · Made by <a href="https://strategyu.co/?utm_source=decks&utm_medium=app&utm_campaign=footer" target="_blank" rel="noopener">StrategyU</a></footer>
+<footer><span id="ver">Decks Performance Fork</span> · <a href="https://github.com/delirious6423/decks" target="_blank" rel="noopener">Fork repository</a> · <a href="https://github.com/delirious6423/decks/blob/main/LICENSE" target="_blank" rel="noopener">MIT license</a> · Upstream: <a href="https://github.com/paulmil11/decks" target="_blank" rel="noopener">Paul Millerd / StrategyU</a></footer>
 <script>
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const ago = (t) => { if (!t) return ''; const s = Date.now() / 1000 - t; if (s < 90) return 'just now'; if (s < 3600) return Math.round(s / 60) + ' min ago'; if (s < 86400) return Math.round(s / 3600) + 'h ago'; return new Date(t * 1000).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }); };
@@ -269,7 +269,7 @@ function renderKinds() {
   $('nd-blank').style.visibility = nd.kind === 'blank' ? 'hidden' : '';
 }
 function lengths() { const cur = $('nd-length').value, opts = kindOf().lengths;
-  $('nd-length').innerHTML = '<option value="">Claude picks</option>' + opts.map((o) => `<option${o === cur ? ' selected' : ''}>${o}</option>`).join(''); }
+  $('nd-length').innerHTML = '<option value="">Agent picks</option>' + opts.map((o) => `<option${o === cur ? ' selected' : ''}>${o}</option>`).join(''); }
 function preset() {   // defaults for the kind; anything picked by hand stays
   const k = kindOf(); lengths();
   Object.entries(SELECTS).forEach(([key, id]) => { if (nd.touched.has(key) || !$(id).querySelector('option[value=""]')) return; $(id).value = [...$(id).options].some((o) => o.value === k[key]) ? k[key] : ''; });
@@ -279,10 +279,10 @@ function stepTo(n) {
   $('nd').dataset.step = n; $('nd-step').textContent = `Step ${n} of 2`; $('nd-title').textContent = n === 1 ? 'What are you making?' : 'Who is it for?';
   setTimeout(() => $(n === 1 ? 'nd-name' : 'nd-aud').focus(), 30);
 }
-function askPrompt() {   // for when Claude should set it up as well
+function askPrompt() {   // for when the agent should set it up as well
   const b = brief(), t = tplOf(), n = val('nd-name'), ps = pieces();
   const shape = [b.use, b.audienceType && 'for ' + b.audienceType.toLowerCase(), b.structure && 'structure: ' + b.structure.toLowerCase(), b.density && b.density.toLowerCase() + ' density', b.style && 'style: ' + b.style].filter(Boolean).join('; ');
-  return [`New deck “${n}” in Decks, from the ${t.name} template${b.length ? ', ' + b.length : ''}${b.audience ? ', for ' + b.audience : ''}.`,
+  return [`New deck “${n}” in Decks Performance Fork, from the ${t.name} template${b.length ? ', ' + b.length : ''}${b.audience ? ', for ' + b.audience : ''}.`,
     shape ? `Brief: ${shape}.` : '', b.knows ? `What they know and care about: ${b.knows}` : '',
     ps.length > 1 ? `Build these together, each as a version in the deck: ${ps.map((pc, i) => pc.name + (i ? '' : ' (the main one, first)')).join(', ')}.` : '',
     'Set it up with: ' + ['./sb new ' + JSON.stringify(n), '--template ' + tplId(), b.style && '--style ' + b.style, b.titles && b.titles !== 'Sans serif' && '--titles ' + JSON.stringify(b.titles),
@@ -323,7 +323,7 @@ $('nd-go').addEventListener('click', async () => {
   if (!r || !r.ok) { stepTo(1); $('nd-err').textContent = d.error || 'That didn’t work. Try again.'; return; }
   const ok = await copy(d.prompt);
   $('nd-done').innerHTML = `<div class="nd-head"><div><div class="nd-step">Ready</div><h3>${esc(d.name)}</h3></div><button class="nd-x" onclick="document.getElementById('nd-back').classList.remove('on')" aria-label="Close">×</button></div>
-    <div class="meta" style="margin-top:10px">${ok ? 'The prompt is on your clipboard. Paste it to Claude and it builds the first draft.' : 'Copy this prompt and paste it to Claude to build the first draft:'}</div>
+    <div class="meta" style="margin-top:10px">${ok ? 'The prompt is on your clipboard. Paste it into your coding agent and it builds the first draft.' : 'Copy this prompt and paste it into your coding agent to build the first draft:'}</div>
     <div class="nd-prompt">${esc(d.prompt)}</div>
     <div class="nd-foot"><span class="nd-where">${esc(d.folder)}</span><span>${ok ? '' : '<button class="btn" id="nd-copy2">Copy prompt</button> '}<a class="btn red" href="${esc(d.path)}">Open deck</a></span></div>`;
   $('nd').classList.add('ok'); load();
@@ -338,7 +338,7 @@ function card(d) {
   const pills = [d.open ? `<span class="pill amber">${d.open} open comment${d.open === 1 ? '' : 's'}</span>` : '<span class="pill green">No open comments</span>',
     d.questions ? `<span class="pill red">${d.questions} question${d.questions === 1 ? '' : 's'}</span>` : '',
     d.changed ? `<span class="pill">${d.changed} changed</span>` : ''].join('');
-  const live = d.claude && Date.now() / 1000 - (d.claude.at || 0) < 1800 ? `<div class="live"><i></i>Claude${d.claude.total ? `: ${d.claude.done || 0} of ${d.claude.total}` : ''}${d.claude.text ? ' · ' + esc(d.claude.text) : ''}</div>` : '';
+  const live = d.claude && Date.now() / 1000 - (d.claude.at || 0) < 1800 ? `<div class="live"><i></i>Agent${d.claude.total ? `: ${d.claude.done || 0} of ${d.claude.total}` : ''}${d.claude.text ? ' · ' + esc(d.claude.text) : ''}</div>` : '';
   const thumb = d.thumb ? `<img src="${d.thumb}?t=${Math.round(d.fileAt)}" alt="">` : `<div class="ph">${esc(d.name)}</div>`;
   return `<div class="deck"><a class="thumb" href="${d.url}">${thumb}</a><div>
     <a href="${d.url}"><h3>${esc(d.name)}</h3></a>
@@ -362,8 +362,8 @@ async function load() {
   hideClients = !!(data.settings && data.settings.hideClients); decksDir = data.decksDir || '';
   { const u = data.update, box = document.getElementById('upd'); let gone = ''; try { gone = localStorage.getItem('__decks_upd_hidden') || ''; } catch (e) {}
     box.hidden = !u || gone === u.version;   // a newer release on GitHub, until you hide it
-    if (u) box.querySelector('.t').innerHTML = `<b>Decks ${esc(u.version)} is out</b> (<a href="${esc(u.url)}" target="_blank" rel="noopener">what's new</a>). To update, run <code>git pull</code> in your Decks folder, then restart the server.`; }
-  if (data.version) document.getElementById('ver').innerHTML = `Decks ${esc(data.version)} (<a href="https://github.com/paulmil11/decks/blob/main/CHANGELOG.md" target="_blank" rel="noopener">what's new</a>)`;
+    if (u) box.querySelector('.t').innerHTML = `<b>Decks Performance Fork ${esc(u.version)} is available</b> (<a href="${esc(u.url)}" target="_blank" rel="noopener">what's new</a>). To update, run <code>git pull</code> in your fork checkout, then restart the server.`; }
+  if (data.version) document.getElementById('ver').innerHTML = `Decks Performance Fork ${esc(data.version)} (<a href="https://github.com/delirious6423/decks/blob/main/CHANGELOG.md" target="_blank" rel="noopener">what's new</a>)`;
   const cb = document.getElementById('clients'); cb.classList.toggle('on', hideClients); cb.textContent = hideClients ? 'Client work hidden' : 'Hide client work';
   decks = data.decks;
   const by = (g) => data.decks.filter((d) => d.group === g && !d.hidden && !(hideClients && d.client));

@@ -2,7 +2,7 @@ const CATS = ['open', 'm1', 'm2', 'm3', 'close'];
 const CAT_LABELS = { open: 'Welcome · 9:00 (30 min)', m1: 'Module 1 · 9:30 (90 min)', m2: 'Module 2 · 11:15 (90 min)', m3: 'Module 3 · 13:30 (90 min)', close: 'Wrap · 15:15 (30 min)' };
 const CAT_SHORT = { open: 'Welcome', m1: '1', m2: '2', m3: '3', close: 'Wrap' };
 const FIGS = {};
-const DRAFT = 'Placeholder text drafted by Claude: replace it.';
+const DRAFT = 'Draft placeholder text for your agent to replace.';
 
 const LIBRARY = {
   'title': { cat:'open', layout:'title', title:'{{NAME_JS}}', date:'The group · the date',

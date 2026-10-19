@@ -1,10 +1,10 @@
 /* Decks shell.
    Wraps a deck page served by the Decks server with:
-   - a top bar (logo, version, filters, Claude's live status, view switch, present),
+   - a top bar (logo, version, filters, the agent's live status, view switch, present),
    - focus view: filmstrip | one slide | comment thread, both side bars collapsible,
-   - scroll view: the deck as before, with Claude's replies under each slide,
-   - live updates: replies appear as Claude posts them, and the page reloads itself
-     when Claude finishes a round (or shows a banner if you are typing).
+   - scroll view: the deck as before, with the agent's replies under each slide,
+   - live updates: replies appear as the agent posts them, and the page reloads itself
+     when the agent finishes a round (or shows a banner if you are typing).
    It only talks to the deck through its existing DOM: comments still live in each
    slide's .fb box and are saved by the deck itself. */
 (async function () {
@@ -74,7 +74,7 @@
 
   // ---------- top bar ----------
   const top = h('div'); top.id = 'sb-top';
-  top.innerHTML = `<a href="/" title="All decks"><img class="sb-logo" src="/_sb/logo.svg" alt="Decks"></a>
+  top.innerHTML = `<a href="/" title="All decks"><img class="sb-logo" src="/_sb/logo.svg" alt="Decks Performance Fork" title="Decks Performance Fork"></a>
     <a href="/" class="sb-btn sb-back" title="Back to the dashboard of all decks">← <span class="sb-lbl">All decks</span></a><span class="sb-sep"></span>
     <span class="sb-deck" title="${esc(SB.name)}">${esc(SB.name)}</span>
     ${sideSelect ? '<select id="sb-version" title="Version"></select>' : ''}
@@ -87,7 +87,7 @@
     <button class="sb-btn" id="sb-hide" title="Titles only: hide everything but the titles, to test that each one says the point (H). Space reveals one slide.">Titles<span class="sb-long"> only</span></button>
     <button class="sb-btn icon" id="sb-left" title="Show or hide the left side bar ( [ )">◧</button>
     <button class="sb-btn icon" id="sb-right" title="Show or hide notes ( ] )">◨</button>
-    <button class="sb-btn" id="sb-ask" title="Copy a prompt that asks Claude (or Codex) to work through your comments">Ask Claude<span class="sb-n" id="sb-ask-n"></span></button>
+    <button class="sb-btn" id="sb-ask" title="Copy a prompt that asks your coding agent to work through your comments">Ask agent<span class="sb-n" id="sb-ask-n"></span></button>
     ${$('#present-btn') ? '<button class="sb-btn red" id="sb-present" title="Present from this slide">▶<span class="sb-long"> Present</span></button>' : ''}
     <div class="sb-menu" id="sb-more"><button class="sb-btn icon" aria-label="More">⋯</button><div></div></div>`;
   document.body.prepend(top);
@@ -110,13 +110,15 @@
   proxy('#save-copy', 'Editable copy: with notes and comments');
   proxy('#copy-edits', 'Copy edits');
   proxy('#notes-toggle', 'Show facilitator notes (scroll view)');
-  { const b = h('button', null, 'Made by StrategyU ↗'); b.title = 'Decks is made by Paul Millerd at StrategyU, where he teaches the consulting method it is built on';
-    b.addEventListener('click', () => { more.classList.remove('open'); window.open('https://strategyu.co/?utm_source=decks&utm_medium=app&utm_campaign=deck-menu', '_blank', 'noopener'); }); moreBox.appendChild(b); }
+  { const b = h('button', null, 'Decks Performance Fork ↗'); b.title = 'Independent fork maintained by delirious6423';
+    b.addEventListener('click', () => { more.classList.remove('open'); window.open('https://github.com/delirious6423/decks', '_blank', 'noopener'); }); moreBox.appendChild(b); }
+  { const b = h('button', null, 'Upstream: Paul Millerd / StrategyU ↗'); b.title = 'Original Decks project and consulting method';
+    b.addEventListener('click', () => { more.classList.remove('open'); window.open('https://github.com/paulmil11/decks', '_blank', 'noopener'); }); moreBox.appendChild(b); }
   const help = h('div'); help.id = 'sb-help';
-  help.innerHTML = `<h4>How this works</h4><ul>
+  help.innerHTML = `<h4>How this works</h4><p>Copy prompts to your coding agent, such as Claude Code or Codex. This app does not run a model.</p><ul>
     <li>Click any text on a slide to edit it. It saves to disk as you type.</li>
-    <li>Write a comment for a slide, then say <b>process changes</b> to Claude. Tick “Still drafting” to hold one back.</li>
-    <li>Claude replies under your comment. <b>Looks good</b> clears it; <b>Reopen</b> sends it back.</li>
+    <li>Write a comment for a slide, then say <b>process changes</b> to your agent. Tick “Still drafting” to hold one back.</li>
+    <li>Your agent replies under your comment. <b>Looks good</b> clears it; <b>Reopen</b> sends it back.</li>
     <li>In the left bar, × leaves a slide out of this version; add slides back from “Not in this version”.</li>
     <li>Presenting and PDF export are in this ⋯ menu and the top bar, when the deck has them. <b>Client copy</b> is the file to send a client: this version’s slides and nothing else.</li></ul>
     <h4 style="margin-top:14px">Keyboard shortcuts</h4>
@@ -146,9 +148,9 @@
   const copyText = async (t) => { try { await navigator.clipboard.writeText(t); return true; } catch (e) { return false; } };
   const deckFile = () => `${SB.folder}/${SB.entry}`;
   const askPrompt = () => [
-    `Work through the comments on my slide deck “${SB.name}” in Decks.`,
+    `Work through the comments on my slide deck “${SB.name}” in Decks Performance Fork.`,
     `Deck file: ${deckFile()} (open at ${location.origin}${location.pathname}).`,
-    `If you have the decks skill, this is “process changes”. Otherwise, from ${SB.app || 'the Decks folder'}:`,
+    `If you have the decks skill, this is “process changes”. Otherwise, from ${SB.app || 'the fork checkout'}:`,
     `1. ./sb comments ${SB.slug} lists my comments; ./sb edits ${SB.slug} shows text I edited on the slides.`,
     `2. For each comment, change the deck file, then reply on that slide: ./sb reply ${SB.slug} <slide-id> done "what changed" (question to ask me something, skipped to say why not).`,
     `3. Check your work: ./sb shot ${SB.slug} <slide-ids> and ./sb audit ${SB.slug}.`,
@@ -156,14 +158,14 @@
     'Titles are plain sentences, two lines at most, and every slide passes Checks › Guides.'].join('\n');
   $('#sb-ask').addEventListener('click', async () => {
     const ok = await copyText(askPrompt());
-    say(ok ? '<b>Prompt copied.</b> Paste it into Claude Code or Codex. In Claude Code you can also just say “process changes”.' : 'Couldn’t copy. In Claude Code, say “process changes”.');
+    say(ok ? '<b>Prompt copied.</b> Paste it into your coding agent. You can also ask your agent to “process changes”.' : 'Couldn’t copy. Ask your coding agent to “process changes”.');
   });
   fetch(api('')).then((r) => r.json()).then((d) => {   // a deck just made from the New deck form: say what's next
     const key = '__sb_next_' + SB.slug; let gone = false; try { gone = localStorage.getItem(key) === '1'; } catch (e) {}
     if (!d || !d.prompt || (d.rounds || []).length || gone) return;
     const nb = h('div'); nb.id = 'sb-nextstep';
-    nb.innerHTML = '<span><b>Next:</b> paste your prompt into Claude Code or Codex, and it builds the first draft from your brief. You’ll see its progress up here.</span><span><button class="sb-btn" data-c>Copy prompt</button> <button class="sb-btn icon" data-x aria-label="Dismiss">×</button></span>';
-    nb.querySelector('[data-c]').addEventListener('click', async () => { say((await copyText(d.prompt)) ? '<b>Prompt copied.</b> Paste it into Claude Code or Codex.' : 'Couldn’t copy the prompt.'); });
+    nb.innerHTML = '<span><b>Next:</b> paste your prompt into your coding agent, and it builds the first draft from your brief. You’ll see its progress up here.</span><span><button class="sb-btn" data-c>Copy prompt</button> <button class="sb-btn icon" data-x aria-label="Dismiss">×</button></span>';
+    nb.querySelector('[data-c]').addEventListener('click', async () => { say((await copyText(d.prompt)) ? '<b>Prompt copied.</b> Paste it into your coding agent.' : 'Couldn’t copy the prompt.'); });
     nb.querySelector('[data-x]').addEventListener('click', () => { nb.remove(); document.body.classList.remove('sb-has-next'); size(); try { localStorage.setItem(key, '1'); } catch (e) {} });
     document.body.appendChild(nb); document.body.classList.add('sb-has-next'); size();
   }).catch(() => {});
@@ -173,14 +175,14 @@
       wc.innerHTML = `<h4>Three things to know</h4><ol>
         <li><b>Click any text on a slide to edit it.</b> It saves as you type.</li>
         <li><b>Leave a comment under a slide</b> for anything you want changed.</li>
-        <li><b>Click Ask Claude</b> (or say “process changes” in Claude Code). Claude edits the deck, replies under each comment, and exports a PDF.</li></ol>
+        <li><b>Click Ask agent</b> (or ask your coding agent to “process changes”). Your agent edits the deck, replies under each comment, and exports a PDF.</li></ol>
         <p><kbd>N</kbd> adds a slide · <kbd>1</kbd>–<kbd>5</kbd> run the checks · <kbd>?</kbd> shows every shortcut</p><button class="sb-btn red">Got it</button>`;
       wc.querySelector('button').addEventListener('click', () => { wc.remove(); try { localStorage.setItem('__sb_welcome', '1'); } catch (e) {} });
       document.body.appendChild(wc);
     } }
 
   const banner = h('div'); banner.id = 'sb-banner';
-  banner.innerHTML = '<span>Claude updated this deck.</span><button class="sb-btn">Reload</button>';
+  banner.innerHTML = '<span>This deck changed on disk.</span><button class="sb-btn">Reload</button>';
   banner.querySelector('button').addEventListener('click', () => reload());
   document.body.appendChild(banner);
 
@@ -226,7 +228,7 @@
   }
 
   const dotsFor = (id) => { const i = info(id); let d = '';
-    if (i.st === 'working') d += '<span class="sb-dot w">Claude working</span>';
+    if (i.st === 'working') d += '<span class="sb-dot w">Agent working</span>';
     else if (i.question) d += '<span class="sb-dot q">Question</span>';
     else if (i.st === 'done' && i.text) d += '<span class="sb-dot d">Done</span>';
     else if (i.st === 'skipped' && i.text) d += '<span class="sb-dot">Skipped</span>';
@@ -380,9 +382,9 @@
       <div class="sb-sec" id="sb-change-slot">${changeBlock(id, i)}</div>
       ${historyBlock(id) ? `<div class="sb-sec">${historyBlock(id)}</div>` : ''}
       <div class="sb-sec"><h4>Notes and sources</h4>${notes ? `<div class="sb-notes">${esc(notes)}</div>` : '<div class="sb-hint">No notes on this slide.</div>'}</div>
-      <div class="sb-sec"><div class="sb-hint">Comment under the slide, then click Ask Claude (or say “process changes” in Claude Code). Tick “Still drafting” to hold one back.</div></div>`;
+      <div class="sb-sec"><div class="sb-hint">Comment under the slide, then click Ask agent (or ask your coding agent to “process changes”). Tick “Still drafting” to hold one back.</div></div>`;
   }
-  // the slide's thread: each earlier comment, Claude's reply, and how it ended
+  // the slide's thread: each earlier comment, the agent's reply, and how it ended
   const historyBlock = (id) => {
     const hs = (review.history || []).filter((x) => x.slide === id && x.reply && x.reply.status !== 'working');
     if (!hs.length) return '';
@@ -391,7 +393,7 @@
     const end = (x) => x.resolved ? 'Looks good' : x.reopened ? 'Reopened' : x.reply.status === 'question' ? 'You answered' : 'Followed up';
     return `<h4>History on this slide</h4><ol class="sb-hist">${hs.map((x) => `<li>
       ${x.reply.forText ? `<div class="sb-h-you"><b>You</b>${esc(x.reply.forText)}</div>` : ''}
-      <div class="sb-h-claude"><b>Claude · ${said[x.reply.status] || ''}</b>${esc(x.reply.text)}</div>
+      <div class="sb-h-claude"><b>Agent · ${said[x.reply.status] || ''}</b>${esc(x.reply.text)}</div>
       <div class="sb-h-end">${end(x)} · ${day(x.resolved || x.reopened || x.replaced)}</div></li>`).join('')}</ol>`;
   };
   const changeBlock = (id, i) => i.ch ? `<h4>Changed in round ${esc(i.ch.round || '')}<button class="sb-btn" data-act="seen" style="padding:2px 8px;font-size:11.5px;text-transform:none;letter-spacing:0">Mark as seen</button></h4><div class="sb-change">${esc(i.ch.note || 'Updated this round.')}</div>` : '<div class="sb-hint">No changes on this slide in the last round.</div>';
@@ -532,8 +534,8 @@
       vertical: ['The principle of “<a href="https://strategyu.co/persuasive-powerpoint-storytelling-principles-of-flow/#:~:text=%231%20Vertical%20Flow" target="_blank" rel="noopener">vertical flow</a>” is that the title is the takeaway and the body proves it.', 'Read the title, say what the slide must show, then reveal it and check.'],
       guides: ['Here are some basic principles for spacing, margins, titles, and text.', 'These are guidelines, not rules. They’re meant to help you make a more professional presentation.'] };
     const status = {
-      five: tally.length ? `${tally.length} checked${fails ? `, ${fails} missed (left as comments for Claude)` : ''}.` : '',
-      ten: tally.length ? `${tally.length} checked${fails ? `, ${fails} too much to take in (left as comments for Claude)` : ''}.` : '',
+      five: tally.length ? `${tally.length} checked${fails ? `, ${fails} missed (left as comments for your agent)` : ''}.` : '',
+      ten: tally.length ? `${tally.length} checked${fails ? `, ${fails} too much to take in (left as comments for your agent)` : ''}.` : '',
       horizontal: `${nflag ? `${nflag} note${nflag === 1 ? '' : 's'} in the margin. ` : ''}Click any sentence to edit it. Grey sentences are slides without a title, like quotes and discussion questions.`,
       vertical: '',
       guides: '' };
@@ -567,11 +569,11 @@
     const res = window.SBGuides.scan(wraps()).filter((r) => r.issues.length);
     box.innerHTML = res.length
       ? `<span class="sb-stat">${res.length} slide${res.length === 1 ? '' : 's'} to look at:</span>` + res.map((r) => `<button class="sb-gitem" data-gjump="${esc(r.id)}" title="${esc(r.issues.map((g) => g.msg).join(' '))}"><b>${r.n}</b> ${esc(r.issues.map((g) => g.short || g.msg).join(' · '))}</button>`).join('')
-        + `<button class="sb-btn sb-gall" data-gall title="Adds what each slide breaks to its comment, so Claude fixes them next round">Comment on all ${res.length}</button>`
+        + `<button class="sb-btn sb-gall" data-gall title="Adds what each slide breaks to its comment, so your agent fixes them next round">Comment on all ${res.length}</button>`
       : '<span class="sb-stat">Every slide follows these guidelines.</span>';
   }
   checks.addEventListener('click', (e) => { const b = e.target.closest('[data-gjump]'); if (b) go(b.dataset.gjump, true); });
-  // a guide a slide breaks becomes a comment for Claude, without leaving Checks
+  // a guide a slide breaks becomes a comment for your agent, without leaving Checks
   const guideIssues = (id) => { try { const sl = id && wrapOf(id) && wrapOf(id).querySelector('.slide'); return sl && window.SBGuides ? window.SBGuides.issues(sl) : []; } catch (e) { return []; } };
   const guideNote = (id) => { const is = guideIssues(id); return is.length ? `Guides: ${is.map((g) => g.msg).join(' ')} Fix it so the slide passes Checks › Guides.` : ''; };
   function addGuideComment(id) {
@@ -583,7 +585,7 @@
     if (!e.target.closest('[data-gall]') || !window.SBGuides) return;
     const res = window.SBGuides.scan(wraps()).filter((r) => r.issues.length);
     res.forEach((r) => addGuideComment(r.id));
-    say(`<b>Added a comment on ${res.length} slide${res.length === 1 ? '' : 's'}.</b> Click Ask Claude when you’re ready, and Claude fixes them next round.`);
+    say(`<b>Added a comment on ${res.length} slide${res.length === 1 ? '' : 's'}.</b> Click Ask agent when you’re ready, and your agent fixes them next round.`);
     renderUnder();
   });
   function placeNotes() {
@@ -641,7 +643,7 @@
       box = checks.querySelector('#sb-timed'); if (!box) return;
       const is = guideIssues(cur), asked = is.length && commentOf(cur).includes(guideNote(cur));
       box.innerHTML = `<button class="sb-btn" data-u="prev">${K('←')} Previous</button> `
-        + (is.length ? `<span class="sb-gnow">${esc(is.map((g) => g.short || g.msg).join(' · '))}</span> <button class="sb-btn ${asked ? 'sb-done' : 'red'}" data-u="gfix" ${asked ? 'disabled' : ''} title="Adds what this slide breaks to its comment, so Claude fixes it next round">${asked ? 'In the comment ✓' : 'Ask Claude to fix'}</button> ` : '<span class="sb-gnow ok">This slide follows the guides.</span> ')
+        + (is.length ? `<span class="sb-gnow">${esc(is.map((g) => g.short || g.msg).join(' · '))}</span> <button class="sb-btn ${asked ? 'sb-done' : 'red'}" data-u="gfix" ${asked ? 'disabled' : ''} title="Adds what this slide breaks to its comment, so your agent fixes it next round">${asked ? 'In the comment ✓' : 'Ask agent to fix'}</button> ` : '<span class="sb-gnow ok">This slide follows the guides.</span> ')
         + `<button class="sb-btn" data-u="next">Next ${K('→')}</button>`;
     } else if (vflow) {
       box = checks.querySelector('#sb-timed'); if (!box) return;
@@ -659,7 +661,7 @@
   }
   window.addEventListener('sb:slide', () => { if (ui.view === 'checks' && ui.checks === 'guides') renderUnder(); });
   document.addEventListener('click', (e) => { const g = e.target.closest('[data-u="gfix"]'); if (!g || !cur) return;
-    if (addGuideComment(cur)) say('<b>Added to the comment under this slide.</b> Click Ask Claude when you’re ready.'); renderUnder(); });
+    if (addGuideComment(cur)) say('<b>Added to the comment under this slide.</b> Click Ask agent when you’re ready.'); renderUnder(); });
   document.addEventListener('click', (e) => { const b = e.target.closest('[data-u]'); if (!b) return; const u = b.dataset.u;
     if (u === 'start' || u === 'again') tenStart(); else if (u === 'stop') { clearTimeout(tenTimer); tenReady(); } else if (u === 'pass') tenVerdict(true); else if (u === 'fail') tenVerdict(false);
     else if (u === 'reveal') reveal();
@@ -744,12 +746,12 @@
     if (ui.view !== 'focus' && !test) { deck.style.maxWidth = ''; under.style.maxWidth = ''; refit(); return; }
     const css = getComputedStyle(document.documentElement), px = (v) => parseFloat(css.getPropertyValue(v)) || 0;
     const left = test || ui.noleft ? 0 : px('--sb-left'), right = test || ui.noright ? 0 : px('--sb-right');
-    // the comment box and Claude's reply under the slide take room too, and they wrap differently at
+    // the comment box and the agent's reply under the slide take room too, and they wrap differently at
     // different widths; always measure from the widest layout so the size never depends on the last one
     const aw = ui.view === 'focus' && cur && wrapOf(cur);
     const below = () => { let n = 0; if (aw) [...aw.children].forEach((c) => { if (c.querySelector('.slide') || c.classList.contains('slide') || c.classList.contains('sb-reply') || !c.offsetHeight) return; const cs = getComputedStyle(c); if (cs.position === 'absolute' || cs.position === 'fixed') return; n += c.offsetHeight + (parseFloat(cs.marginTop) || 0) + (parseFloat(cs.marginBottom) || 0); }); return n; };
     const W = window.innerWidth - left - right - 68, H0 = window.innerHeight - 52 - 22 - 70 - (document.body.classList.contains('sb-has-next') ? 42 : 0) - (test ? (checks.offsetHeight || 150) + 34 : 0);
-    const fit = (b) => Math.max(320, Math.min(W, (H0 - b - 30) * 16 / 9));   // 30: one line for Claude's reply, kept on every slide so moving never resizes
+    const fit = (b) => Math.max(320, Math.min(W, (H0 - b - 30) * 16 / 9));   // 30: one line for your agent's reply, kept on every slide so moving never resizes
     let value;
     // Usually the width already matches and this reads once. When wrapping changes
     // after a resize, converge from the current width without resetting it on every slide.
@@ -835,14 +837,15 @@
       if (i.changed) { if (!bd) { bd = h('span', 'sb-badge' + (row ? ' inline' : '')); if (!row && getComputedStyle(fr).position === 'static') fr.style.position = 'relative'; host.appendChild(bd); } bd.textContent = `Changed · round ${i.ch.round || ''}`; }
       else if (bd) bd.remove();
       const fb = w.querySelector('textarea.fb'); if (!fb) return;
+      if (fb.placeholder !== 'Feedback for your agent on this slide…') fb.placeholder = 'Feedback for your agent on this slide…';
       const hold = (!window.DeckRenderer?.enabled() || id === cur || i.text || i.rep || w.querySelector('.sb-hold')) ? holdRow(w) : null;
       if (hold) hold.querySelector('input').checked = i.hold;
       let rp = w.querySelector('.sb-reply');
       if (i.rep && (i.fresh || i.text)) {   // a reply to a comment saved in another version stays with that version
         if (!rp) { rp = h('div', 'sb-reply'); hold.after(rp); }
-        const label = !i.fresh ? 'Claude · Earlier reply' : { done: 'Claude · Done', question: 'Claude · Question', skipped: 'Claude · Skipped', working: 'Claude · Working…' }[i.rep.status] || 'Claude';
+        const label = !i.fresh ? 'Agent · Earlier reply' : { done: 'Agent · Done', question: 'Agent · Question', skipped: 'Agent · Skipped', working: 'Agent · Working…' }[i.rep.status] || 'Agent';
         rp.className = 'sb-reply ' + (i.fresh ? i.rep.status : 'stale');
-        rp.title = i.fresh ? '' : 'Claude wrote this before your current comment. It will reply to the new one next round.';
+        rp.title = i.fresh ? '' : 'The agent wrote this before your current comment. It will reply to the new one next round.';
         rp.innerHTML = `<span class="sb-who">${label}</span><span class="sb-txt">${esc(i.rep.text)}</span>${i.rep.status === 'working' || !i.fresh ? '' : '<button class="sb-btn" data-act="resolve">Looks good</button><button class="sb-btn" data-act="reopen">Reopen</button>'}`;
       } else if (rp) rp.remove();
     });
@@ -851,7 +854,7 @@
   function holdRow(w) {
     const fb = w.querySelector('textarea.fb'); if (!fb) return null;
     let r = w.querySelector('.sb-hold');
-    if (!r) { r = h('label', 'sb-check sb-hold', '<input type="checkbox"> Still drafting: Claude skips it'); fb.after(r); }
+    if (!r) { r = h('label', 'sb-check sb-hold', '<input type="checkbox"> Still drafting: your agent skips it'); fb.after(r); }
     r.classList.toggle('empty', !fb.value.trim()); return r;
   }
   deck.addEventListener('change', (e) => {
@@ -876,7 +879,7 @@
     const c = review.claude, el = $('#sb-claude');
     const fresh = c && (Date.now() / 1000 - (c.at || 0) < 1800);
     el.classList.toggle('on', !!fresh);
-    if (fresh) el.querySelector('span').textContent = 'Claude' + (c.total ? `: ${c.done || 0} of ${c.total}` : '') + (c.text ? ' · ' + c.text : '');
+    if (fresh) el.querySelector('span').textContent = 'Agent' + (c.total ? `: ${c.done || 0} of ${c.total}` : '') + (c.text ? ' · ' + c.text : '');
   }
   function refresh() { counts(); decorate(); markTitles(); claudeLine(); renderFilm(); if (ui.view === 'scroll') renderPanel(); if (ui.view === 'focus') { renderPanel(); size(); } if (ui.view === 'sorter') renderSorter(); if (ui.view === 'checks') renderChecks();  requestAnimationFrame(masks); }
   function setReview(r) { if (r && r.replies) review = r; refresh(); }
@@ -975,7 +978,7 @@
     let p; try { p = await (await fetch(api('pulse'), { cache: 'no-store' })).json(); } catch (e) { return; }
     if (!base) { base = p; return; }
     if (p.review !== base.review) { base.review = p.review; loadReview(); }
-    if (p.file !== base.file || p.shell !== base.shell) { pending = true; banner.firstChild.textContent = 'Claude updated this deck.'; }
+    if (p.file !== base.file || p.shell !== base.shell) { pending = true; banner.firstChild.textContent = 'This deck changed on disk.'; }
     const other = p.saved && p.saved.by && p.saved.by !== SB.tab && !(base.saved && base.saved.at === p.saved.at);
     base.saved = p.saved;
     if (other && !SB.readonly && !pending) { pending = true; banner.firstChild.textContent = 'You saved changes in another tab.'; }   // reload to see them; nothing here is lost
@@ -983,7 +986,7 @@
   }
   setInterval(pulse, 2500);
 
-  // ---------- agent-friendly handle (Claude can drive the page with this) ----------
+  // ---------- agent-friendly handle (an agent can drive the page with this) ----------
   window.SlideBuilder = {
     go, step, setView, say, current: () => cur, filter: (f) => { filter = f; refresh(); }, order: (ids) => saveOrder(ids), title, hidden: (id) => clientOnly.has(id),
     slides: () => slideIds().map((id, k) => Object.assign({ n: k + 1, id, title: title(id) }, (({ text, st, changed, hold }) => ({ comment: text, reply: st, changed, draft: hold }))(info(id)))),
