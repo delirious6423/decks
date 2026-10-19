@@ -139,7 +139,8 @@ how it ended.
 
 ## Checks: the tests I teach, one key each
 
-Press C, or a number key from any view to run that check on the slide you're on.
+Press C, or a number key from any view to run that check on the slide you're on. Not sure
+which? **Help me choose** asks what you want to know and opens the check that answers it.
 
 1. **5-second test.** Can you get the point of the slide at a glance?
 2. **10-second test.** Can a reader take it in, in the time they'll give it? A miss on
@@ -147,7 +148,8 @@ Press C, or a number key from any view to run that check on the slide you're on.
 3. **Horizontal flow.** The titles alone, in order, as paragraphs or one per line. They
    should tell the whole story. You can edit them right there.
 4. **Vertical flow.** The title first, with the body hidden. Say what the slide has to
-   prove, then press Space and check that it does.
+   prove, then press Space and check that it does. It finds the title wherever your layout
+   puts it, even inside a column or panel.
 5. **Guides.** Four basic rules drawn on every slide, with a list of the slides that
    break one:
    - the protected border, kept for the logo, source line, and page number;

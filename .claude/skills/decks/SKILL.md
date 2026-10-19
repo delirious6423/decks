@@ -106,6 +106,8 @@ Decks is built on the method Paul Millerd teaches at StrategyU. Apply it to ever
 
 **Writing.** Active verbs, contractions, and numbers rather than adjectives. Never: delve, landscape, leverage, utilize, crucial, pivotal, robust, seamless, transformative, underscore, additionally, moreover, furthermore. One em dash per slide at most.
 
+**Custom layouts.** Give every slide's title the class `h-title` (or make it an `h2`), even inside a column or panel, so Checks, Titles only, and `sb audit` find it.
+
 ## Slide style rules
 
 On top of the method:

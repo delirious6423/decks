@@ -206,8 +206,8 @@ body.sb-sorter #sb-sorter { display: block; font: 13px/1.4 'DM Sans', -apple-sys
 .sb-shelf .sb-add { margin-top: 5px; }
 
 /* ---------- action title test: hide everything but the title ---------- */
-body.sb-titles-only .slide:has(> .h-title):not(.sb-reveal) > :not(.h-title):not(.ctrls):not(.slide-tag):not(.sb-badge) { visibility: hidden !important; }
-body.sb-titles-only .slide:has(> .h-title):not(.sb-reveal)::after { content: 'Content hidden: what should this slide prove?'; position: absolute; left: 6%; right: 6%; top: 34%; bottom: 10%; border: 2px dashed #C9C5C2; border-radius: 10px; display: flex; align-items: center; justify-content: center; font: 600 22px 'DM Sans', sans-serif; color: #A9A29E; pointer-events: none; }
+body.sb-titles-only .slide:has(> .h-title):not(.sb-reveal):not(.sb-tx) > :not(.h-title):not(.ctrls):not(.slide-tag):not(.sb-badge) { visibility: hidden !important; }
+body.sb-titles-only .slide:has(> .h-title):not(.sb-reveal):not(.sb-tx)::after { content: 'Content hidden: what should this slide prove?'; position: absolute; left: 6%; right: 6%; top: 34%; bottom: 10%; border: 2px dashed #C9C5C2; border-radius: 10px; display: flex; align-items: center; justify-content: center; font: 600 22px 'DM Sans', sans-serif; color: #A9A29E; pointer-events: none; }
 #sb-hide.on { background: var(--sb-red); border-color: var(--sb-red); color: #fff; }
 
 /* ---------- checks: read the story, or the title test ---------- */
@@ -242,8 +242,8 @@ body.sb-checks .sb-under { display: flex; justify-content: space-between; align-
 body.sb-checks.sb-vflow #sb-reveal, body.sb-titles-only.sb-focus #sb-reveal { display: inline-block; }
 
 /* checks: vertical flow hides the body; the 10-second test covers the whole slide between looks */
-body.sb-checks.sb-vflow #deck .slide:has(> .h-title):not(.sb-reveal) > :not(.h-title):not(.ctrls):not(.slide-tag):not(.sb-badge) { visibility: hidden !important; }
-body.sb-checks.sb-vflow #deck .slide:has(> .h-title):not(.sb-reveal)::after { content: 'What should the body prove? Reveal to check.'; position: absolute; left: 6%; right: 6%; top: 34%; bottom: 10%; border: 2px dashed #C9C5C2; border-radius: 10px; display: flex; align-items: center; justify-content: center; font: 600 22px 'DM Sans', sans-serif; color: #A9A29E; pointer-events: none; }
+body.sb-checks.sb-vflow #deck .slide:has(> .h-title):not(.sb-reveal):not(.sb-tx) > :not(.h-title):not(.ctrls):not(.slide-tag):not(.sb-badge) { visibility: hidden !important; }
+body.sb-checks.sb-vflow #deck .slide:has(> .h-title):not(.sb-reveal):not(.sb-tx)::after { content: 'What should the body prove? Reveal to check.'; position: absolute; left: 6%; right: 6%; top: 34%; bottom: 10%; border: 2px dashed #C9C5C2; border-radius: 10px; display: flex; align-items: center; justify-content: center; font: 600 22px 'DM Sans', sans-serif; color: #A9A29E; pointer-events: none; }
 body.sb-checks.sb-ten #deck .slide.sb-cover > :not(.ctrls) { visibility: hidden !important; }
 body.sb-checks.sb-ten #deck .slide.sb-cover::after { content: attr(data-msg); position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; text-align: center; padding: 0 12%; background: #272322; color: #fff; font: 600 30px/1.35 'DM Sans', sans-serif; }
 .sb-count { position: absolute; z-index: 6; left: 0; top: 0; height: 6px; width: 100%; background: var(--sb-red); transform-origin: left; animation: sb-count 10s linear forwards; }
@@ -348,3 +348,22 @@ body.sb-has-next.sb-on { padding-top: calc(var(--sb-top) + 42px) !important; }
 .sb-gnow.ok { color: #2F6B34; background: #E8F1E8; border-color: #CFE3CF; }
 .sb-gall { margin-left: 6px; }
 .sb-btn.sb-done, .sb-btn.sb-done:disabled { color: #2F6B34; background: #E8F1E8; border-color: #CFE3CF; opacity: 1; cursor: default; }
+
+/* Vertical flow and Titles only on a slide whose title sits inside a column or panel: a mask over the frame */
+.sb-vmask { position: absolute; inset: 0; z-index: 4; pointer-events: none; }
+.sb-vmask .sb-vmsg { position: absolute; right: 6%; bottom: 10%; border: 2px dashed #C9C5C2; border-radius: 10px; display: flex; align-items: center; justify-content: center; text-align: center; padding: 0 4%; font-weight: 600; font-family: 'DM Sans', sans-serif; color: #A9A29E; }
+@media print { .sb-vmask { display: none !important; } }
+
+/* Checks › Help me choose */
+.sb-chhelp.on { background: var(--sb-ink); color: #fff; border-color: var(--sb-ink); }
+.sb-chpick { max-width: 860px; margin: -10px auto 26px; background: #fff; border: 1px solid var(--sb-line); border-radius: 12px; padding: 16px 18px; box-shadow: 0 8px 24px rgba(35,31,32,.08); }
+.sb-chq { font-weight: 700; font-size: 15px; margin-bottom: 10px; color: var(--sb-ink); }
+.sb-chopts { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 8px; }
+.sb-chopts button { text-align: left; font: inherit; border: 1px solid var(--sb-line); border-radius: 9px; background: #fff; padding: 10px 12px; cursor: pointer; display: flex; flex-direction: column; gap: 3px; color: var(--sb-ink); }
+.sb-chopts button:hover { border-color: var(--sb-red); }
+.sb-chopts b { font-size: 13.5px; }
+.sb-chname { font-size: 12px; font-weight: 600; color: var(--sb-red); }
+.sb-chname kbd { font: 600 10px 'DM Sans', sans-serif; border: 1px solid currentColor; border-radius: 4px; padding: 0 4px; margin-left: 3px; opacity: .6; }
+.sb-chhow { font-size: 12px; line-height: 1.4; color: var(--sb-mute); }
+.sb-chorder { margin-top: 12px; font-size: 12.5px; line-height: 1.5; color: var(--sb-mute); }
+.sb-chorder b { color: var(--sb-ink); }

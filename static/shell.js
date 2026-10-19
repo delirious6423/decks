@@ -369,7 +369,10 @@
 
   // ---------- checks: read the story (horizontal flow), or the title test ----------
   const EXEMPT = new Set(['title', 'closing', 'reflect', 'lines', 'statement', 'image', 'photo', 'agenda', 'pptx', 'team']);
-  const titleEl = (id) => { const w = wrapOf(id); return w && w.querySelector('.slide > .h-title'); };
+  // a slide's title, wherever its layout puts it (guides.js knows how to find one)
+  const titleOfSlide = (sl) => { if (!sl) return null; const d = sl.querySelector(':scope > .h-title'); if (d && d.textContent.trim()) return d;
+    try { return window.SBGuides && window.SBGuides.titleOf ? window.SBGuides.titleOf(sl) : null; } catch (e) { return null; } };
+  const titleEl = (id) => { const w = wrapOf(id); return w && titleOfSlide(w.querySelector('.slide')); };
   const catOf = (id) => (lib()[id] || {}).cat || '';
   function flags(id, text) {
     const b = lib()[id] || {}, f = [];
@@ -384,8 +387,24 @@
   const sentence = (id, k) => {
     const t = titleEl(id), text = t ? t.innerText.replace(/\s+/g, ' ').trim() : title(id), f = t ? flags(id, text) : [];
     const dot = !/[.?!:”"…]$/.test(text);
-    return `<span class="s${t ? '' : ' none'}${f.length ? ' flag' : ''}" data-id="${esc(id)}" data-n="${k + 1}"${f.length ? ` data-flags="${esc(JSON.stringify(f))}"` : ''}${t ? ' contenteditable="plaintext-only" spellcheck="true"' : ''}${dot ? ' data-dot' : ''}>${esc(text)}</span>`;
+    return `<span class="s${t ? '' : ' none'}${f.length ? ' flag' : ''}" data-id="${esc(id)}" data-n="${k + 1}"${f.length ? ` data-flags="${esc(JSON.stringify(f))}"` : ''}${t && t.isContentEditable ? ' contenteditable="plaintext-only" spellcheck="true"' : ''}${dot ? ' data-dot' : ''}>${esc(text)}</span>`;
   };
+  // Help me choose: what you want to know, and the check that answers it
+  let chHelp = false;
+  const CHOOSE = [
+    ['horizontal', 'Does my story hang together?', 'Horizontal flow', 'Read only the titles, in order. They should tell the whole story.'],
+    ['vertical', 'Does each slide prove its title?', 'Vertical flow', 'See the title first, say what the slide must show, then check the body.'],
+    ['five', 'Will people get it when I present?', '5-second test', 'Glance at each slide for five seconds. Did the one point come through?'],
+    ['ten', 'Can someone read it on their own?', '10-second test', 'Ten seconds per slide: one point, a clear hierarchy, nothing to decode.'],
+    ['guides', 'Does it look professional?', 'Guides', 'Margins, title length, text size, and how many text sizes.']];
+  const KEYS = { five: 1, ten: 2, horizontal: 3, vertical: 4, guides: 5 };
+  const CHPICK = `<div class="sb-chpick"><div class="sb-chq">What do you want to know?</div><div class="sb-chopts">${CHOOSE.map(([m, q, name, how]) =>
+    `<button data-pick="${m}"><b>${q}</b><span class="sb-chname">${name} <kbd>${KEYS[m]}</kbd></span><span class="sb-chhow">${how}</span></button>`).join('')}</div>
+    <div class="sb-chorder"><b>Going through a whole deck?</b> This order works: Horizontal flow, then Vertical flow, then the 5-second test if you'll present it (or the 10-second test if people will read it), then Guides.</div></div>`;
+  checks.addEventListener('click', (e) => {
+    if (e.target.closest('[data-chhelp]')) { chHelp = !chHelp; renderChecks(); return; }
+    const p = e.target.closest('[data-pick]'); if (p) { chHelp = false; openCheck(p.dataset.pick); }
+  });
   function renderChecks() {
     if (checks.querySelector('[contenteditable]:focus')) return;   // don't rebuild under the cursor
     const ids = wraps().map((w) => w.dataset.id), fmt = ui.fmt || 'para';
@@ -431,7 +450,9 @@
       <div class="sb-glist" id="sb-glist"><span class="sb-stat">Checking every slide…</span></div>`;
     checks.innerHTML = `<div class="sb-modebar">
         <div class="sb-seg" role="group" aria-label="Check"><button data-mode="five" class="${mode === 'five' ? 'on' : ''}">5-second test <kbd>1</kbd></button><button data-mode="ten" class="${mode === 'ten' ? 'on' : ''}">10-second test <kbd>2</kbd></button><button data-mode="horizontal" class="${mode === 'horizontal' ? 'on' : ''}">Horizontal flow <kbd>3</kbd></button><button data-mode="vertical" class="${mode === 'vertical' ? 'on' : ''}">Vertical flow <kbd>4</kbd></button><button data-mode="guides" class="${mode === 'guides' ? 'on' : ''}">Guides <kbd>5</kbd></button></div>
+        <button class="sb-btn sb-chhelp${chHelp ? ' on' : ''}" data-chhelp aria-expanded="${chHelp}">Help me choose</button>
         </div>
+      ${chHelp ? CHPICK : ''}
       <div class="sb-note" style="${mode === 'horizontal' ? '' : 'display:block!important'}">${notes[mode]}</div>
       ${mode !== 'horizontal' ? '<div class="sb-timed" id="sb-timed"></div>' : ''}
       ${mode === 'horizontal' ? `<div class="sb-readwrap"><div class="sb-seg sb-fmt" role="group" aria-label="Format"><button data-fmt="para" class="${fmt === 'para' ? 'on' : ''}">Paragraphs <kbd>P</kbd></button><button data-fmt="lines" class="${fmt === 'lines' ? 'on' : ''}">One per line <kbd>L</kbd></button></div><div></div><div class="sb-read${fmt === 'lines' ? ' lines' : ''}">${body}</div><div class="sb-margin"></div></div>` : ''}`;
@@ -442,7 +463,7 @@
     document.body.classList.toggle('sb-gcheck', mode === 'guides');
     if (mode === 'guides') requestAnimationFrame(() => setTimeout(guideList, 30));
     document.body.classList.toggle('sb-ten', timed);
-    renderUnder();
+    renderUnder(); requestAnimationFrame(masks);
   }
   function guideList() {
     const box = checks.querySelector('#sb-glist'); if (!box || !window.SBGuides) return;
@@ -548,8 +569,37 @@
     else if (u === 'prev') { step(-1); if (isTimed()) tenReady(); } else if (u === 'next') { step(1); if (isTimed()) tenReady(); } });
 
   const hideBtn = () => $('#sb-hide');
-  function setHide(on) { ui.hide = on; saveUi(); document.body.classList.toggle('sb-titles-only', !!on); hideBtn().classList.toggle('on', !!on); document.querySelectorAll('.slide.sb-reveal').forEach((x) => x.classList.remove('sb-reveal')); }
-  function reveal() { const w = cur && wrapOf(cur), sl = w && w.querySelector('.slide'); if (sl) sl.classList.toggle('sb-reveal'); }
+  function setHide(on) { ui.hide = on; saveUi(); document.body.classList.toggle('sb-titles-only', !!on); hideBtn().classList.toggle('on', !!on); document.querySelectorAll('.slide.sb-reveal').forEach((x) => x.classList.remove('sb-reveal')); requestAnimationFrame(masks); }
+  function reveal() { const w = cur && wrapOf(cur), sl = w && w.querySelector('.slide'); if (sl) sl.classList.toggle('sb-reveal'); masks(); }
+  // Vertical flow and Titles only hide everything but the title. When the title sits right in the slide,
+  // CSS does it. When a layout nests it (a column, a panel), a mask covers the slide with a hole cut around
+  // the title, laid over the slide frame, so the slide's own HTML (and its saved edits) never changes.
+  function markTitles() {
+    wraps().forEach((w) => { const sl = w.querySelector('.slide'); if (!sl) return; const d = sl.querySelector(':scope > .h-title');
+      sl.classList.toggle('sb-tx', !!d && titleOfSlide(sl) !== d); });   // its real title is elsewhere: leave it to the mask
+  }
+  function masks() {
+    document.querySelectorAll('.sb-vmask').forEach((m) => m.remove());
+    const vflow = ui.view === 'checks' && ui.checks === 'vertical', hide = !!ui.hide && ui.view !== 'checks' && ui.view !== 'sorter';
+    if (!vflow && !hide) return;
+    const msg = vflow ? 'What should the body prove? Reveal to check.' : 'Content hidden: what should this slide prove?';
+    (vflow ? [cur && wrapOf(cur)] : wraps()).filter(Boolean).forEach((w) => {
+      const sl = w.querySelector('.slide'), fr = sl && sl.parentElement; if (!sl || sl.classList.contains('sb-reveal')) return;
+      const d = sl.querySelector(':scope > .h-title'), t = titleOfSlide(sl); sl.classList.toggle('sb-tx', !!d && t !== d);   // fresh, in case the slide was redrawn
+      if (!t || t === d) return;
+      const F = fr.getBoundingClientRect(), R = t.getBoundingClientRect(); if (!F.width || !R.width) return;
+      const pc = (v, of) => Math.max(0, Math.min(100, v / of * 100)), pad = 6;
+      const x1 = pc(R.left - F.left - pad, F.width), y1 = pc(R.top - F.top - pad, F.height), x2 = pc(R.right - F.left + pad, F.width), y2 = pc(R.bottom - F.top + pad, F.height);
+      const m = h('div', 'sb-vmask'), bg = getComputedStyle(sl).backgroundColor;
+      m.style.background = bg && !/rgba\(0, 0, 0, 0\)|transparent/.test(bg) ? bg : '#FFFFFF';
+      m.style.clipPath = `polygon(evenodd, 0 0, 100% 0, 100% 100%, 0 100%, 0 0, ${x1}% ${y1}%, ${x2}% ${y1}%, ${x2}% ${y2}%, ${x1}% ${y2}%, ${x1}% ${y1}%)`;
+      const box = h('div', 'sb-vmsg'); box.textContent = msg; box.style.fontSize = Math.max(11, 22 * F.width / 1000) + 'px';
+      const top = Math.min(y2 + 4, 72); box.style.top = top + '%'; box.style.left = Math.max(6, Math.min(x1, 40)) + '%';
+      m.appendChild(box); if (getComputedStyle(fr).position === 'static') fr.style.position = 'relative'; fr.appendChild(m);
+    });
+  }
+  window.addEventListener('sb:slide', () => requestAnimationFrame(masks));
+  window.addEventListener('resize', debounce(masks, 150));
 
   // ---------- views, navigation, and sizing ----------
   function setView(v) {
@@ -697,7 +747,7 @@
     el.classList.toggle('on', !!fresh);
     if (fresh) el.querySelector('span').textContent = 'Claude' + (c.total ? `: ${c.done || 0} of ${c.total}` : '') + (c.text ? ' · ' + c.text : '');
   }
-  function refresh() { counts(); decorate(); claudeLine(); renderFilm(); if (ui.view === 'scroll') renderPanel(); if (ui.view === 'focus') { renderPanel(); size(); } if (ui.view === 'sorter') renderSorter(); if (ui.view === 'checks') renderChecks(); }
+  function refresh() { counts(); decorate(); markTitles(); claudeLine(); renderFilm(); if (ui.view === 'scroll') renderPanel(); if (ui.view === 'focus') { renderPanel(); size(); } if (ui.view === 'sorter') renderSorter(); if (ui.view === 'checks') renderChecks();  requestAnimationFrame(masks); }
   function setReview(r) { if (r && r.replies) review = r; refresh(); }
   async function loadReview() { try { setReview(await (await fetch(api('review'))).json()); } catch (e) {} }
 

@@ -18,6 +18,22 @@
 
   const layoutOf = (slide) => ((slide.className.match(/\bl-([a-z0-9-]+)/) || [])[1] || '');
 
+  // a slide's title, wherever its layout puts it: the deck's own title element (even nested in a
+  // column or panel), then a heading (h1, h2). Decks built by an agent nest titles in custom layouts,
+  // so "the first child with class h-title" is not enough. No guessing from font size: a quote or a
+  // reflection question is not a title.
+  function titleOf(slide) {
+    if (!slide) return null;
+    const live = slide.getBoundingClientRect().width > 0;   // a slide off screen (another view, another slide) has no layout: go by markup
+    const shown = (el) => { if (!el.textContent.trim() || getComputedStyle(el).display === 'none') return false; if (!live) return true; const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0; };
+    const direct = slide.querySelector(':scope > .h-title'); if (direct && shown(direct)) return direct;
+    const named = [...slide.querySelectorAll('.h-title, [data-title]')].find((e) => !e.closest(SKIP) && shown(e)); if (named) return named;
+    const size = (e) => parseFloat(getComputedStyle(e).fontSize) || 0;
+    const heads = [...slide.querySelectorAll('h1, h2')].filter((e) => !e.closest(SKIP) && shown(e));
+    if (heads.length) return heads.sort((a, b) => size(b) - size(a))[0];
+    return null;   // no title element and no heading: a quote, a question, a picture. Those show whole.
+  }
+
   // what a slide breaks, in slide pixels
   function check(slide) {
     const out = [], layout = layoutOf(slide);
@@ -26,7 +42,7 @@
 
     // a converted slide's source line: it belongs in the footer band, and footnote size is fine for it
     const footnote = (n) => layout === 'pptx' && /^\s*(sources?|note|notes)\b/i.test((n.parentElement.closest('.pp') || n.parentElement).textContent);
-    const t = slide.querySelector(':scope > .h-title');
+    const t = titleOf(slide);
     if (t && !NO_TITLE.has(layout) && t.textContent.trim()) {
       const cs = getComputedStyle(t), lh = parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.2;
       const lines = Math.round(t.offsetHeight / lh);
@@ -112,7 +128,7 @@
     });
     host.remove(); return out;
   }
-  window.SBGuides = { check, issues, scan, BAND, MIN_TEXT, MAX_SIZES };
+  window.SBGuides = { check, issues, scan, titleOf, BAND, MIN_TEXT, MAX_SIZES };
 
   // ---------- the overlay (only inside Decks) ----------
   const deck = document.getElementById('deck');
