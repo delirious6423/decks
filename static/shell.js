@@ -392,7 +392,7 @@
   // Help me choose: what you want to know, and the check that answers it
   let chHelp = false;
   const CHOOSE = [
-    ['horizontal', 'Does my story hang together?', 'Horizontal flow', 'Read only the titles, in order. They should tell the whole story.'],
+    ['horizontal', 'Does my overall story flow?', 'Horizontal flow', 'Read only the titles, in order. They should tell the whole story.'],
     ['vertical', 'Does each slide prove its title?', 'Vertical flow', 'See the title first, say what the slide must show, then check the body.'],
     ['five', 'Will people get it when I present?', '5-second test', 'Glance at each slide for five seconds. Did the one point come through?'],
     ['ten', 'Can someone read it on their own?', '10-second test', 'Ten seconds per slide: one point, a clear hierarchy, nothing to decode.'],
