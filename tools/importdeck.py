@@ -422,9 +422,17 @@ def imported_block(f, force):
     return t, i, j
 
 
-def wire(f, block, force):
+HIDE_ORIGINAL = '.ctrls .cbtn.orig { display: none; }   /* no pictures of the original slides (imported without a PDF) */'
+
+
+def wire(f, block, force, originals=True):
     t, i, j = imported_block(f, force)
-    f.write_text(t[:i] + block + t[j:], encoding='utf-8')
+    t = t[:i] + block + t[j:]
+    # each slide's "original" button shows its picture: without pictures, it goes
+    t = t.replace('\n' + HIDE_ORIGINAL, '')
+    if not originals:
+        t = t.replace('\n<style id="deck-theme">', '\n<style id="deck-theme">\n' + HIDE_ORIGINAL, 1)   # the tag itself, not a comment naming it
+    f.write_text(t, encoding='utf-8')
 
 
 # ---------- the outline, for a rebuild ----------
@@ -588,7 +596,7 @@ def main():
         stats = conv.stats
     write_ct(folder, data, bool(wanted))
     if not a.no_wire:
-        wire(deck_file, library(src, data, pics, facts), a.force)
+        wire(deck_file, library(src, data, pics, facts), a.force, originals=bool(pics))
 
     # what came in
     editable = [k for k, v in data.items() if not v.get('error') and not v.get('bgpic') and v.get('shapes')]
