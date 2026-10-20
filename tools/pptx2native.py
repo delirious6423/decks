@@ -532,6 +532,8 @@ class Converter:
         self.zip = zipfile.ZipFile(pptx_path)
         global SCALE, OFFSET
         SCALE, OFFSET = fit_slide(self.prs.slide_width, self.prs.slide_height)
+        d = self.prs.part._element.find('p:defaultTextStyle/a:lvl1pPr/a:defRPr', NS)
+        self.default_size = int(d.get('sz')) / 100 if d is not None and d.get('sz') else 18.0   # text with no size set anywhere
         self.render_dir, self.prefix, self.img_dir = render_dir, prefix, img_dir
         self.themes = {}      # one theme per slide master: this deck has seven
         self.use_master(self.prs.slide_masters[0])
@@ -966,18 +968,19 @@ class Converter:
                           'marL': pp['marL'], 'indent': pp['indent'], 'buFont': pp['buFont'], 'buColor': pp['buColor']})
         return paras
 
-    def body_props(self, txBody):
-        bp = txBody.find('a:bodyPr', NS)
-        out = {'anchor': 't', 'wrap': True, 'ins': [91440, 45720, 91440, 45720], 'scale': 1.0}
-        if bp is None:
-            return out
-        out['anchor'] = bp.get('anchor', 't')
-        out['wrap'] = bp.get('wrap', 'square') != 'none'
-        out['ins'] = [int(bp.get('lIns', 91440)), int(bp.get('tIns', 45720)), int(bp.get('rIns', 91440)), int(bp.get('bIns', 45720))]
-        na = bp.find('a:normAutofit', NS)
-        out['autofit'] = na is not None
-        if na is not None and na.get('fontScale'):
-            out['scale'] = int(na.get('fontScale')) / 100000
+    def body_props(self, txBody, inherited=()):
+        """Anchor, wrap, insets, and autofit of a text body. A placeholder takes what its own bodyPr leaves
+        unset from the layout's placeholder, then the master's (a title is usually centred or
+        bottom-anchored there); the autofit's font scale is the slide's own."""
+        chain = [el for el in [txBody.find('a:bodyPr', NS)] + [i.find('p:txBody/a:bodyPr', NS) for i in inherited if i is not None] if el is not None]
+        first = lambda attr, default: next((el.get(attr) for el in chain if el.get(attr) is not None), default)
+        out = {'anchor': first('anchor', 't'), 'wrap': first('wrap', 'square') != 'none', 'scale': 1.0,
+               'ins': [int(first('lIns', 91440)), int(first('tIns', 45720)), int(first('rIns', 91440)), int(first('bIns', 45720))]}
+        fit = next(((tag, el) for el in chain for tag in ('normAutofit', 'spAutoFit', 'noAutofit') if el.find(f'a:{tag}', NS) is not None), None)
+        out['autofit'] = bool(fit) and fit[0] == 'normAutofit'
+        own = chain[0].find('a:normAutofit', NS) if chain and chain[0] is txBody.find('a:bodyPr', NS) else None
+        if own is not None and own.get('fontScale'):
+            out['scale'] = int(own.get('fontScale')) / 100000
         return out
 
     # ---- shapes ----
@@ -1373,7 +1376,12 @@ class Converter:
             else:
                 out.append({'k': 'crop', 'x': px, 'y': py, 'w': pw, 'h': ph_, 'under_text': True})
         if has_text:
-            bp = self.body_props(txBody)
+            inherited = []
+            if phi:   # the same placeholder on the layout, then on the master (a centre title is the master's title)
+                lay = find_layout_ph(layout_el, phi)
+                mas = find_layout_ph(master_el, {'type': {'ctrTitle': 'title', 'subTitle': 'body'}.get(phi['type'], phi['type']), 'idx': None})
+                inherited = [lay, mas]
+            bp = self.body_props(txBody, inherited)
             node['text'] = self.text_body(sp, txBody, is_ph, bp['scale'])
             allruns = [r for para in node['text'] for r in (para.get('runs') or []) if r['t'] != '\n']
             if len(allruns) == 1 and allruns[0].get('f') and (allruns[0].get('sz') or 0) >= 72:
@@ -1535,6 +1543,8 @@ class Converter:
                         if r.get('sz'):
                             sz = int(r.get('sz')) / 100 * SCALE
                             break
+                    if sz is None and txt.strip():   # no size of its own: the deck's default text size, as PowerPoint draws it
+                        sz = self.default_size * SCALE
                     cell = {'t': txt, 'fill': fill if fill and fill != 'none' else None, 'b': bold, 'i': italic, 'c': col, 'sz': sz}
                     if first_row and ri == 0 and not cell['fill']:
                         cell['fill'] = '#272323'

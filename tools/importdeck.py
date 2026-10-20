@@ -249,6 +249,12 @@ def convert_pptx(src, folder, pdf, wanted, say):
         say(f'Converting {len(wanted)} slides…')
         conv.only = wanted
         data = conv.run()
+        for k, v in data.items():   # no title placeholder: mark the box the slide is named after, where Checks looks for a title
+            shapes = v.get('shapes') or []
+            if not any(sh.get('ph') == 'title' for sh in shapes) and not (conv.prs.slides[k - 1].shapes.title is not None):
+                box, _ = title_shape(shapes)
+                if box:
+                    box['ph'] = 'title'
         return conv, data, pics, pptx_facts(conv.prs, data)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
