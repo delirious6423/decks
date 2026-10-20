@@ -445,34 +445,50 @@ def import_copy(slug, path, keep_mine=False, dry=False):
 
 def proposal_state(slug):
     """Every proposed slide with the reviewer's decision on it: the one they clicked in the deck (review.json), or,
-    when there is none, what they did by hand in a version (took the original or the proposal out of it)."""
+    when there is none, what they did by hand in a version (took the original or a proposal out of it).
+    A slide can have several proposals (its options): accepting one rejects the others."""
     info = json.loads(node('proposals', slug))
     said = call('GET', f'/api/decks/{slug}/review').get('proposals') or {}
-    rows = []
+    groups = {}
     for x in info['pairs']:
-        d = said.get(x['p'])
-        if d and not d.get('baked'):
-            x.update(decision=d['decision'], how=f"you clicked {'Accept' if d['decision'] == 'accept' else 'Keep original'}"
-                     + (f" in {d['version']}" if d.get('version') else ''), at=d.get('at'))
-        else:   # a version with saved state that should show both, and shows only one
-            seen = {}
+        groups.setdefault(x['o'], []).append(x)
+    rows = []
+    for o, xs in groups.items():
+        for i, x in enumerate(xs, 1):
+            x.update(option=i, options=len(xs), decision=None, how='')
+        name = lambda x: f"option {x['option']}" if len(xs) > 1 else 'the proposal'
+        for x in xs:
+            d = said.get(x['p'])
+            if d and not d.get('baked'):
+                x.update(decision=d['decision'], at=d.get('at'),
+                         how=f"you clicked {'Accept' if d['decision'] == 'accept' else 'Keep original'}" + (f" in {d['version']}" if d.get('version') else ''))
+                continue
+            seen = {}   # a version with saved state that carries the original and this proposal, and shows less than all of them
             for v in info['saved']:
-                blocks, shown = info['blocks'].get(v, []), info['shown'].get(v, {}).get(x['p'])
-                if not shown or x['p'] not in blocks or x['o'] not in blocks:
+                blocks, shown = info['blocks'].get(v, []), info['shown'].get(v, {})
+                if x['p'] not in blocks or o not in blocks or x['p'] not in shown:
                     continue
-                o_on, p_on = shown
-                if p_on and not o_on:
-                    seen.setdefault('accept', []).append(v)
-                elif o_on and not p_on:
+                o_on, p_on = shown[x['p']]
+                on = [y for y in xs if y['p'] in blocks and shown.get(y['p'], [0, 0])[1]]
+                if o_on and not p_on:
                     seen.setdefault('keep', []).append(v)
+                elif not o_on and len(on) == 1:
+                    seen.setdefault('accept' if on[0] is x else 'keep', []).append(v)
             if len(seen) == 1:
                 (dec, vs), = seen.items()
-                x.update(decision=dec, how=f"you took the {'original' if dec == 'accept' else 'proposal'} out of {', '.join(vs)}")
+                x.update(decision=dec, how=f"you took {'the original' if dec == 'accept' else name(x)} out of {', '.join(vs)}"
+                         + (' and left this option' if dec == 'accept' and len(xs) > 1 else ''))
             elif len(seen) > 1:
-                x.update(decision=None, how='mixed: ' + '; '.join(f"{'accepted' if k == 'accept' else 'kept the original'} in {', '.join(v)}" for k, v in seen.items()))
-            else:
-                x.update(decision=None, how='')
-        rows.append(x)
+                x.update(how='mixed: ' + '; '.join(f"{'accepted' if k == 'accept' else 'kept the original'} in {', '.join(v)}" for k, v in seen.items()))
+        acc = [x for x in xs if x['decision'] == 'accept']
+        if len(acc) > 1:   # one slide, two options accepted: they decide again
+            for x in xs:
+                x.update(decision=None, how=f"{len(acc)} options of this slide are accepted ({', '.join(name(y) for y in acc)}): ask which one")
+        elif acc:          # the others lose to the one they accepted
+            for x in xs:
+                if x is not acc[0]:
+                    x.update(decision='keep', how=f"you accepted {name(acc[0])} instead")
+        rows.extend(xs)
     # decisions whose proposal is no longer a proposal in the file: baked by hand, or the file changed under them
     info['loose'] = {k: v for k, v in said.items() if not v.get('baked') and k not in {x['p'] for x in info['pairs']}}
     return info, rows
@@ -499,17 +515,24 @@ def proposals_cmd(slug, bake=False):
     decided = [r for r in rows if r.get('decision')]
     pending = [r for r in rows if not r.get('decision')]
     word = {'accept': 'ACCEPT', 'keep': 'KEEP ORIGINAL'}
+    opt = lambda r: f"option {r['option']} of {r['options']}, " if r['options'] > 1 else ''
     if not bake:
         for r in decided:
-            print(f"{word[r['decision']]:<14}{r['p']}  (would replace {r['o']}): {r['title']}\n              {r['how']}")
+            lost = r['decision'] == 'keep' and any(q['o'] == r['o'] and q['decision'] == 'accept' for q in decided)   # a sibling won
+            print(f"{('REJECT' if lost else word[r['decision']]):<14}{r['p']}  ({opt(r)}would replace {r['o']}): {r['title']}\n              {r['how']}")
         for r in pending:
-            print(f"{'UNDECIDED':<14}{r['p']}  (would replace {r['o']}): {r['title']}" + (f"\n              {r['how']}" if r['how'] else ''))
+            print(f"{'UNDECIDED':<14}{r['p']}  ({opt(r)}would replace {r['o']}): {r['title']}" + (f"\n              {r['how']}" if r['how'] else ''))
         print(f"\n{len(decided)} decided, {len(pending)} still to decide."
               + (f" Bake the decided ones into the deck file: ./sb proposals {slug} --bake" if decided else ''))
         return
+    torn = {r['o']: r for r in pending if 'ask which one' in r['how']}   # one slide, two options accepted
     if not decided:
-        if not info['loose']:
+        for o, r in torn.items():
+            print(f"NOT BAKED     {o}: {r['how']}.")
+        if not info['loose'] and not torn:
             print('No decisions to bake.')
+        if torn:
+            sys.exit(1)
         return
     # the server records what was baked; one that predates proposals can't, so stop before the file changes
     req = urllib.request.Request(BASE + f'/api/decks/{slug}/review', method='POST', headers={'Content-Type': 'application/json'},
@@ -545,6 +568,8 @@ def proposals_cmd(slug, bake=False):
             else:
                 if f[p]['exists']:
                     wrong.append(f'{p} is still in LIBRARY')
+                if any(q['o'] == o and q['decision'] == 'accept' for q in done):
+                    continue   # a sibling took the original's place
                 for v, blocks in info['blocks'].items():
                     if o in blocks and v in after['blocks'] and o not in after['blocks'][v]:
                         wrong.append(f'version {v} lost {o}')
@@ -557,19 +582,22 @@ def proposals_cmd(slug, bake=False):
                                                                                                     title=(said.get(r['p']) or {}).get('title') or r['title'],
                                                                                                     how=r['how']) for r in done}})
     for r in done:
-        print(f"{word[r['decision']]:<14}{r['p']}  (in place of {r['o']}): {r['title']}" if r['decision'] == 'accept'
+        print(f"{word[r['decision']]:<14}{r['p']}  ({opt(r)}in place of {r['o']}): {r['title']}" if r['decision'] == 'accept'
+              else f"{'REJECT':<14}{r['p']}  ({opt(r)}deleted; {r['how']})" if r['options'] > 1 and any(q['o'] == r['o'] and q['decision'] == 'accept' for q in done)
               else f"{word[r['decision']]:<14}{r['o']}: {r['otitle']}  ({r['p']} deleted)")
         for n in notes[r['p']]:
             print(f'              {n}')
     for p, why in problems.items():
         print(f'NOT BAKED     {p}: {why}. Make this one by hand.')
+    for o, r in torn.items():
+        print(f"NOT BAKED     {o}: {r['how']}.")
     if done:
         print(f"\nBaked {len(done)} decision{'s' * (len(done) != 1)} into {d['entry']}. They go into the next ./sb round's record.")
         kept = [r['p'] for r in done if r['decision'] == 'keep']
         open_on = {c['slide'] for c in call('GET', f'/api/decks/{slug}/comments')['comments']}
         if open_on & set(kept):
             print('Comments on proposals that are gone now (reply to them): ' + ', '.join(sorted(open_on & set(kept))))
-    if problems:
+    if problems or torn:
         sys.exit(1)
 
 
@@ -669,7 +697,9 @@ def main(argv):
             has_props = None
         if has_props:
             _, prs = proposal_state(slug)
-            n_dec, n_open = sum(1 for r in prs if r.get('decision')), sum(1 for r in prs if not r.get('decision'))
+            # counted by slide: several options for one slide are one decision
+            n_dec = len({r['o'] for r in prs if r.get('decision')} - {r['o'] for r in prs if not r.get('decision')})
+            n_open = len({r['o'] for r in prs if not r.get('decision')})
             if n_dec or n_open:
                 print(f"Proposed slides: {n_dec} decided{f' (bake them: ./sb proposals {slug} --bake)' if n_dec else ''}, {n_open} still waiting for a decision.\n")
         if not rows:

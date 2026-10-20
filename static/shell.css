@@ -414,10 +414,8 @@ body.sb-on #deck .sb-isprop .slide-tag.prop { display: none; }   /* the bar unde
 .sb-ppill { font: 700 11px 'DM Sans', sans-serif; padding: 3px 8px; border-radius: 10px; background: #E4EFE6; color: #1F5A2E; white-space: nowrap; }
 .sb-seg2 { display: inline-flex; border: 1px solid var(--sb-line); border-radius: 7px; overflow: hidden; background: #fff; }
 .sb-seg2 button { font: 12.5px 'DM Sans', sans-serif; border: 0; background: #fff; padding: 4px 11px; color: var(--sb-mute); cursor: pointer; }
-.sb-seg2 button[data-flip="o"].on { background: var(--sb-ink); color: #fff; }
-.sb-seg2 button[data-flip="p"].on { background: #1F5A2E; color: #fff; }
-.sb-fliphint { color: var(--sb-faint); white-space: nowrap; }
-body.sb-scroll .sb-fliphint { display: none; }
+.sb-seg2 button.on { background: #1F5A2E; color: #fff; }
+.sb-seg2 button:first-child.on { background: var(--sb-ink); }   /* the original */
 .slide.sb-flipov { position: absolute !important; top: 0; left: 0; z-index: 8; transform-origin: top left; pointer-events: none; }
 .sb-fliptag { position: absolute; z-index: 30; top: 10px; left: 10px; font: 700 11px 'DM Sans', sans-serif; padding: 3px 8px; border-radius: 10px; background: #272322; color: #fff; }
 .sb-pmeta { color: #1F5A2E !important; }
@@ -449,3 +447,7 @@ body.sb-checks .sb-pbar, body.sb-checks .sb-flip, body.sb-sorter .sb-pbar { disp
 .sb-rwait { background: #F2F8F2; border: 1px solid #CFE3CF; border-radius: 9px; padding: 9px 11px !important; margin-bottom: 10px; }
 @media print { .sb-pbar, .sb-flip, .sb-flipov, #sb-rounds { display: none !important; } }
 body.sb-focus .sb-under > span:last-child { flex: none; white-space: nowrap; }   /* Previous and Next stay side by side when the hint wraps */
+body.sb-noprop #deck > .sb-pend { display: none !important; }   /* View › Proposed slides off: the deck as it is now */
+.sb-pbar .sb-acc:disabled { background: #2F6B34; border-color: #2F6B34; color: #fff; opacity: .4; }
+.sb-psibs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.sb-psibs .sb-hint { display: block; margin-top: 3px; }

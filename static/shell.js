@@ -71,85 +71,113 @@
       open: !!text && !hold && st !== 'done' && st !== 'skipped', question: st === 'question', replied: fresh && st !== 'working', changed: !!ch };
   };
   const FILTERS = [['all', 'All'], ['proposed', 'Proposed'], ['open', 'Open'], ['replied', 'Replied'], ['questions', 'Questions'], ['changed', 'Changed']];
-  const pass = (id, f = filter) => { if (f === 'all') return true; if (f === 'proposed') return pendingProp(id); const i = info(id); return (f === 'open' && i.open) || (f === 'replied' && i.replied) || (f === 'questions' && i.question) || (f === 'changed' && i.changed); };
+  const pass = (id, f = filter) => {
+    if (ui.noprop && f !== 'proposed' && pendingProp(id)) return false;   // View › Proposed slides off: the deck as it is now
+    if (f === 'all') return true; if (f === 'proposed') return propLead(id);
+    const i = info(id); return (f === 'open' && i.open) || (f === 'replied' && i.replied) || (f === 'questions' && i.question) || (f === 'changed' && i.changed); };
   const visible = () => wraps().map((w) => w.dataset.id).filter((id) => pass(id));
 
-  // ---------- proposed slides: Claude's alternative to one of yours (prop:true, replaces:'id') ----------
-  // Accept puts the proposal in its original's place in this version; Keep original takes the proposal out.
-  // Both save at once (the version's order, and the decision in review.json), and both undo. Claude writes
+  // ---------- proposed slides: Claude's alternatives to one of yours (prop:true, replaces:'id') ----------
+  // A slide can have one proposal or several (its options). Accept puts the option on screen in the original's
+  // place in this version and takes the original and the other options out; Keep original takes them all out.
+  // Both save at once (the version's order, and the decisions in review.json), and both undo. Claude writes
   // them into the deck file next round (sb proposals --bake).
   const origOf = (id) => { const b = lib()[id]; return b && b.prop && b.replaces && lib()[b.replaces] ? b.replaces : null; };
+  const optionsOf = (o) => Object.keys(lib()).filter((x) => origOf(x) === o);   // in deck-file order: option 1, 2, 3
   const inVersion = () => new Set(wraps().map((w) => w.dataset.id));
-  // accept or keep, from the click saved in review.json, or else from the version itself (one of the two taken out by hand)
-  const decisionOf = (id, on = inVersion()) => {
-    const o = origOf(id); if (!o) return null;
-    const d = (review.proposals || {})[id]; if (d && !d.baked) return { d: d.decision, said: true, version: d.version };
-    const P = on.has(id), O = on.has(o);
-    return { d: P && !O ? 'accept' : O && !P ? 'keep' : null };
+  const defaults = () => { try { return new Set(PITCHES[sideSelect ? sideSelect.value : current].blocks); } catch (e) { return null; } };   // eslint-disable-line no-undef
+  // a slide's proposals as one decision: the clicks saved in review.json, or else what the version shows
+  // (the original or some options taken out by hand). out: this version doesn't carry them.
+  function groupOf(o, on = inVersion(), def = defaults()) {
+    const ps = optionsOf(o), rec = (x) => { const r = (review.proposals || {})[x]; return r && !r.baked ? r : null; };
+    const acc = ps.filter((x) => (rec(x) || {}).decision === 'accept');
+    if (acc.length) return { o, ps, d: 'accept', pick: acc[0], said: true, version: rec(acc[0]).version };
+    if (ps.every((x) => (rec(x) || {}).decision === 'keep')) return { o, ps, d: 'keep', said: true, version: rec(ps[0]).version };
+    const carried = (x) => !def || def.has(x) || on.has(x), opts = ps.filter(carried);
+    if (!opts.length || !carried(o)) return { o, ps, d: null, out: true };
+    const shown = opts.filter((x) => on.has(x) && (rec(x) || {}).decision !== 'keep');
+    if (on.has(o)) return shown.length ? { o, ps, d: null, shown } : { o, ps, d: 'keep' };
+    if (shown.length === 1) return { o, ps, d: 'accept', pick: shown[0] };
+    return shown.length ? { o, ps, d: null, shown } : { o, ps, d: null, out: true };
+  }
+  // one option's part in its group's decision
+  const decisionOf = (id, on, def) => {
+    const o = origOf(id); if (!o) return null; const g = groupOf(o, on, def);
+    return { g, d: g.d === 'accept' ? (g.pick === id ? 'accept' : 'keep') : g.d, said: g.said, version: g.version, out: g.out };
   };
-  const pendingProp = (id) => { const x = decisionOf(id); return !!x && !x.d; };
-  const propList = () => { const on = inVersion(); return [...on].filter((id) => { const x = decisionOf(id, on); return x && !x.d; }); };
-  const propDecided = () => Object.keys(lib()).filter((id) => { const x = origOf(id) && decisionOf(id); return x && x.d; });
-  const propUndo = [];   // proposals decided in this tab, newest last: U reopens them one by one
+  const pendingProp = (id) => { const x = decisionOf(id); return !!x && !x.d && !x.out; };
+  const propLead = (id, on = inVersion(), def = defaults()) => { const x = decisionOf(id, on, def); return !!x && !x.d && !x.out && x.g.shown[0] === id; };   // the Proposed filter steps through slides, not options
+  const propList = () => { const on = inVersion(), def = defaults(); return [...on].filter((id) => propLead(id, on, def)); };
+  const propDecided = () => { const on = inVersion(), def = defaults(); return [...new Set(Object.keys(lib()).map(origOf).filter(Boolean))].map((o) => groupOf(o, on, def)).filter((g) => g.d); };
+  const propUndo = [];   // originals whose proposals were decided in this tab, newest last: U reopens them one by one
   function setInVersion(id, on) {
     const w = wrapOf(id);
     if (!on && w) { const rm = w.querySelector('.ctrls [data-a="rm"]'); if (rm) rm.click(); return; }
     if (on && !w) { const inp = document.querySelector(`#block-list input[data-id="${CSS.escape(id)}"]`); if (inp && !inp.checked) inp.click(); }
   }
-  function decide(p, d) {
+  // d: 'accept' (pick is the option to keep), 'keep' (the original), or null (undo: the original and every option back)
+  function decide(p, d, pick) {
     const o = origOf(p); if (!o) return;
     if (SB.readonly) { say('This is a read-only view of the deck.'); return; }
-    const before = visible(), k = before.indexOf(p), had = inVersion(), applied = had.has(p) || had.has(o);
+    const ps = optionsOf(o), def = defaults(), had = inVersion(), applied = had.has(o) || ps.some((x) => had.has(x));
+    if (d === 'accept') pick = pick || p;
+    const before = visible(), lead = before.find((x) => origOf(x) === o), k = before.indexOf(lead);
     if (applied) {   // the version on screen changes now; another version follows when Claude bakes it in
-      if (d === 'accept') { setInVersion(p, true); setInVersion(o, false); }
-      else if (d === 'keep') { setInVersion(o, true); setInVersion(p, false); }
-      else { setInVersion(o, true); setInVersion(p, true); }
+      if (d === 'accept') { setInVersion(pick, true); setInVersion(o, false); ps.forEach((x) => { if (x !== pick) setInVersion(x, false); }); }
+      else if (d === 'keep') { setInVersion(o, true); ps.forEach((x) => setInVersion(x, false)); }
+      else { setInVersion(o, true); ps.forEach((x) => { if (!def || def.has(x) || had.has(x)) setInVersion(x, true); }); }
     }
+    const ver = sideSelect ? sideSelect.value : '', said = {};
+    ps.forEach((x) => { said[x] = d === 'accept' ? (x === pick ? 'accept' : 'keep') : d; });
     review.proposals = Object.assign({}, review.proposals);
-    if (d) review.proposals[p] = { decision: d, replaces: o, version: sideSelect ? sideSelect.value : '', title: title(p) }; else delete review.proposals[p];
-    post({ op: 'decide', slide: p, replaces: o, decision: d, version: sideSelect ? sideSelect.value : '', title: title(p), applied }).then(setReview);
-    if (d) propUndo.push(p);
-    flip(false);
+    Object.entries(said).forEach(([x, dx]) => { if (dx) review.proposals[x] = { decision: dx, replaces: o, version: ver, title: title(x) }; else delete review.proposals[x]; });
+    Object.entries(said).reduce((pr, [x, dx]) => pr.then(() => post({ op: 'decide', slide: x, replaces: o, decision: dx, version: ver, title: title(x), applied })), Promise.resolve()).then(setReview);
+    if (d) propUndo.push(o);
+    flip(null);
     // where to go: on through the proposals while the filter is on; otherwise stay with the slide that's left
-    let next = d === 'keep' ? o : p;
-    if (filter === 'proposed' && d) { const rest = before.filter((x) => x !== p); next = rest[k] || rest[k - 1] || next; if (!rest.length) { filter = 'all'; next = d === 'keep' ? o : p; } }
-    if (!d) next = p;
-    const left = propList().filter((x) => x !== p).length;
-    const t = esc(title(p).slice(0, 70));
-    say(d === 'accept' ? `<b>Accepted:</b> ${t}. ${left ? `${left} left to decide.` : 'That was the last one.'} <b>U</b> undoes.`
-      : d === 'keep' ? `<b>Kept the original:</b> ${t}. ${left ? `${left} left to decide.` : 'That was the last one.'} <b>U</b> undoes.`
-      : '<b>Undone.</b> Both slides are back in this version, waiting for your call.');
+    let next = d === 'accept' ? pick : d === 'keep' ? o : (ps.find((x) => wrapOf(x)) || p);
+    if (filter === 'proposed' && d) { const rest = before.filter((x) => origOf(x) !== o); next = rest[k] || rest[k - 1] || next; if (!rest.length) { filter = 'all'; next = d === 'accept' ? pick : o; } }
+    const left = propList().filter((x) => origOf(x) !== o).length, many = ps.length > 1;
+    const t = (x) => esc(title(x).slice(0, 70)), more = left ? `${left} left to decide.` : 'That was the last one.';
+    say(d === 'accept' ? `<b>Accepted${many ? ` option ${ps.indexOf(pick) + 1}` : ''}:</b> ${t(pick)}. ${more} <b>U</b> undoes.`
+      : d === 'keep' ? `<b>Kept the original:</b> ${t(o)}. ${more} <b>U</b> undoes.`
+      : `<b>Undone.</b> The original and its ${many ? 'options are' : 'proposal is'} back in this version, waiting for your call.`);
     if (d && !left) setTimeout(() => say('<b>Every proposal is decided.</b> Claude writes your decisions into the deck at the next round: click Ask Claude.'), 2600);
     setTimeout(() => { refresh(); go(wrapOf(next) ? next : (visible()[0] || cur), true); }, 60);
   }
   function undoDecision() {
-    while (propUndo.length) { const p = propUndo.pop(); if (origOf(p) && (decisionOf(p) || {}).d) { decide(p, null); return true; } }
+    while (propUndo.length) { const o = propUndo.pop(), ps = optionsOf(o); if (ps.length && groupOf(o).d) { decide(ps[0], null); return true; } }
     const x = cur && decisionOf(cur); if (x && x.d) { decide(cur, null); return true; }
     say('Nothing to undo.'); return false;
   }
-  // Original | Proposed: the original drawn over the proposal, in the same frame, so the two can be flipped
+  // Original | Proposed (or Original | Option 1 | 2 | 3): another member of the group drawn over the slide on
+  // screen, in the same frame, so they can be flipped through. flipped: { at: the slide on screen, show: the one drawn }
   let flipped = null;
-  function flip(on) {
+  const flipList = (id) => { const o = origOf(id); return o ? [o, ...optionsOf(o)] : []; };
+  const flipShows = (id) => (flipped && flipped.at === id ? flipped.show : id);   // what the slide on screen shows now (not the deck's own showing, which is presenting)
+  function flip(show) {
+    const id = cur, w = id && wrapOf(id), L = flipList(id);
+    if (show === 'next' || show === 'prev') { const i = L.indexOf(flipShows(id)); show = L[(i + (show === 'next' ? 1 : L.length - 1)) % L.length]; }
     document.querySelectorAll('.sb-flipov').forEach((x) => x.remove());
     flipped = null;
-    const p = cur, o = p && origOf(p), w = p && wrapOf(p);
-    if (on && o && w) {
-      const sl = w.querySelector('.slide'), fr = sl && sl.parentElement, live = wrapOf(o) && wrapOf(o).querySelector('.slide'); let b0 = null;
-      if (!live) { try { b0 = build(o); } catch (e) {} }   // eslint-disable-line no-undef
+    if (show && show !== id && L.includes(show) && w) {
+      const sl = w.querySelector('.slide'), fr = sl && sl.parentElement, live = wrapOf(show) && wrapOf(show).querySelector('.slide'); let b0 = null;
+      if (!live) { try { b0 = build(show); } catch (e) {} }   // eslint-disable-line no-undef
       const s0 = live ? live.cloneNode(true) : b0 && (b0.classList.contains('slide') ? b0 : b0.querySelector('.slide'));   // as you last edited it, when it's in this version
       if (s0 && fr) {
         s0.querySelectorAll('.ctrls, .slide-tag, .sb-badge').forEach((x) => x.remove());
         s0.querySelectorAll('[contenteditable]').forEach((x) => x.removeAttribute('contenteditable'));
         s0.querySelectorAll('[id]').forEach((x) => x.removeAttribute('id'));
         s0.classList.add('sb-flipov'); s0.style.transform = sl.style.transform;
-        const n = [...inVersion()].indexOf(o) + 1;
-        s0.appendChild(h('span', 'sb-fliptag', n ? `Original · slide ${n}` : 'Original'));
+        const n = [...inVersion()].indexOf(show) + 1, j = L.indexOf(show);
+        s0.appendChild(h('span', 'sb-fliptag', j === 0 ? (n ? `Original · slide ${n}` : 'Original') : `Option ${j} of ${L.length - 1}`));
         if (getComputedStyle(fr).position === 'static') fr.style.position = 'relative';
-        fr.appendChild(s0); flipped = p;
+        fr.appendChild(s0); flipped = { at: id, show };
         try { if (typeof autofitText === 'function') autofitText(s0); if (typeof drawTrees === 'function') drawTrees(s0); } catch (e) {}   // eslint-disable-line no-undef
       }
     }
-    document.querySelectorAll('#deck > [data-id] .sb-flip [data-flip]').forEach((b) => b.classList.toggle('on', (b.dataset.flip === 'o') === (flipped === b.closest('#deck > [data-id]').dataset.id)));
+    document.querySelectorAll('#deck > [data-id] .sb-flip [data-flip]').forEach((b) => b.classList.toggle('on', b.dataset.flip === flipShows(b.closest('#deck > [data-id]').dataset.id)));
+    if (cur && wrapOf(cur)) { const w2 = wrapOf(cur); propBar(w2, cur, w2.querySelector(':scope > .slide-no')); }
   }
 
   // ---------- top bar ----------
@@ -231,9 +259,19 @@
   const vRight = item('sb-view', { t: 'Notes panel', sub: 'Notes and changes on the right', key: ']', tog: true, act: () => toggleSide('right') });
   const notesBox = $('#notes-toggle');
   const vFac = notesBox ? item('sb-view', { t: 'Facilitator notes', sub: 'Under each slide in Scroll', tog: true, act: () => { notesBox.click(); setTog(vFac, notesBox.checked); } }) : null;
+  // Proposed slides: off hides the undecided ones in Focus and Scroll, so the deck reads as it is now
+  const hasProps = Object.keys(lib()).some(origOf);
+  const vProp = hasProps ? item('sb-view', { t: 'Proposed slides', sub: 'Undecided proposals in Focus and Scroll. Off reads the deck as it is now', key: 'O', tog: true, act: () => setNoProp(!ui.noprop) }) : null;
+  function setNoProp(off, quiet) {
+    ui.noprop = !!off; saveUi(); document.body.classList.toggle('sb-noprop', !!off); setTog(vProp, !off);
+    if (off && filter === 'proposed') filter = 'all';
+    if (off && cur && pendingProp(cur)) { const o = origOf(cur); cur = wrapOf(o) ? o : cur; }
+    if (!quiet) say(off ? '<b>Proposed slides hidden.</b> The deck reads as it is now. Press O to show them again.' : '<b>Proposed slides showing.</b> Press O to hide them.');
+    refresh(); if (ui.view === 'focus' && cur) go(pass(cur) ? cur : (visible()[0] || cur), true);
+  }
   sep('sb-view');
   item('sb-view', { t: 'What changed, round by round', sub: 'Each round’s changes, and the proposed slides you accepted or kept', act: () => openRounds() });
-  $('#sb-view').addEventListener('sb:open', () => { setTog(vTitles, ui.hide); if (vFac) setTog(vFac, notesBox.checked); });
+  $('#sb-view').addEventListener('sb:open', () => { setTog(vTitles, ui.hide); if (vFac) setTog(vFac, notesBox.checked); setTog(vProp, !ui.noprop); });
 
   // Share: the PDF, then the three copies (Client and Review copy add themselves, before Editable copy)
   if ($('#export-btn')) {
@@ -277,7 +315,7 @@
     <li>Write a comment for a slide, then click <b>Ask Claude</b> (or say <b>process changes</b> to Claude). Tick “Still drafting” to hold one back.</li>
     <li>Claude replies under your comment. <b>Looks good</b> clears it; <b>Reopen</b> sends it back.</li>
     <li>In the left bar, × leaves a slide out of this version; add slides back from “Not in this version”.</li>
-    <li>A <b>proposed</b> slide is Claude’s alternative to one of yours. <b>Proposed</b> in the left bar goes through them one by one: <b>Accept</b> puts it in place of your original, <b>Keep original</b> takes it out, and Space flips between the two. Claude writes your decisions into the deck at the next round.</li>
+    <li>A <b>proposed</b> slide is Claude’s alternative to one of yours. <b>Proposed</b> in the left bar goes through them one by one: <b>Accept</b> puts it in place of your original, <b>Keep original</b> takes it out, and Space flips between the two (or through each option, when Claude offers several). <b>O</b> hides the undecided ones, so the deck reads as it is now. Claude writes your decisions into the deck at the next round.</li>
     <li><b>View</b> holds Titles only, the side bars, and facilitator notes. <b>Present</b> starts the show or presenter view, when the deck has them.</li>
     <li><b>Share</b> saves a PDF or a copy to send. <b>Client copy</b> is this version’s slides to read or present, and nothing else. <b>Review copy</b> is for someone who should comment and edit: this version only, no notes or comments of yours, and they send it back for Claude to bring in. <b>Editable copy</b> carries your notes, comments, and every version: keep it for yourself.</li></ul>
     <h4 style="margin-top:14px" id="sb-keys-h">Keyboard shortcuts</h4>
@@ -287,8 +325,9 @@
       <tr><td><kbd>${SEND}</kbd></td><td>Ask Claude: copy the prompt, or start the round when Claude is watching. Works while you type a comment, too.</td></tr>
       ${hasPresent ? `<tr><td><kbd>${PKEY}</kbd></td><td>Present from this slide</td></tr>` : ''}
       <tr><td><kbd>N</kbd></td><td>New slide after this one</td></tr>
-      <tr><td><kbd>A</kbd> <kbd>K</kbd> <kbd>U</kbd></td><td>On a proposed slide: accept it, keep your original, undo</td></tr>
-      <tr><td><kbd>Space</kbd></td><td>On a proposed slide: flip between it and the original</td></tr>
+      <tr><td><kbd>A</kbd> <kbd>K</kbd> <kbd>U</kbd></td><td>On a proposed slide: accept it (or the option on screen), keep your original, undo</td></tr>
+      <tr><td><kbd>Space</kbd></td><td>On a proposed slide: flip to the original and back; with several options, through each (<kbd>Shift</kbd> <kbd>Space</kbd> goes back)</td></tr>
+      <tr><td><kbd>O</kbd></td><td>Show or hide the proposed slides you haven’t decided</td></tr>
       <tr><td><kbd>H</kbd></td><td>Titles only (hide the content)</td></tr>
       <tr><td><kbd>[</kbd> <kbd>]</kbd></td><td>Hide the slide list or the notes panel</td></tr>
       <tr><td><kbd>1</kbd>–<kbd>5</kbd></td><td>Checks: 5-second test, 10-second test, horizontal flow, vertical flow, guides. From Focus or Scroll they run that check on the slide you’re on</td></tr>
@@ -309,7 +348,7 @@
     return d.toDateString() === n.toDateString() ? 'Today' : d.toDateString() === y.toDateString() ? 'Yesterday' : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }); };
   function openRounds() {
     const P = (d, t) => `<li><b class="${d === 'accept' ? 'a' : 'k'}">${d === 'accept' ? 'Accepted' : 'Kept'}</b>${esc(t)}</li>`;
-    const wait = propDecided().map((p) => { const x = decisionOf(p); return P(x.d, x.d === 'accept' ? title(p) : title(origOf(p))); });
+    const wait = propDecided().map((g) => P(g.d, g.d === 'accept' ? title(g.pick) + (g.ps.length > 1 ? ` (option ${g.ps.indexOf(g.pick) + 1} of ${g.ps.length})` : '') : title(g.o)));
     const rs = (review.rounds || []).slice().reverse();
     roundsCard.innerHTML = `<button class="sb-help-x" data-roundx aria-label="Close" title="Close (Esc)">×</button><h4>What changed, round by round</h4>
       ${wait.length ? `<div class="sb-r sb-rwait"><div class="sb-rh">Next round <span>waiting for Claude</span></div><p>Your decisions on proposed slides. Claude writes them into the deck file at the next round.</p><ul>${wait.join('')}</ul></div>` : ''}
@@ -520,14 +559,15 @@
   function renderPanel() {
     const body = $('#sb-panel-body'); if (!cur) { body.innerHTML = '<div class="sb-empty">No slide selected.</div>'; return; }
     const id = cur, i = info(id), all = wraps().map((w) => w.dataset.id), n = all.indexOf(id) + 1;
-    const notes = notesOf(id), o = origOf(id), on = o ? all.indexOf(o) + 1 : 0;
-    body.innerHTML = `<div class="sb-sec"><p class="sb-title">${esc(title(id))}</p><div class="sb-meta">Slide ${n} of ${all.length} · ${esc(id)}</div>${o ? `<div class="sb-meta sb-pmeta">${{ accept: `Proposed · accepted in place of ${esc(o)}`, keep: `Proposed · you kept the original, ${esc(o)}` }[(decisionOf(id) || {}).d] || `Proposed · would replace ${on ? `slide ${on}` : `${esc(o)}, which isn’t in this version`}`}</div>` : ''}</div>
+    const notes = notesOf(id), o = origOf(id), on = o ? all.indexOf(o) + 1 : 0, sibs = o ? optionsOf(o).filter((y) => y !== id) : [];
+    body.innerHTML = `<div class="sb-sec"><p class="sb-title">${esc(title(id))}</p><div class="sb-meta">Slide ${n} of ${all.length} · ${esc(id)}</div>${o ? `<div class="sb-meta sb-pmeta">${optionsOf(o).length > 1 ? `Option ${optionsOf(o).indexOf(id) + 1} of ${optionsOf(o).length} · ` : ''}${{ accept: `Proposed · accepted in place of ${esc(o)}`, keep: `Proposed · you kept the original, ${esc(o)}` }[(decisionOf(id) || {}).d] || `Proposed · would replace ${on ? `slide ${on}` : `${esc(o)}, which isn’t in this version`}`}</div>` : ''}</div>
       <div class="sb-sec" id="sb-change-slot">${changeBlock(id, i)}</div>
       ${historyBlock(id) ? `<div class="sb-sec">${historyBlock(id)}</div>` : ''}
       <div class="sb-sec"><h4>Notes and sources</h4>${notes ? `<div class="sb-notes">${esc(notes)}</div>` : '<div class="sb-hint">No notes on this slide.</div>'}</div>
-      ${o ? `<div class="sb-sec"><h4>The original</h4><button class="sb-porig" data-flipo title="Show it in place of the proposal (Space)"><span class="sb-pthumb" data-id="${esc(o)}"></span></button><div class="sb-hint">${esc(title(o))}</div></div>` : ''}
+      ${o ? `<div class="sb-sec"><h4>The original</h4><button class="sb-porig" data-flipo="${esc(o)}" title="Show it in place of the proposal (Space)"><span class="sb-pthumb" data-id="${esc(o)}"></span></button><div class="sb-hint">${esc(title(o))}</div></div>` : ''}
+      ${sibs.length ? `<div class="sb-sec"><h4>The other options</h4><div class="sb-psibs">${sibs.map((y) => `<button class="sb-porig" data-flipo="${esc(y)}" title="Show it here (Space)"><span class="sb-pthumb" data-id="${esc(y)}"></span><span class="sb-hint">Option ${optionsOf(o).indexOf(y) + 1}</span></button>`).join('')}</div></div>` : ''}
       <div class="sb-sec"><div class="sb-hint">${o ? 'Accept it or keep your original with the buttons under the slide, or ask for a change in the box. Space flips between the two.' : 'Comment under the slide, then click Ask Claude (or say “process changes” in Claude Code). Tick “Still drafting” to hold one back.'}</div></div>`;
-    const pt = body.querySelector('.sb-pthumb'); if (pt) requestAnimationFrame(() => fitThumb(pt, pt.clientWidth / 1000));
+    body.querySelectorAll('.sb-pthumb').forEach((pt) => requestAnimationFrame(() => fitThumb(pt, pt.clientWidth / 1000)));
   }
   // the slide's thread: each earlier comment, Claude's reply, and how it ended
   const historyBlock = (id) => {
@@ -895,7 +935,7 @@
     if (!id || !wrapOf(id)) return;
     const changedSlide = id !== cur; cur = id;
     if (changedSlide) { const x = $('#sb-edge'); if (x) x.classList.remove('on'); }   // the end-of-filter hint belongs to the slide it was shown on
-    if (changedSlide && flipped) flip(false);
+    if (changedSlide && flipped) flip(null);
     if (ui.view === 'focus') { wraps().forEach((w) => w.classList.toggle('sb-active', w.dataset.id === id)); size(); window.scrollTo(0, 0); }
     else if (ui.view === 'checks') { wraps().forEach((w) => w.classList.toggle('sb-active', w.dataset.id === id)); size(); window.scrollTo(0, 0);
       let hl = under.querySelector('.sb-hint-line'); if (!hl) { hl = h('div', 'sb-hint-line'); under.after(hl); }
@@ -957,30 +997,43 @@
       } else if (rp) rp.remove();
     });
   }
-  // a proposed slide: Original | Proposed above it, Accept / Keep original under it, and its comment box asks for a change
+  // a proposed slide: Original | Proposed above it (Original | Option 1 | 2 | 3 when there are several),
+  // Accept / Keep original under it, and its comment box asks for a change
   function propBar(w, id, row) {
     const o = origOf(id), fb = w.querySelector('textarea.fb');
     let bar = w.querySelector(':scope > .sb-pbar'), sw = row && row.querySelector('.sb-flip');
     w.classList.toggle('sb-isprop', !!o);
     if (fb) { if (!fb.dataset.ph) fb.dataset.ph = fb.placeholder; fb.placeholder = o ? 'Or ask for a change to this proposal…' : fb.dataset.ph; }
+    const on = inVersion(), def = defaults(), x = o && decisionOf(id, on, def);
+    w.classList.toggle('sb-pend', !!x && !x.d && !x.out);
     if (!o) { if (bar) bar.remove(); if (sw) sw.remove(); return; }
-    const on = inVersion(), all = [...on], x = decisionOf(id, on), at = all.indexOf(o) + 1;
-    const list = all.filter((y) => { const z = decisionOf(y, on); return z && !z.d; }), k = list.indexOf(id) + 1;
+    const all = [...on], g = x.g, ps = g.ps, many = ps.length > 1, at = all.indexOf(o) + 1;
+    const leads = all.filter((y) => propLead(y, on, def)), k = leads.findIndex((y) => origOf(y) === o) + 1;
+    const now = flipShows(id), j = flipList(id).indexOf(now);   // 0: the original; 1…: option j
+    const optName = (y) => (many ? `Option ${ps.indexOf(y) + 1}` : 'Proposed');
+    const sig = [many, ps.join()].join('|');
+    if (sw && sw.dataset.sig !== sig) { sw.remove(); sw = null; }
     if (row && !sw) {
-      sw = h('span', 'sb-flip', `<span class="sb-ppill"></span><span class="sb-seg2" role="group" aria-label="Show"><button data-flip="o" title="Show the original in its place (Space)">Original</button><button data-flip="p" class="on" title="Show the proposal (Space)">Proposed</button></span><span class="sb-fliphint">Space flips</span>`);
-      row.appendChild(sw);
+      sw = h('span', 'sb-flip', `<span class="sb-ppill"></span><span class="sb-seg2" role="group" aria-label="Show"><button data-flip="${esc(o)}" title="Show the original in its place (Space)">Original</button>${ps.map((y) => `<button data-flip="${esc(y)}" title="Show ${esc(optName(y).toLowerCase())} (Space)">${esc(optName(y))}</button>`).join('')}</span>`);
+      sw.dataset.sig = sig; row.appendChild(sw);
     }
-    if (sw) { sw.querySelector('.sb-ppill').textContent = !x.d ? `Proposal ${k} of ${list.length}` : x.d === 'accept' ? 'Proposal · accepted' : 'Proposal · original kept';
-      sw.querySelectorAll('[data-flip]').forEach((b) => b.classList.toggle('on', (b.dataset.flip === 'o') === (flipped === id))); }
+    if (sw) {
+      sw.querySelector('.sb-ppill').textContent = !x.d && !x.out ? `Proposal ${k} of ${leads.length}${many ? ` · ${ps.length} options` : ''}` : x.d === 'accept' ? `Proposal · ${many ? `option ${ps.indexOf(id) + 1} ` : ''}accepted` : x.d === 'keep' ? 'Proposal · original kept' : 'Proposal';
+      sw.querySelectorAll('[data-flip]').forEach((b) => b.classList.toggle('on', b.dataset.flip === now));
+    }
     const vn = (v) => { const op = sideSelect && [...sideSelect.options].find((q) => q.value === v); return op ? verName(op.textContent) : v; };
-    const K = (t) => `<kbd>${t}</kbd>`;
+    const K = (t) => `<kbd>${t}</kbd>`, left = leads.filter((y) => origOf(y) !== o).length;
+    const where = at ? `slide ${at}` : `“${esc(title(o))}”`;
+    const seeing = !many ? (j === 0 ? '<b>Showing the original.</b> Space flips back to the proposal.' : `<b>Would replace ${where}.</b> Space flips to the original.`)
+      : `<b>${ps.length} options would replace ${where}.</b> ${j === 0 ? 'Showing the original.' : `Showing option ${j}.`} Space flips through them.`;
+    const pickNow = j > 0 ? flipList(id)[j] : many ? null : id;   // one proposal: Accept means it, whichever is on screen
     const html = !x.d
-      ? `<span class="sb-pb-t"><b>${at ? `Would replace slide ${at}.` : `Would replace “${esc(title(o))}”.`}</b> ${list.length === 1 ? 'The last proposal to decide.' : `${list.length} proposals left to decide.`}</span>
-         <span class="sb-pb-b"><button class="sb-btn" data-pdo="keep" title="Keep your original and take this proposal out (K)">Keep original${K('K')}</button><button class="sb-btn sb-acc" data-pdo="accept" title="Use this slide in place of the original (A)">Accept${K('A')}</button></span>`
-      : `<span class="sb-pb-t"><b>${x.d === 'accept' ? 'Accepted.' : 'You kept the original.'}</b> ${x.d === 'accept'
-          ? (x.said ? 'It has taken the original’s place in this version.' : 'You took the original out of this version.')
-          : `This proposal comes out${x.version && sideSelect && x.version !== sideSelect.value ? ` (you decided in ${esc(vn(x.version))})` : ''}.`} Claude writes it into the deck at the next round.</span>
-         <span class="sb-pb-b"><button class="sb-btn" data-pdo="undo" title="Put both slides back and decide again (U)">Undo${K('U')}</button></span>`;
+      ? `<span class="sb-pb-t">${seeing} ${left ? `${left + 1} left to decide.` : 'The last one to decide.'}</span>
+         <span class="sb-pb-b"><button class="sb-btn" data-pdo="keep" title="Keep your original and take ${many ? 'every option' : 'this proposal'} out (K)">Keep original${K('K')}</button><button class="sb-btn sb-acc" data-pdo="accept" ${pickNow ? `data-pick="${esc(pickNow)}"` : 'disabled'} title="${pickNow ? `Use ${many ? `option ${j}` : 'this slide'} in place of the original (A)` : 'Flip to the one you want first (Space)'}">${many && pickNow ? `Accept option ${j}` : 'Accept'}${K('A')}</button></span>`
+      : `<span class="sb-pb-t"><b>${x.d === 'accept' ? (many ? `Accepted option ${ps.indexOf(id) + 1}.` : 'Accepted.') : 'You kept the original.'}</b> ${x.d === 'accept'
+          ? (x.said ? `It has taken the original’s place in this version${many ? ', and the other options are out' : ''}.` : 'You took the original out of this version.')
+          : `This proposal comes out${x.version && sideSelect && x.version !== sideSelect.value ? ` (you decided in ${esc(vn(x.version))})` : ''}.`} ${j === 0 ? 'Showing the original; Space flips back.' : 'Space flips to the original.'} Claude writes it into the deck at the next round.</span>
+         <span class="sb-pb-b"><button class="sb-btn" data-pdo="undo" title="Put the original and ${many ? 'every option' : 'the proposal'} back, and decide again (U)">Undo${K('U')}</button></span>`;
     if (!bar) { bar = h('div', 'sb-pbar'); const fr = frameOf(w); (fr !== w ? fr : w.querySelector('.slide')).after(bar); }
     bar.classList.toggle('done', !!x.d);
     if (bar.dataset.html !== html) { bar.innerHTML = html; bar.dataset.html = html; }
@@ -989,9 +1042,9 @@
     const b = e.target.closest('[data-pdo], [data-flip], [data-flipo]'); if (!b) return;
     const w = b.closest('#deck > [data-id]'), id = w ? w.dataset.id : cur; if (!id) return;
     if (id !== cur) go(id);
-    if (b.dataset.pdo) decide(id, b.dataset.pdo === 'undo' ? null : b.dataset.pdo);
-    else if (b.dataset.flip) flip(b.dataset.flip === 'o');
-    else flip(flipped !== cur);
+    if (b.dataset.pdo) decide(id, b.dataset.pdo === 'undo' ? null : b.dataset.pdo, b.dataset.pick);
+    else if (b.dataset.flip) flip(b.dataset.flip);
+    else flip(b.dataset.flipo || 'next');
   });
 
   // "Still drafting" sits under each comment and shows once there is text
@@ -1018,7 +1071,8 @@
     const rb = $('#sb-resolve'); rb.hidden = done.length < 2; rb.textContent = `Looks good: all ${done.length} done`;
     rb.onclick = async () => { rb.disabled = true; for (const id of done) { const r = await post({ op: 'resolve', slide: id }); setComment(id, ''); review = r; } rb.disabled = false; refresh(); };
   }
-  $('#sb-chips').addEventListener('click', (e) => { const b = e.target.closest('[data-f]'); if (!b) return; filter = b.dataset.f; refresh(); const x = $('#sb-edge'); if (x) x.classList.remove('on'); if (!pass(cur)) { const v = visible(); if (v.length) go(v[0]); } else go(cur); });   // go() also refreshes the position line
+  $('#sb-chips').addEventListener('click', (e) => { const b = e.target.closest('[data-f]'); if (!b) return; filter = b.dataset.f;
+    if (filter === 'proposed' && ui.noprop) { ui.noprop = false; saveUi(); document.body.classList.remove('sb-noprop'); } refresh(); const x = $('#sb-edge'); if (x) x.classList.remove('on'); if (!pass(cur)) { const v = visible(); if (v.length) go(v[0]); } else go(cur); });   // go() also refreshes the position line
 
   function claudeLine() {
     const c = review.claude, el = $('#sb-claude');
@@ -1056,9 +1110,13 @@
     if (isTimed() && tenState === 'asked' && (e.key === 'a' || e.key === 'A')) { tenStart(); return; }
     const k = e.key.toLowerCase();
     const pv = (ui.view === 'focus' || ui.view === 'scroll') && cur && origOf(cur);
-    if (pv && (k === 'a' || k === 'k')) { const want = k === 'a' ? 'accept' : 'keep'; if ((decisionOf(cur) || {}).d !== want) decide(cur, want); return; }
+    if (pv && k === 'a') { const ps = optionsOf(origOf(cur)), sh = flipShows(cur), pick = ps.length > 1 ? (ps.includes(sh) ? sh : null) : cur;
+      if (!pick) { say('That’s the original on screen. Flip to the option you want (Space), then press A.'); return; }
+      const x = decisionOf(pick); if (!(x && x.d === 'accept')) decide(cur, 'accept', pick); return; }
+    if (pv && k === 'k') { if ((groupOf(origOf(cur)) || {}).d !== 'keep') decide(cur, 'keep'); return; }
     if (k === 'u' && (ui.view === 'focus' || ui.view === 'scroll')) { undoDecision(); return; }
-    if (pv && e.key === ' ' && !ui.hide) { e.preventDefault(); flip(flipped !== cur); return; }
+    if (pv && e.key === ' ' && !ui.hide) { e.preventDefault(); flip(e.shiftKey ? 'prev' : 'next'); return; }
+    if (k === 'o' && hasProps && (ui.view === 'focus' || ui.view === 'scroll')) { setNoProp(!ui.noprop); return; }
     if (e.key === '?') { closeMenus(); help.classList.toggle('on'); return; }
     if (e.key === 'Escape') { help.classList.remove('on'); roundsCard.classList.remove('on'); closeMenus(); return; }
     const views = { f: 'focus', s: 'scroll', g: 'sorter', c: 'checks' }, tests = { 1: 'five', 2: 'ten', 3: 'horizontal', 4: 'vertical', 5: 'guides' };
@@ -1125,7 +1183,7 @@
 
   // ---------- agent-friendly handle (Claude can drive the page with this) ----------
   window.SlideBuilder = {
-    go, step, setView, say, shareItem, current: () => cur, decide, undo: undoDecision, flip, proposals: () => Object.keys(lib()).filter(origOf).map((p) => ({ p, o: origOf(p), decision: (decisionOf(p) || {}).d || null })), filter: (f) => { filter = f; refresh(); }, order: (ids) => saveOrder(ids), title, hidden: (id) => clientOnly.has(id),
+    go, step, setView, say, shareItem, current: () => cur, decide, undo: undoDecision, flip, showProposals: (on) => setNoProp(!on), proposals: () => Object.keys(lib()).filter(origOf).map((p) => ({ p, o: origOf(p), option: optionsOf(origOf(p)).indexOf(p) + 1, of: optionsOf(origOf(p)).length, decision: (decisionOf(p) || {}).d || null })), filter: (f) => { filter = f; refresh(); }, order: (ids) => saveOrder(ids), title, hidden: (id) => clientOnly.has(id),
     slides: () => wraps().map((w, k) => Object.assign({ n: k + 1, id: w.dataset.id, title: title(w.dataset.id) }, (({ text, st, changed, hold }) => ({ comment: text, reply: st, changed, draft: hold }))(info(w.dataset.id)))),
   };
 
@@ -1135,6 +1193,7 @@
   const want = decodeURIComponent((location.hash.match(/[#&]s=([^&]+)/) || [])[1] || '');
   cur = want && wrapOf(want) ? want : null;
   setHide(!!ui.hide);
+  document.body.classList.toggle('sb-noprop', !!ui.noprop);
   watch();
   loadReview().then(() => { setView(['scroll', 'sorter', 'checks'].includes(ui.view) ? ui.view : 'focus'); requestAnimationFrame(() => document.body.classList.add('sb-ready')); });
 })();

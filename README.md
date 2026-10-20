@@ -232,19 +232,24 @@ slide.
 ### Proposed slides
 
 Sometimes the agent has another take on one of your slides: a redraw, a different layout, a
-tighter version. It doesn't replace yours. It adds the new one right after it, as a proposal.
+tighter version. It doesn't replace yours. It adds the new one right after it, as a proposal,
+or several options for one slide when the choice is real.
 
 - Under the proposal, **Accept** (A) puts it in your original's place, and **Keep original**
   (K) takes it out. Both apply to the version on screen at once, and U undoes.
 - Above it, **Original | Proposed** (Space) flips between the two in the same spot, and the
-  notes panel shows the original next to the agent's note on what's different.
-- The **Proposed** filter on the left goes through the ones you haven't decided yet.
+  notes panel shows the original next to the agent's note on what's different. With several
+  options it reads **Original | Option 1 | 2 | 3**: Space flips through them (Shift+Space goes
+  back), Accept takes the option on screen, and the others go.
+- The **Proposed** filter on the left goes through the slides you haven't decided yet, and **O**
+  (View › Proposed slides) hides them, so the deck reads as it is now.
 - To ask for a change instead, write it in the proposal's comment box.
 
 At the next round the agent writes your decisions into the deck file with
 `sb proposals <deck> --bake`: an accepted proposal takes the original's place in every version
-and the original moves to the extras; a rejected one is deleted (git keeps it). It checks the
-deck afterward and puts the file back if anything is off.
+and the original moves to the extras; a rejected one, or an option that lost, is deleted (git
+keeps it). Two options accepted for one slide are left for you to settle. It checks the deck
+afterward and puts the file back if anything is off.
 
 ## Working in a deck
 
