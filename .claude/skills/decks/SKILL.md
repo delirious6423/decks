@@ -69,7 +69,7 @@ The reviewer clears handled comments with "Looks good". Don't add them to `DONE_
 
 When the user asks you to watch (their decks, or one deck), they want to start each round from the deck instead of typing to you:
 
-1. Run `./sb watch` in the background (in Claude Code, a Bash command with run_in_background). With no deck named it watches every deck; `./sb watch <deck>` watches one. It waits until the user clicks **Process now** (or presses A) in a deck, then exits with a line naming that deck. While it runs, every watched deck's Ask Claude button reads Process now.
+1. Run `./sb watch` in the background (in Claude Code, a Bash command with run_in_background). With no deck named it watches every deck; `./sb watch <deck>` watches one. It waits until the user clicks **Process now** (or presses ⌘↵) in a deck, then exits with a line naming that deck. While it runs, every watched deck's Ask Claude button reads Process now.
 2. When it exits with that line, run a full round for the deck it names, exactly as for "process changes".
 3. When the round is done, start the same `./sb watch` command in the background again, and say in one line that you're watching.
 

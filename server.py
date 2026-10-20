@@ -34,7 +34,7 @@ APP = Path(__file__).resolve().parent
 STATIC = APP / 'static'
 LOCK = threading.Lock()
 STARTED = time.time()
-VERSION = '0.6.0'   # see CHANGELOG.md
+VERSION = '0.6.1'   # see CHANGELOG.md
 UPDATE_REPO = 'paulmil11/decks'   # where new versions are released (a fork points this at its own)
 LATEST = {}   # the newest release, from GitHub once a day (sbconfig.CHECK_UPDATES)
 

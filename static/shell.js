@@ -9,6 +9,7 @@
    slide's .fb box and are saved by the deck itself. */
 (function () {
   const SB = window.__SB;
+  const SEND = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent) ? '⌘↵' : 'Ctrl+↵';   // the Ask Claude key
   const deck = document.getElementById('deck');
   if (!SB || !deck) return;
 
@@ -80,7 +81,7 @@
     <button class="sb-btn" id="sb-hide" title="Titles only: hide everything but the titles, to test that each one says the point (H). Space reveals one slide.">Titles<span class="sb-long"> only</span></button>
     <button class="sb-btn icon" id="sb-left" title="Show or hide the left side bar ( [ )">◧</button>
     <button class="sb-btn icon" id="sb-right" title="Show or hide notes ( ] )">◨</button>
-    <button class="sb-btn" id="sb-ask" title="Copy a prompt that asks Claude (or Codex) to work through your comments (A)"><span class="sb-ask-l">Ask Claude</span><span class="sb-n" id="sb-ask-n"></span><kbd class="sb-key" aria-hidden="true">A</kbd></button>
+    <button class="sb-btn" id="sb-ask" title="Copy a prompt that asks Claude (or Codex) to work through your comments (${SEND})"><span class="sb-ask-l">Ask Claude</span><span class="sb-n" id="sb-ask-n"></span><kbd class="sb-key" aria-hidden="true">${SEND}</kbd></button>
     ${$('#present-btn') ? '<button class="sb-btn red" id="sb-present" title="Present from this slide">▶<span class="sb-long"> Present</span></button>' : ''}
     <div class="sb-menu" id="sb-more"><button class="sb-btn icon" aria-label="More">⋯</button><div></div></div>`;
   document.body.prepend(top);
@@ -121,7 +122,7 @@
     <table class="sb-keys">
       <tr><td><kbd>F</kbd> <kbd>S</kbd> <kbd>G</kbd> <kbd>C</kbd></td><td>Focus, Scroll, Sorter, Checks</td></tr>
       <tr><td><kbd>←</kbd> <kbd>→</kbd></td><td>Previous and next slide (<kbd>Home</kbd> <kbd>End</kbd>: first and last)</td></tr>
-      <tr><td><kbd>A</kbd></td><td>Ask Claude: copy the prompt, or start the round when Claude is watching the deck</td></tr>
+      <tr><td><kbd>${SEND}</kbd></td><td>Ask Claude: copy the prompt, or start the round when Claude is watching. Works while you type a comment, too.</td></tr>
       <tr><td><kbd>H</kbd></td><td>Titles only (hide the content)</td></tr>
       <tr><td><kbd>[</kbd> <kbd>]</kbd></td><td>Hide the slides bar or the notes bar</td></tr>
       <tr><td><kbd>1</kbd>–<kbd>5</kbd></td><td>Checks: 5-second test, 10-second test, horizontal flow, vertical flow, guides. From Focus or Scroll they run that check on the slide you’re on</td></tr>
@@ -162,7 +163,7 @@
     const queued = watched && p.asked;
     b.querySelector('.sb-ask-l').textContent = queued ? 'Queued…' : watched ? 'Process now' : 'Ask Claude';
     b.classList.toggle('red', watched);
-    b.title = queued ? 'Claude starts as soon as it finishes what it’s doing (A)' : watched ? 'Claude is watching this deck in Claude Code. Click to start a round (A).' : 'Copy a prompt that asks Claude (or Codex) to work through your comments (A)';
+    b.title = queued ? 'Claude starts as soon as it finishes what it’s doing (' + SEND + ')' : watched ? 'Claude is watching this deck in Claude Code. Click to start a round (' + SEND + ').' : 'Copy a prompt that asks Claude (or Codex) to work through your comments (' + SEND + ')';
   }
   $('#sb-ask').addEventListener('click', async () => {
     if (watched) {
@@ -793,6 +794,7 @@
   let lastKey = 0;
   document.addEventListener('keydown', (e) => {
     lastKey = Date.now();
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter' && !presenting()) { e.preventDefault(); $('#sb-ask').click(); return; }   // Ask Claude (Process now while Claude watches), even mid-comment
     const t = e.target, typing = t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName));
     if (typing) { if (e.key === 'Escape') t.blur(); return; }
     if (e.metaKey || e.ctrlKey || e.altKey || presenting()) return;
@@ -802,7 +804,6 @@
     if (isTimed() && tenState === 'asked' && (e.key === 'a' || e.key === 'A')) { tenStart(); return; }
     const k = e.key.toLowerCase();
     if (e.key === '?') { help.classList.toggle('on'); return; }
-    if (k === 'a') { $('#sb-ask').click(); return; }   // Ask Claude, or Process now while Claude watches
     if (e.key === 'Escape') { help.classList.remove('on'); more.classList.remove('open'); return; }
     const views = { f: 'focus', s: 'scroll', g: 'sorter', c: 'checks' }, tests = { 1: 'five', 2: 'ten', 3: 'horizontal', 4: 'vertical', 5: 'guides' };
     if (views[k]) { setView(views[k]); return; }
