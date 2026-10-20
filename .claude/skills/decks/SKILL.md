@@ -65,13 +65,13 @@ The reviewer clears handled comments with "Looks good". Don't add them to `DONE_
 - It refuses a file that isn't this deck and says why.
 - Reply to the reviewer's comments on the slides like the user's. Their edits bake in like the user's, but name them in the chat summary so the user sees what the reviewer changed.
 
-## Watch mode ("watch my deck")
+## Watch mode ("watch my decks")
 
-When the user asks you to watch a deck, they want to start each round from the deck instead of typing to you:
+When the user asks you to watch (their decks, or one deck), they want to start each round from the deck instead of typing to you:
 
-1. Run `./sb watch <deck>` in the background (in Claude Code, a Bash command with run_in_background). It waits until the user clicks **Process now** in the deck, then exits with a line saying so. While it runs, the deck's Ask Claude button reads Process now.
-2. When it exits with that line, run a full round, exactly as for "process changes".
-3. When the round is done, start `./sb watch <deck>` in the background again, and tell the user in one line that you're watching.
+1. Run `./sb watch` in the background (in Claude Code, a Bash command with run_in_background). With no deck named it watches every deck; `./sb watch <deck>` watches one. It waits until the user clicks **Process now** (or presses A) in a deck, then exits with a line naming that deck. While it runs, every watched deck's Ask Claude button reads Process now.
+2. When it exits with that line, run a full round for the deck it names, exactly as for "process changes".
+3. When the round is done, start the same `./sb watch` command in the background again, and say in one line that you're watching.
 
 Keep going until the user says to stop; then don't start it again. A click that comes in during a round waits on the server, and the next `sb watch` returns with it right away. If `sb watch` exits with an error, say so instead of restarting it.
 

@@ -167,9 +167,15 @@ if(document.readyState==='complete')setTimeout(go,400);else window.addEventListe
   const KINDS = { notes: 'facilitator notes', comments: 'comments', fac: 'facilitator slides', other: 'slides from other versions', versions: 'other versions’ names', shell: 'the Decks shell' };
 
   // ---------- the copy ----------
-  const HOWTO = '<strong>Comment and edit, then send this file back.</strong> Write a comment in the box under any slide, and click any text to change it. '
-    + 'When you are done, click <strong>Save a copy with my edits</strong> and send back the file it downloads. <strong>▶ Present</strong> shows the slides full screen.';
-  const REVIEW_CSS = '<style id="review-copy-css">#copy-edits, #presenter-btn, .opt-row:has(#notes-toggle), .fnote { display: none !important; }</style>';
+  const HOWTO = '<strong>Comment under any slide, or click text to change it.</strong> Then click <strong>Save a copy with my edits</strong> and send that file back.';
+  // a reviewer gets the deck's logo and name, a short instruction, and the two buttons they need: none of the editor's controls
+  const REVIEW_CSS = '<style id="review-copy-css">#copy-edits, #presenter-btn, .opt-row:has(#notes-toggle), .fnote, .brand-sub, .sidebar .field-label, #pitch-select, #block-list, #reload-btn { display: none !important; }'
+    + ' .rc-brand { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; } .rc-brand img { max-height: 30px; max-width: 70%; display: block; } .rc-brand span { font-size: 1.05rem; line-height: 1.3; }'
+    + ' .sidebar .toolbar { margin-top: 1.2rem; }</style>';
+  // the logo the slides carry (StrategyU's, or the deck's own), and the deck's name without the brand in front
+  const brandOf = () => { const lg = deck.querySelector('.slide img.logo, .slide .logo img, .slide .logo'), src = lg && (lg.getAttribute('src') || (lg.querySelector('img') || {}).getAttribute?.('src'));
+    const b = document.querySelector('.sidebar .brand'), t = b ? b.textContent.replace(/\s+/g, ' ').trim() : '', name = (t.split(' · ').pop() || SB.name || '').trim();
+    return `<div class="brand rc-brand">${src && !/^data:|^https?:/.test(src) ? `<img src="${esc(src)}" alt="">` : ''}<span>${esc(name)}</span></div>`; };
   const versionLabel = () => { const s = document.getElementById('sb-version') || document.querySelector('.sidebar select');
     return s && s.options.length > 1 && s.selectedIndex >= 0 ? s.options[s.selectedIndex].text.trim() : ''; };
   const fileName = () => [SB.name, versionLabel()].filter(Boolean).join(' · ').replace(/[\\/:*?"<>|]+/g, '-').trim() + ' (review).html';
@@ -240,7 +246,11 @@ if(document.readyState==='complete')setTimeout(go,400);else window.addEventListe
     html = html.replace(/^const ([A-Za-z_][\w]*) = ('(?:[^'\\\n]|\\.)*'|"(?:[^"\\\n]|\\.)*");[ \t]*$/gm, (m, name) =>
       ((html.match(new RegExp('\\b' + name + '\\b', 'g')) || []).length > 1 ? m : `const ${name} = '';`));
     // what the reviewer sees around the slides: their instructions, a comment box that isn't "for Claude", no notes controls
+    const brand = brandOf();
     html = html.replace(/(<div class="howto">)[\s\S]*?(<\/div>)/, (m, a, b) => a + HOWTO + b)
+      .replace(/<div class="brand">[\s\S]*?<\/div>/, () => brand)
+      .replace('<button class="btn btn-outline" id="save-copy">', '<button class="btn btn-primary" id="save-copy">')
+      .replace('<button class="btn btn-primary" id="export-btn">Export PDF</button>', '<button class="btn btn-outline" id="export-btn" title="Prints the slides only; your comments stay in the file">Print slides as PDF (without comments)</button>')
       .replace("'Feedback for Claude on this slide…'", "'Your comment on this slide…'").split('with feedback for Claude').join('with your comments')
       .replace(/<\/head>/i, (m) => REVIEW_CSS + m)
       .replace(SAVED, (m) => '<script id="review-copy" type="application/json">' + JSON.stringify({ version: v, slides: marks }).replace(/<\//g, '<\\/') + '</script>\n' + m);

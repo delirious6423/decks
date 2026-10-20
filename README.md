@@ -178,13 +178,14 @@ how it ended.
 Instead of typing "process changes" every time, say this once in Claude Code:
 
 ```text
-Watch my deck <name> in Decks.
+Watch my decks.
 ```
 
-Claude starts `sb watch` in the background and waits. In the deck, **Ask Claude** turns into
-**Process now**. When your comments are ready, click it: the round starts in that Claude Code
-chat, and you follow it in the deck as usual. When the round is done, Claude goes back to
-watching. Say "stop watching" to end it.
+Claude starts `sb watch` in the background and waits on every deck (name one to watch only
+that deck). In each deck, **Ask Claude** turns into **Process now**. When your comments are
+ready, click it or press A: the round starts in that Claude Code chat, and you follow it in
+the deck as usual. When the round is done, Claude goes back to watching. Say "stop watching"
+to end it.
 
 A click while Claude is busy shows **Queued…** and starts the next round as soon as it's free.
 If nothing is watching, the button goes back to Ask Claude and copies the prompt. Watch mode
@@ -354,7 +355,7 @@ Run it from this folder (or by its full path). It talks to the running server.
 | `sb round <deck> --summary S [--changed slide="what changed" ...] [--export vN]` | Record a round |
 | `sb commit <deck> "<message>"` | Commit the deck folder |
 | `sb import <deck> <file.html> [--dry-run] [--keep-mine]` | Bring a reviewer's returned file (a Review copy) into the deck |
-| `sb watch <deck>` | Wait until you click Process now in the deck, then exit saying so (watch mode) |
+| `sb watch [<deck>]` | Wait until you click Process now in any deck (or the one named), then exit saying which (watch mode) |
 | `sb thumb <deck>` / `sb url <deck>` | Refresh the dashboard thumbnail / print the deck's address |
 | `sb templates` / `sb new "<name>" [--template id] ...` | Templates, and a new deck |
 | `sb hide <deck>` / `sb show <deck>` | Take a deck off the dashboard, or put it back |

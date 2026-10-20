@@ -4,6 +4,16 @@ What changed in each version of Decks. To update, run `git pull` in your Decks f
 restart the server. To hear about new versions, watch this repository on GitHub
 (Watch › Custom › Releases).
 
+## 0.6.0 (October 20, 2026)
+
+- Watch mode watches every deck: say "watch my decks", and a Process now click in any deck
+  starts its round. `sb watch` with no deck name does this; `sb watch <deck>` still watches one.
+- The Review copy is simpler for the person reviewing it: the deck's logo and name, two lines
+  of instructions, **Save a copy with my edits** as the main button, and **Print slides as PDF
+  (without comments)**. The version picker, slide list, and Revert are gone.
+- Ask Claude (and Process now) shows its shortcut, A, on the button.
+- How this works closes with ×, a click anywhere else, or Esc.
+
 ## 0.5.0 (October 20, 2026)
 
 - **Review copy** in the ⋯ menu: a file for someone outside to comment on and edit, then send
@@ -17,7 +27,7 @@ restart the server. To hear about new versions, watch this repository on GitHub
 
 ## 0.4.0 (October 20, 2026)
 
-- **Watch mode.** Say "watch my deck" once in Claude Code. In the deck, Ask Claude turns into
+- **Watch mode.** Say "watch my decks" once in Claude Code. In the deck, Ask Claude turns into
   **Process now**, and each click starts a round in that chat without typing anything. A click
   while Claude is busy is queued. Behind it is a new command, `sb watch <deck>`.
 - The server accepts changes only from its own pages. Before, another website you visited could

@@ -21,7 +21,8 @@
   sb thumb <deck>                           refresh the dashboard thumbnail
   sb commit <deck> <message>                save the deck folder to version history
   sb url <deck>
-  sb watch <deck>                           wait until you click Process now in the deck, then exit saying so
+  sb watch [<deck>]                         wait until you click Process now in a deck (any deck, or the one named),
+                                            then exit saying which
                                             (run it in the background; after the round, start it again)
   sb hide <deck> / sb show <deck>           take a deck off the dashboard (into Hidden), or put it back
   sb delete <deck> --yes                    a deck this app made: its folder goes to the Trash;
@@ -429,6 +430,27 @@ def import_copy(slug, path, keep_mine=False, dry=False):
     print(f"The state before the import: {record.relative_to(deck_dir)}\nNext: process changes as usual (./sb comments {slug}, ./sb edits {slug}).")
 
 
+def watch(slug=None):
+    """Wait for a Process now click in the deck (or, with no deck, in any deck), then exit saying which.
+    Run it in the background; after the round, start it again."""
+    if slug:
+        call('GET', f'/api/decks/{slug}')   # the deck exists
+    path = f'/api/decks/{slug}/watch' if slug else '/api/watch'
+    while True:
+        req = urllib.request.Request(BASE + path, method='POST', headers={'Content-Type': 'application/json'}, data=b'{}')
+        try:
+            with urllib.request.urlopen(req, timeout=40) as r:
+                got = (json.loads(r.read() or b'{}') or {}).get('request')
+        except (urllib.error.URLError, TimeoutError, OSError):
+            time.sleep(5); continue   # the server restarted or is busy: keep waiting
+        if got:
+            deck, n = got.get('deck') or slug, got.get('open')
+            again = f'./sb watch {slug}' if slug else './sb watch'
+            print(f"Process now was clicked on {deck}{f' ({n} open comment' + ('s' if n != 1 else '') + ')' if n is not None else ''}. "
+                  f"Run the round for {deck} (process changes), then start {again} again to keep watching.", flush=True)
+            return
+
+
 def main(argv):
     if not argv or argv[0] in ('-h', '--help', 'help'):
         print(__doc__)
@@ -475,25 +497,14 @@ def main(argv):
     known = ('url', 'watch', 'comments', 'edits', 'import', 'working', 'reply', 'status', 'idle', 'round', 'shot', 'audit', 'export', 'thumb', 'commit', 'hide', 'show', 'delete')
     if cmd not in known:
         sys.exit(f'unknown command {cmd!r}\n' + __doc__)
+    if cmd == 'watch' and not rest:
+        return watch()   # every deck
     slug = rest.pop(0) if rest else sys.exit('which deck? try: sb decks')
 
     if cmd == 'url':
         print(BASE + call('GET', f'/api/decks/{slug}')['url'])
     elif cmd == 'watch':
-        # wait for the user to click Process now in the deck; exits with a line saying so (run it in the background)
-        call('GET', f'/api/decks/{slug}')   # the deck exists
-        while True:
-            req = urllib.request.Request(f'{BASE}/api/decks/{slug}/watch', method='POST', headers={'Content-Type': 'application/json'}, data=b'{}')
-            try:
-                with urllib.request.urlopen(req, timeout=40) as r:
-                    got = (json.loads(r.read() or b'{}') or {}).get('request')
-            except (urllib.error.URLError, TimeoutError, OSError):
-                time.sleep(5); continue   # the server restarted or is busy: keep waiting
-            if got:
-                n = got.get('open')
-                print(f"Process now was clicked on {slug}{f' ({n} open comment' + ('s' if n != 1 else '') + ')' if n is not None else ''}. "
-                      f"Run the round (process changes), then start ./sb watch {slug} again to keep watching.", flush=True)
-                return
+        watch(slug)
     elif cmd == 'comments':
         show_all = '--all' in rest
         rows = call('GET', f'/api/decks/{slug}/comments')['comments']

@@ -80,7 +80,7 @@
     <button class="sb-btn" id="sb-hide" title="Titles only: hide everything but the titles, to test that each one says the point (H). Space reveals one slide.">Titles<span class="sb-long"> only</span></button>
     <button class="sb-btn icon" id="sb-left" title="Show or hide the left side bar ( [ )">◧</button>
     <button class="sb-btn icon" id="sb-right" title="Show or hide notes ( ] )">◨</button>
-    <button class="sb-btn" id="sb-ask" title="Copy a prompt that asks Claude (or Codex) to work through your comments (A)"><span class="sb-ask-l">Ask Claude</span><span class="sb-n" id="sb-ask-n"></span></button>
+    <button class="sb-btn" id="sb-ask" title="Copy a prompt that asks Claude (or Codex) to work through your comments (A)"><span class="sb-ask-l">Ask Claude</span><span class="sb-n" id="sb-ask-n"></span><kbd class="sb-key" aria-hidden="true">A</kbd></button>
     ${$('#present-btn') ? '<button class="sb-btn red" id="sb-present" title="Present from this slide">▶<span class="sb-long"> Present</span></button>' : ''}
     <div class="sb-menu" id="sb-more"><button class="sb-btn icon" aria-label="More">⋯</button><div></div></div>`;
   document.body.prepend(top);
@@ -110,7 +110,7 @@
       window.open('mailto:paul@strategyu.co?subject=' + encodeURIComponent('Decks feedback'), '_blank');
       say(ok ? '<b>Opening an email to paul@strategyu.co.</b> The address is copied too, in case your mail app doesn’t open.' : 'Email <b>paul@strategyu.co</b>.'); }); moreBox.appendChild(b); }
   const help = h('div'); help.id = 'sb-help';
-  help.innerHTML = `<h4>How this works</h4><ul>
+  help.innerHTML = `<button class="sb-help-x" data-helpx aria-label="Close" title="Close (Esc)">×</button><h4>How this works</h4><ul>
     <li>Click any text on a slide to edit it. It saves to disk as you type.</li>
     <li>Write a comment for a slide, then say <b>process changes</b> to Claude. Tick “Still drafting” to hold one back.</li>
     <li>Claude replies under your comment. <b>Looks good</b> clears it; <b>Reopen</b> sends it back.</li>
@@ -132,7 +132,9 @@
     </table>`;
   document.body.appendChild(help);
   { const b = h('button', null, 'How this works and shortcuts (?)'); b.addEventListener('click', (e) => { e.stopPropagation(); more.classList.remove('open'); help.classList.toggle('on'); }); moreBox.prepend(b); }
-  document.addEventListener('click', (e) => { if (!help.contains(e.target)) help.classList.remove('on'); });
+  // close: the ×, Esc, or a click anywhere else (caught before the page's own handlers, which stop some clicks)
+  help.addEventListener('click', (e) => { if (e.target.closest('[data-helpx]')) help.classList.remove('on'); });
+  document.addEventListener('pointerdown', (e) => { if (help.classList.contains('on') && !help.contains(e.target) && !e.target.closest('#sb-more, [data-keys]')) help.classList.remove('on'); }, true);
   if (!(SB.hideVersions || []).length) { const b = h('button', null, 'Open the plain deck file'); b.addEventListener('click', () => { window.open(location.pathname + '?raw=1', '_blank'); }); moreBox.appendChild(b); }
   more.firstElementChild.addEventListener('click', (e) => { e.stopPropagation(); more.classList.toggle('open'); });
   document.addEventListener('click', () => more.classList.remove('open'));

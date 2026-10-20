@@ -367,3 +367,10 @@ body.sb-has-next.sb-on { padding-top: calc(var(--sb-top) + 42px) !important; }
 .sb-chhow { font-size: 12px; line-height: 1.4; color: var(--sb-mute); }
 .sb-chorder { margin-top: 12px; font-size: 12.5px; line-height: 1.5; color: var(--sb-mute); }
 .sb-chorder b { color: var(--sb-ink); }
+
+/* the shortcut on Ask Claude / Process now */
+#sb-ask .sb-key { font: 600 10.5px 'DM Sans', sans-serif; border: 1px solid currentColor; border-radius: 4px; padding: 0 4px; margin-left: 7px; opacity: .6; }
+
+/* How this works: a close button in the corner */
+#sb-help .sb-help-x { position: sticky; top: 0; float: right; margin: -6px -6px 0 8px; border: 0; background: #fff; font-size: 20px; line-height: 1; color: var(--sb-mute); cursor: pointer; padding: 2px 6px; border-radius: 6px; }
+#sb-help .sb-help-x:hover { background: var(--sb-paper); color: var(--sb-ink); }

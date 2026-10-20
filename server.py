@@ -34,7 +34,7 @@ APP = Path(__file__).resolve().parent
 STATIC = APP / 'static'
 LOCK = threading.Lock()
 STARTED = time.time()
-VERSION = '0.5.0'   # see CHANGELOG.md
+VERSION = '0.6.0'   # see CHANGELOG.md
 UPDATE_REPO = 'paulmil11/decks'   # where new versions are released (a fork points this at its own)
 LATEST = {}   # the newest release, from GitHub once a day (sbconfig.CHECK_UPDATES)
 
@@ -127,8 +127,33 @@ WATCH = {}   # slug -> the last moment an agent was waiting on the deck (sb watc
 ASKED = {}   # slug -> a "Process now" click no agent has picked up yet
 
 
+WATCH_ALL = [0]   # the last moment an agent was waiting on every deck at once (sb watch, no deck named)
+
+
 def watching(slug):
-    return time.time() - WATCH.get(slug, 0) < 75   # sb watch asks again every 25 s; a round in between doesn't count as leaving
+    # sb watch asks again every 25 s; a round in between doesn't count as leaving
+    return time.time() - max(WATCH.get(slug, 0), WATCH_ALL[0]) < 75
+
+
+def wait_for_click(slug=None, secs=25):
+    """sb watch: wait for a Process now click on one deck (slug) or on any deck, then answer either way."""
+    end = time.time() + secs
+    while True:
+        if slug:
+            WATCH[slug] = time.time()
+            req = ASKED.pop(slug, None)
+            if req:
+                return dict(req, deck=slug)
+        else:
+            WATCH_ALL[0] = time.time()
+            if ASKED:
+                first = min(ASKED, key=lambda k: ASKED[k]['at'])
+                return dict(ASKED.pop(first), deck=first)
+        if time.time() >= end:
+            return None
+        time.sleep(0.4)
+
+
 
 
 
@@ -640,6 +665,8 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         if self.foreign():
             return self.json(403, {'error': 'Changes are accepted only from Decks’ own pages.'})
+        if urlparse(self.path).path == '/api/watch':   # sb watch, no deck named: a Process now click on any deck
+            return self.json(200, {'request': wait_for_click()})
         if urlparse(self.path).path == '/api/settings':
             with LOCK:
                 st = settings()
@@ -670,14 +697,8 @@ class Handler(BaseHTTPRequestHandler):
             body = self.body()
         except json.JSONDecodeError:
             return self.json(400, {'error': 'bad json'})
-        if what == 'watch':   # sb watch: wait up to 25 s for a Process now click, then answer either way
-            slug, end = deck['slug'], time.time() + 25
-            while True:
-                WATCH[slug] = time.time()
-                req = ASKED.pop(slug, None)
-                if req or time.time() >= end:
-                    return self.json(200, {'request': req})
-                time.sleep(0.4)
+        if what == 'watch':   # sb watch <deck>: wait up to 25 s for a Process now click on this deck
+            return self.json(200, {'request': wait_for_click(deck['slug'])})
         if what == 'process':   # the page: Process now
             ASKED[deck['slug']] = {'at': time.time(), 'open': len([r for r in open_comments(deck) if r['state'] != 'draft' and not (r['reply'] and r['reply'].get('status') in ('done', 'skipped', 'question'))])}
             return self.json(200, {'watching': watching(deck['slug'])})
