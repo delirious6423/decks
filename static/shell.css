@@ -20,7 +20,16 @@ body.sb-on #deck > [data-id] { scroll-margin-top: calc(var(--sb-top) + 16px); }
 #sb-top .sb-logo { height: 22px; width: 22px; display: block; }
 #sb-top .sb-app { font-weight: 700; white-space: nowrap; }
 #sb-top .sb-sep { width: 1px; height: 22px; background: var(--sb-line); }
-#sb-top .sb-deck { font-weight: 600; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* the deck and its version: one control; a version picker sits invisibly over it when there is more than one */
+#sb-top .sb-deck { position: relative; display: inline-flex; align-items: center; max-width: 340px; padding: 5px 10px; border: 1px solid transparent; border-radius: 8px; white-space: nowrap; }
+#sb-top .sb-deck-t { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+#sb-top .sb-deck b { font-weight: 700; }
+#sb-top .sb-deck .sb-vname { color: var(--sb-mute); }
+#sb-top .sb-deck select { position: absolute; inset: 0; width: 100%; height: 100%; min-width: 0 !important; max-width: none !important; opacity: 0; cursor: pointer; }
+#sb-top .sb-deck:not(.sb-hasv) select, #sb-top .sb-deck:not(.sb-hasv) .sb-chev { display: none; }
+#sb-top .sb-deck.sb-hasv { border-color: var(--sb-line); cursor: pointer; }
+#sb-top .sb-deck.sb-hasv:hover { border-color: #BDB6B1; background: #FAF9F8; }
+#sb-top .sb-deck:has(select:focus-visible) { outline: 2px solid #9AB8E6; outline-offset: 1px; }
 #sb-top select { font: inherit; font-size: 12.5px; border: 1px solid var(--sb-line); border-radius: 7px; padding: 4px 8px; background: #fff; color: var(--sb-ink); max-width: 210px; }
 .sb-chips { display: flex; gap: 4px; }
 .sb-chip { font: inherit; font-size: 12px; border: 0; border-radius: 12px; padding: 4px 10px; background: var(--sb-paper); color: var(--sb-mute); cursor: pointer; white-space: nowrap; }
@@ -44,11 +53,24 @@ body.sb-on #deck > [data-id] { scroll-margin-top: calc(var(--sb-top) + 16px); }
 @keyframes sb-pulse { 50% { opacity: .25; } }
 .sb-saved { font-size: 11.5px; color: var(--sb-faint); white-space: nowrap; }
 .sb-saved.off { color: #B25C00; }
-.sb-menu { position: relative; }
-.sb-menu > div { display: none; position: absolute; right: 0; top: calc(100% + 6px); background: #fff; border: 1px solid var(--sb-line); border-radius: 10px; box-shadow: 0 10px 30px rgba(35,31,32,.14); padding: 6px; min-width: 210px; }
-.sb-menu.open > div { display: block; }
-.sb-menu > div button { display: block; width: 100%; text-align: left; font: inherit; font-size: 13px; border: 0; background: none; padding: 7px 10px; border-radius: 6px; color: var(--sb-ink); cursor: pointer; }
-.sb-menu > div button:hover { background: var(--sb-paper); }
+.sb-dd { position: relative; }
+.sb-dd > .sb-pop { display: none; position: absolute; right: 0; top: calc(100% + 6px); z-index: 1100; width: 320px; box-sizing: border-box; background: #fff; border: 1px solid var(--sb-line); border-radius: 12px; box-shadow: 0 14px 36px rgba(35,31,32,.18); padding: 6px; }
+.sb-dd.open > .sb-pop { display: block; }
+.sb-dd.open > .sb-ddb { border-color: #BDB6B1; background: #FAF9F8; }
+.sb-chev { font-size: 9px; opacity: .55; margin-left: 5px; position: relative; top: -1px; }
+.sb-it { display: flex; width: 100%; align-items: flex-start; justify-content: space-between; gap: 10px; text-align: left; font: inherit; font-size: 13px; line-height: 1.35; border: 0; background: none; padding: 9px 10px; border-radius: 8px; color: var(--sb-ink); cursor: pointer; }
+.sb-it:hover, .sb-it:focus-visible { background: var(--sb-paper); outline: none; }
+.sb-it:disabled { opacity: .4; cursor: default; background: none; }
+.sb-it-t { flex: 1; min-width: 0; }
+.sb-it-t b { display: block; font-weight: 700; }
+.sb-it-t span { display: block; color: var(--sb-mute); font-size: 12px; margin-top: 2px; }
+.sb-it kbd { flex: none; font: 600 10.5px 'DM Sans', sans-serif; border: 1px solid var(--sb-line); border-radius: 4px; padding: 1px 5px; color: var(--sb-mute); white-space: nowrap; margin-top: 1px; }
+.sb-tog { flex: none; width: 30px; height: 18px; border-radius: 9px; background: #D9D4D0; position: relative; margin-top: 1px; transition: background .12s; }
+.sb-tog::after { content: ''; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: #fff; transition: left .12s; }
+.sb-it.on .sb-tog { background: var(--sb-red); }
+.sb-it.on .sb-tog::after { left: 14px; }
+.sb-msep { height: 1px; background: var(--sb-line); margin: 4px 8px; }
+#sb-q > .sb-ddb { width: 32px; padding-left: 0; padding-right: 0; font-weight: 700; text-align: center; }
 
 #sb-banner { display: none; position: fixed; z-index: 1001; top: calc(var(--sb-top) + 10px); left: 50%; transform: translateX(-50%); background: var(--sb-ink); color: #fff; font: 13px 'DM Sans', sans-serif; padding: 8px 10px 8px 14px; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,.2); align-items: center; gap: 10px; }
 #sb-banner.on { display: flex; }
@@ -165,8 +187,7 @@ body.sb-focus #deck > [data-id] .fb { font-size: 13px; min-height: 3.2em; }
   #sb-top { gap: 7px; padding: 0 26px 0 10px; }
   #sb-top .sb-back .sb-lbl { display: none; }
   #sb-top .sb-app, #sb-top .sb-saved { display: none; }
-  #sb-top .sb-deck { max-width: 130px; }
-  #sb-top select { max-width: 150px; }
+  #sb-top .sb-deck { max-width: 200px; }
 }
 @media (max-width: 880px) {   /* very narrow panes: shorter labels so every button still fits */
   #sb-top .sb-sep { display: none; }
@@ -208,7 +229,6 @@ body.sb-sorter #sb-sorter { display: block; font: 13px/1.4 'DM Sans', -apple-sys
 /* ---------- action title test: hide everything but the title ---------- */
 body.sb-titles-only .slide:has(> .h-title):not(.sb-reveal):not(.sb-tx) > :not(.h-title):not(.ctrls):not(.slide-tag):not(.sb-badge) { visibility: hidden !important; }
 body.sb-titles-only .slide:has(> .h-title):not(.sb-reveal):not(.sb-tx)::after { content: 'Content hidden: what should this slide prove?'; position: absolute; left: 6%; right: 6%; top: 34%; bottom: 10%; border: 2px dashed #C9C5C2; border-radius: 10px; display: flex; align-items: center; justify-content: center; font: 600 22px 'DM Sans', sans-serif; color: #A9A29E; pointer-events: none; }
-#sb-hide.on { background: var(--sb-red); border-color: var(--sb-red); color: #fff; }
 
 /* ---------- checks: read the story, or the title test ---------- */
 #sb-checks { display: none; }
@@ -303,6 +323,7 @@ body.sb-checks.sb-ten #deck .slide.sb-cover::after { content: attr(data-msg); po
 #sb-ask { position: relative; }
 #sb-ask .sb-n { display: none; margin-left: 6px; min-width: 18px; height: 18px; padding: 0 5px; box-sizing: border-box; border-radius: 9px; background: var(--sb-red, #A22731); color: #fff; font: 700 11px/18px 'DM Sans', sans-serif; text-align: center; }
 #sb-ask .sb-n.on { display: inline-block; }
+#sb-ask.red .sb-n { background: #fff; color: var(--sb-red, #A22731); }
 #sb-toast { position: fixed; z-index: 2500; left: 50%; bottom: 26px; transform: translate(-50%, 20px); max-width: 560px; padding: 11px 16px; border-radius: 10px; background: #272322; color: #fff; font: 13.5px/1.45 'DM Sans', sans-serif; box-shadow: 0 10px 30px rgba(0,0,0,.25); opacity: 0; pointer-events: none; transition: opacity .18s, transform .18s; }
 #sb-toast.on { opacity: 1; transform: translate(-50%, 0); }
 #sb-nextstep { position: fixed; z-index: 950; top: var(--sb-top); left: 0; right: 0; display: flex; justify-content: center; align-items: center; gap: 14px; padding: 8px 16px; background: #FFF6E5; border-bottom: 1px solid #F0DDB6; font: 13.5px/1.4 'DM Sans', sans-serif; color: #5A3A00; }
@@ -318,7 +339,7 @@ body.sb-has-next.sb-on { padding-top: calc(var(--sb-top) + 42px) !important; }
 @media print { #sb-toast, #sb-nextstep, #sb-welcome { display: none !important; } }
 
 /* below 1360 px the deck name and version need the room: the back button keeps its arrow (the logo goes home too) and Saved steps aside */
-@media (max-width: 1360px) { #sb-top .sb-back .sb-lbl { display: none; } #sb-top .sb-saved { display: none; } #sb-top .sb-deck { max-width: 180px; } }
+@media (max-width: 1360px) { #sb-top .sb-back .sb-lbl { display: none; } #sb-top .sb-saved { display: none; } #sb-top .sb-deck { max-width: 260px; } }
 
 /* filters and Looks good sit at the top of the filmstrip */
 #sb-film .sb-filmtools { order: 0; padding: 0 10px 8px; display: flex; flex-direction: column; gap: 6px; }
@@ -326,10 +347,9 @@ body.sb-has-next.sb-on { padding-top: calc(var(--sb-top) + 42px) !important; }
 #sb-film .sb-filmtools .sb-chip { font-size: 11.5px; padding: 3px 9px; }
 #sb-film .sb-filmtools #sb-resolve { width: 100%; justify-content: center; }
 #sb-film .sb-filmtools #sb-resolve[hidden] { display: none; }
-@media (max-width: 1500px) { #sb-top .sb-deck { max-width: 240px; } }
 
 /* narrow windows (about 1024 px): buttons drop their long labels before the deck name and version get crushed */
-@media (max-width: 1150px) { #sb-top .sb-long { display: none; } #sb-top .sb-deck { min-width: 84px; } #sb-top select { min-width: 120px; } }
+@media (max-width: 1150px) { #sb-top .sb-long { display: none; } #sb-top .sb-deck { min-width: 84px; } }
 
 /* a reply Claude wrote before the current comment: context, not an answer */
 .sb-reply.stale { opacity: .6; }

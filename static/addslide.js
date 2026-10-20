@@ -105,8 +105,7 @@
   const accent = getComputedStyle(document.documentElement).getPropertyValue('--red-deep').trim() || '#A22731';
   css.replaceSync(`
     :root { --sbx-accent: ${accent}; }
-    #sb-top .sbx-new { color: var(--sbx-accent); border-color: var(--sbx-accent); font-weight: 700; }
-    #sb-top .sbx-new:hover { background: color-mix(in srgb, var(--sbx-accent) 8%, #fff); }
+    #sb-top .sbx-new { font-weight: 600; }
     #sb-top .sbx-new b, .sbx-filmnew b { display: inline-grid; place-items: center; width: 17px; height: 17px; border-radius: 50%; background: var(--sbx-accent); color: #fff; font: 700 14px/1 'DM Sans', sans-serif; vertical-align: -3px; }
     #sb-top .sbx-new b { margin-right: 1px; }
     #sb-top .sbx-new:disabled { opacity: .4; }
@@ -258,8 +257,8 @@
   // ---------- ways in: + between slides (filmstrip and Scroll), + Slide in the top bar and the sorter, and N ----------
   const head = document.querySelector('#sb-film .sb-colhead');
   if (head) { const b = document.createElement('button'); b.className = 'sbx-filmnew'; b.innerHTML = '<b>+</b> New slide <kbd>N</kbd>'; b.title = 'Add a slide after the one you’re on'; b.addEventListener('click', () => open()); head.after(b); }
-  const topBar = document.getElementById('sb-top'), hideBtn = document.getElementById('sb-hide');
-  if (topBar) { const b = document.createElement('button'); b.className = 'sb-btn sbx-new'; b.id = 'sbx-top'; b.innerHTML = '<b>+</b><span class="sb-long"> New slide</span>'; b.title = 'Add a slide after the one you’re on (N)'; b.addEventListener('click', () => open()); if (hideBtn) hideBtn.before(b); else topBar.appendChild(b); }
+  const topBar = document.getElementById('sb-top'), viewMenu = document.getElementById('sb-view');
+  if (topBar) { const b = document.createElement('button'); b.className = 'sb-btn sbx-new'; b.id = 'sbx-top'; b.innerHTML = '<b>+</b><span class="sb-long"> New slide</span>'; b.title = 'Add a slide after the one you’re on (N)'; b.addEventListener('click', () => open()); if (viewMenu) viewMenu.before(b); else topBar.appendChild(b); }
   const ins = (id, label) => { const g = document.createElement('span'); g.className = 'sbx-ins'; g.setAttribute('role', 'button'); g.dataset.after = id; g.title = label; g.innerHTML = '<i></i><b>+</b><i></i>'; return g; };
   const list = document.getElementById('sb-film-list');
   const decorateFilm = () => { if (!list) return; list.querySelectorAll('.sb-fi').forEach((fi) => { if (!fi.querySelector(':scope > .sbx-ins')) fi.appendChild(ins(fi.dataset.id, 'Add a slide here')); }); };

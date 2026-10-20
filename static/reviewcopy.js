@@ -1,4 +1,4 @@
-/* Decks: Review copy (⋯ menu).
+/* Decks: Review copy (Share menu).
    The file to send someone outside, a client say, who should comment and edit and then send it
    back for `sb import`. It is the deck itself, cut down to the version on screen as it looks now:
    - kept: the slides on screen (your edits and order included), editable text, a comment box under
@@ -15,8 +15,8 @@
    for what it must not carry. If a check fails, nothing downloads and it says why. */
 (function () {
   const SB = window.__SB, deck = document.getElementById('deck');
-  const menu = document.querySelector('#sb-more > div');
-  if (!SB || !deck || !menu || SB.readonly || !document.getElementById('save-copy')) return;
+  const API = window.SlideBuilder;
+  if (!SB || !deck || !API || !API.shareItem || SB.readonly || !document.getElementById('save-copy')) return;
   /* eslint-disable no-undef */
   const get = (f) => { try { return f(); } catch (e) { return undefined; } };
   const LIB = () => get(() => LIBRARY), PIT = () => get(() => PITCHES), VER = () => get(() => current);
@@ -331,10 +331,6 @@ if(document.readyState==='complete')setTimeout(go,400);else window.addEventListe
     } finally { busy = false; }
   }
 
-  const b = document.createElement('button'); b.id = 'sb-review-copy'; b.textContent = 'Review copy: for a client to comment and edit';
-  b.title = 'The file to send someone who should comment and edit, then send it back (sb import). This version only, editable, a comment box under each slide. No notes, comments, facilitator slides, or other versions.';
-  b.addEventListener('click', () => { document.getElementById('sb-more').classList.remove('open'); save(); });
-  const client = document.getElementById('sb-client-copy'), editable = document.getElementById('sb-editable-copy');
-  menu.insertBefore(b, client ? client.nextSibling : menu.firstChild);
-  if (editable) menu.insertBefore(editable, b.nextSibling);   // the three copies together
+  API.shareItem({ t: 'Review copy', sub: 'For someone to comment and edit, then send back', id: 'sb-review-copy',
+    title: 'The file to send someone who should comment and edit, then send it back (sb import). This version only, editable, a comment box under each slide. No notes, comments, facilitator slides, or other versions.', act: () => save() });
 })();

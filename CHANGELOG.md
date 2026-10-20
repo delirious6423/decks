@@ -4,6 +4,20 @@ What changed in each version of Decks. To update, run `git pull` in your Decks f
 restart the server. To hear about new versions, watch this repository on GitHub
 (Watch › Custom › Releases).
 
+## 0.7.0 (October 20, 2026)
+
+A tidier top bar. Everything is still there, in fewer places:
+
+- The deck's name and version are one control: click it to switch versions.
+- **View** holds Titles only (H) and on/off switches for the slide list ([), the notes panel
+  (]), and facilitator notes.
+- **Share** holds Save as PDF and the three copies: Client copy, Review copy, and Editable copy.
+- **Present** starts from the slide you're on (⌘↵), or opens presenter view.
+- **Ask Claude** is the one red button, with its shortcut on it.
+- **?** holds How this works, the keyboard shortcuts, the plain deck file, Send feedback, and
+  Made by StrategyU.
+- The ⋯ menu and Copy edits are gone. New slide is a plain button.
+
 ## 0.6.2 (October 20, 2026)
 
 - The Ask Claude shortcut is ⌘⇧↵ (Ctrl+Shift+Enter). ⌘↵ is the deck's own Present shortcut,

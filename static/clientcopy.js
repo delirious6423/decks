@@ -1,4 +1,4 @@
-/* Decks: Client copy (⋯ menu).
+/* Decks: Client copy (Share menu).
    The file to send a client: the slides of the version on screen, as they look now (your edits and
    order included), and nothing else. No facilitator slides or notes, no comments, no other versions,
    no editing. It is a snapshot of the slides themselves, so none of that is even in its source.
@@ -6,8 +6,8 @@
    full screen (Present, or P). */
 (function () {
   const SB = window.__SB, deck = document.getElementById('deck');
-  const menu = document.querySelector('#sb-more > div');
-  if (!SB || !deck || !menu) return;
+  const API = window.SlideBuilder;
+  if (!SB || !deck || !API || !API.shareItem) return;
   const lib = () => { try { return LIBRARY; } catch (e) { return {}; } };   // eslint-disable-line no-undef
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const api = (p) => '/api/decks/' + SB.slug + '/' + p;
@@ -114,9 +114,7 @@ ${body}
     say(`<b>Saved ${esc(fileName())}.</b> ${snap.n} slides${pics ? `, pictures inside` : ''}. Slides only: no notes, comments, or editing. It opens in any browser and has a Present button.`);
   }
 
-  const b = document.createElement('button'); b.id = 'sb-client-copy'; b.textContent = 'Client copy: slides only';
-  b.title = 'The file to send a client: this version’s slides as they look now. No notes, comments, other versions, or editing.';
-  b.addEventListener('click', () => { document.getElementById('sb-more').classList.remove('open'); save(); });
-  menu.insertBefore(b, menu.firstChild);
+  API.shareItem({ t: 'Client copy', sub: 'To read or present. Slides only, one file', id: 'sb-client-copy',
+    title: 'The file to send a client: this version’s slides as they look now. No notes, comments, other versions, or editing.', act: () => save() });
   if (window.SlideBuilder) window.SlideBuilder.clientCopy = () => snapshot().html;   // for the tools
 })();

@@ -232,9 +232,17 @@ Four views, each with the slides on the left and the notes on the right:
   slides back.
 - **Checks** (C): above.
 
-**Titles only** (H) hides everything but the titles, in any view. ⌘⇧↵ (Ctrl+Shift+Enter) is
-Ask Claude, or Process now in watch mode, and works while you type a comment. `?` lists every shortcut. The version menu switches between a deck's versions (say, the full deck, a
-short cut, and a facilitator pack), which share slides.
+The top bar keeps the rest in a few places:
+
+- **The deck's name** shows the version on screen. Click it to switch versions (say, the full
+  deck, a short cut, and a facilitator pack), which share slides.
+- **View**: Titles only (H) hides everything but the titles, in any view. Switches for the
+  slide list ([), the notes panel (]), and facilitator notes under each slide in Scroll.
+- **Share**: Save as PDF, and the three copies below.
+- **Present**: full screen from the slide you're on (⌘↵), or presenter view.
+- **Ask Claude** (⌘⇧↵, Ctrl+Shift+Enter): the one red button. It's Process now in watch mode,
+  and the shortcut works while you type a comment.
+- **?**: how this works, every shortcut, and the plain deck file.
 
 ### Add a slide
 
@@ -252,7 +260,7 @@ your own in. It's saved next to the deck.
 
 ### Sending a deck out, and getting feedback back
 
-The ⋯ menu in the top bar has three copies, each one file with its pictures inside:
+**Share** in the top bar has three copies, each one file with its pictures inside:
 
 - **Client copy**: for people who read or present it. The version on screen, slides only,
   as they look now. Notes, comments, facilitator slides, other versions, and editing are

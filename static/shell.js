@@ -9,7 +9,8 @@
    slide's .fb box and are saved by the deck itself. */
 (function () {
   const SB = window.__SB;
-  const SEND = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent) ? '⌘⇧↵' : 'Ctrl+Shift+↵';   // the Ask Claude key (⌘↵ is the deck's own Present)
+  const MAC = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+  const SEND = MAC ? '⌘⇧↵' : 'Ctrl+Shift+↵', PKEY = MAC ? '⌘↵' : 'Ctrl+↵';   // Ask Claude's key, and the deck's own Present
   // Ask Claude (Process now while Claude watches), even mid-comment. Caught before the deck's own keys see it,
   // because the deck presents on ⌘↵ and would take ⌘⇧↵ for the same.
   window.addEventListener('keydown', (e) => {
@@ -74,64 +75,117 @@
   const visible = () => wraps().map((w) => w.dataset.id).filter((id) => pass(id));
 
   // ---------- top bar ----------
+  // Left: the deck and its version, as one control, then the filters. Right: the views, New slide (addslide.js),
+  // then View, Share, and Present, each a small menu; Ask Claude, the one red button; and ? for help.
+  const hasPresent = !!$('#present-btn'), hasPresenter = !!$('#presenter-btn');
+  const dd = (id, label, title, chev = true) => `<div class="sb-dd" id="${id}"><button class="sb-btn sb-ddb" aria-haspopup="menu" aria-expanded="false" title="${title}">${label}${chev ? '<span class="sb-chev" aria-hidden="true">▾</span>' : ''}</button><div class="sb-pop" role="menu" aria-label="${title}"></div></div>`;
+  const presentLabel = '▶<span class="sb-long"> Present</span>';
   const top = h('div'); top.id = 'sb-top';
   top.innerHTML = `<a href="/" title="All decks"><img class="sb-logo" src="/_sb/logo.svg" alt="Decks"></a>
     <a href="/" class="sb-btn sb-back" title="Back to the dashboard of all decks">← <span class="sb-lbl">All decks</span></a><span class="sb-sep"></span>
-    <span class="sb-deck" title="${esc(SB.name)}">${esc(SB.name)}</span>
-    ${sideSelect ? '<select id="sb-version" title="Version"></select>' : ''}
+    <label class="sb-deck" title="${esc(SB.name)}"><span class="sb-deck-t"><b>${esc(SB.name)}</b><span class="sb-vname"></span></span>${sideSelect ? '<span class="sb-chev" aria-hidden="true">▾</span><select id="sb-version" aria-label="Version"></select>' : ''}</label>
     <div class="sb-chips" id="sb-chips" role="group" aria-label="Filter slides"></div>
     <span class="sb-grow"></span>
     <span class="sb-claude" id="sb-claude" role="status"><i></i><span></span></span>
     <span class="sb-saved" id="sb-saved" title="Every edit and comment saves to disk, next to the deck">Saved</span>
     <button class="sb-btn" id="sb-resolve" hidden></button>
     <div class="sb-seg" role="group" aria-label="View"><button data-v="focus" title="Focus (F)">Focus</button><button data-v="scroll" title="Scroll (S)">Scroll</button><button data-v="sorter" title="Sorter (G)">Sorter</button><button data-v="checks" title="Checks (C)">Checks</button></div>
-    <button class="sb-btn" id="sb-hide" title="Titles only: hide everything but the titles, to test that each one says the point (H). Space reveals one slide.">Titles<span class="sb-long"> only</span></button>
-    <button class="sb-btn icon" id="sb-left" title="Show or hide the left side bar ( [ )">◧</button>
-    <button class="sb-btn icon" id="sb-right" title="Show or hide notes ( ] )">◨</button>
-    <button class="sb-btn" id="sb-ask" title="Copy a prompt that asks Claude (or Codex) to work through your comments (${SEND})"><span class="sb-ask-l">Ask Claude</span><span class="sb-n" id="sb-ask-n"></span><kbd class="sb-key" aria-hidden="true">${SEND}</kbd></button>
-    ${$('#present-btn') ? '<button class="sb-btn red" id="sb-present" title="Present from this slide">▶<span class="sb-long"> Present</span></button>' : ''}
-    <div class="sb-menu" id="sb-more"><button class="sb-btn icon" aria-label="More">⋯</button><div></div></div>`;
+    ${dd('sb-view', 'View', 'Titles only, side bars, facilitator notes')}
+    ${dd('sb-share', 'Share', 'A PDF, or a copy to send')}
+    ${hasPresent && hasPresenter ? dd('sb-present', presentLabel, 'Present, or presenter view') : hasPresent ? `<button class="sb-btn" id="sb-present" title="Present from this slide (${PKEY})">${presentLabel}</button>` : ''}
+    <button class="sb-btn red" id="sb-ask" title="Copy a prompt that asks Claude (or Codex) to work through your comments (${SEND})"><span class="sb-ask-l">Ask Claude</span><span class="sb-n" id="sb-ask-n"></span><kbd class="sb-key" aria-hidden="true">${SEND}</kbd></button>
+    ${dd('sb-q', '?', 'Help', false)}`;
   document.body.prepend(top);
   document.body.classList.add('sb-on');
 
+  // the deck's name, with the version on screen after it; a click on either picks another version
+  const deckCtl = $('.sb-deck', top), vname = $('.sb-vname', top);
+  const verName = (t) => String(t || '').replace(/\s*\(.*$/, '').replace(/\s+—.*$/, '').trim();
   if (sideSelect) {
     const vs = $('#sb-version');
     const hidden = new Set(SB.hideVersions || []);
-    const syncVersions = () => { vs.innerHTML = [...sideSelect.options].filter((o) => !hidden.has(o.value)).map((o) => `<option value="${esc(o.value)}">${esc(o.textContent)}</option>`).join(''); vs.value = sideSelect.value; };
+    const label = () => { const o = vs.options[vs.selectedIndex], many = vs.options.length > 1;
+      vname.textContent = many && o ? ' · ' + verName(o.textContent) : ''; deckCtl.classList.toggle('sb-hasv', many);
+      deckCtl.title = many && o ? `${SB.name} · ${o.textContent.trim()}. Click to pick another version.` : SB.name; };
+    const syncVersions = () => { vs.innerHTML = [...sideSelect.options].filter((o) => !hidden.has(o.value)).map((o) => `<option value="${esc(o.value)}">${esc(o.textContent)}</option>`).join(''); vs.value = sideSelect.value; label(); };
     syncVersions();
-    if (hidden.has(sideSelect.value)) { const first = [...sideSelect.options].find((o) => !hidden.has(o.value)); if (first) { sideSelect.value = first.value; sideSelect.dispatchEvent(new Event('change', { bubbles: true })); vs.value = first.value; } }
-    vs.addEventListener('change', () => { sideSelect.value = vs.value; sideSelect.dispatchEvent(new Event('change', { bubbles: true })); });
-    sideSelect.addEventListener('change', () => { vs.value = sideSelect.value; });
+    if (hidden.has(sideSelect.value)) { const first = [...sideSelect.options].find((o) => !hidden.has(o.value)); if (first) { sideSelect.value = first.value; sideSelect.dispatchEvent(new Event('change', { bubbles: true })); vs.value = first.value; label(); } }
+    vs.addEventListener('change', () => { sideSelect.value = vs.value; sideSelect.dispatchEvent(new Event('change', { bubbles: true })); label(); });
+    sideSelect.addEventListener('change', () => { vs.value = sideSelect.value; label(); });
   }
 
-  const more = $('#sb-more'), moreBox = more.querySelector('div');
-  const proxy = (sel, label, id) => { const t = $(sel); if (!t) return; const b = h('button', null, esc(label)); if (id) b.id = id; b.addEventListener('click', () => { more.classList.remove('open'); t.click(); }); moreBox.appendChild(b); };
-  proxy('#presenter-btn', 'Presenter view');
-  proxy('#export-btn', 'Export PDF (print)');
-  proxy('#save-copy', 'Editable copy: yours, with notes and comments', 'sb-editable-copy');
-  proxy('#copy-edits', 'Copy edits');
-  proxy('#notes-toggle', 'Show facilitator notes (scroll view)');
-  { const b = h('button', null, 'Made by StrategyU ↗'); b.title = 'Decks is made by Paul Millerd at StrategyU, where he teaches the consulting method it is built on';
-    b.addEventListener('click', () => { more.classList.remove('open'); window.open('https://strategyu.co/?utm_source=decks&utm_medium=app&utm_campaign=deck-menu', '_blank', 'noopener'); }); moreBox.appendChild(b); }
-  { const b = h('button', null, 'Send feedback to Paul'); b.title = 'Email paul@strategyu.co: what works, what doesn’t, what you’d want next';
-    b.addEventListener('click', async () => { more.classList.remove('open'); const ok = await copyText('paul@strategyu.co');
-      window.open('mailto:paul@strategyu.co?subject=' + encodeURIComponent('Decks feedback'), '_blank');
-      say(ok ? '<b>Opening an email to paul@strategyu.co.</b> The address is copied too, in case your mail app doesn’t open.' : 'Email <b>paul@strategyu.co</b>.'); }); moreBox.appendChild(b); }
+  // ---------- the menus: View, Share, Present, ? ----------
+  const menus = [...top.querySelectorAll('.sb-dd')];
+  const closeMenus = () => menus.forEach((m) => { m.classList.remove('open'); m.firstElementChild.setAttribute('aria-expanded', 'false'); });
+  const rows = (m) => [...m.querySelectorAll('.sb-it')].filter((b) => !b.disabled && b.offsetParent);
+  menus.forEach((m) => {
+    const b = m.firstElementChild, pop = m.lastElementChild;
+    b.addEventListener('click', (e) => {
+      e.stopPropagation(); const on = !m.classList.contains('open'); closeMenus(); if (!on) return;
+      m.dispatchEvent(new Event('sb:open')); m.classList.add('open'); b.setAttribute('aria-expanded', 'true');
+      if (!e.detail) { const r = rows(m)[0]; if (r) r.focus(); }   // opened from the keyboard: start on the first row
+    });
+    pop.addEventListener('click', (e) => e.stopPropagation());
+    pop.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') { e.stopPropagation(); closeMenus(); b.focus(); return; }
+      if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+      e.preventDefault(); e.stopPropagation(); const r = rows(m), i = r.indexOf(document.activeElement);
+      const n = r[(i + (e.key === 'ArrowDown' ? 1 : -1) + r.length) % r.length]; if (n) n.focus();
+    });
+  });
+  // a click anywhere else closes them (caught early, because the page's own handlers stop some clicks)
+  document.addEventListener('pointerdown', (e) => { if (!e.target.closest('.sb-dd')) closeMenus(); }, true);
+  // one row: what it is, a line on what it does, and its key or an on/off switch on the right
+  function item(menu, o) {
+    const b = h('button', 'sb-it', `<span class="sb-it-t"><b>${esc(o.t)}</b>${o.sub ? `<span>${esc(o.sub)}</span>` : ''}</span>${o.key ? `<kbd>${esc(o.key)}</kbd>` : ''}${o.tog ? '<i class="sb-tog" aria-hidden="true"></i>' : ''}`);
+    b.setAttribute('role', o.tog ? 'menuitemcheckbox' : 'menuitem'); if (o.id) b.id = o.id; if (o.title) b.title = o.title;
+    b.addEventListener('click', (e) => { if (!o.tog) closeMenus(); o.act(e); });
+    const pop = $('#' + menu + ' .sb-pop'); if (o.before && o.before.parentNode === pop) pop.insertBefore(b, o.before); else pop.appendChild(b);
+    return b;
+  }
+  const sep = (menu) => $('#' + menu + ' .sb-pop').appendChild(h('div', 'sb-msep'));
+  const setTog = (b, on) => { if (!b) return; b.classList.toggle('on', !!on); b.setAttribute('aria-checked', String(!!on)); };
+
+  // View: Titles only, the two side bars, facilitator notes
+  const vTitles = item('sb-view', { t: 'Titles only', sub: 'Hide everything but the titles', key: 'H', tog: true, act: () => setHide(!ui.hide) });
+  sep('sb-view');
+  const vLeft = item('sb-view', { t: 'Slide list', sub: 'The filmstrip on the left', key: '[', tog: true, act: () => toggleSide('left') });
+  const vRight = item('sb-view', { t: 'Notes panel', sub: 'Notes and changes on the right', key: ']', tog: true, act: () => toggleSide('right') });
+  const notesBox = $('#notes-toggle');
+  const vFac = notesBox ? item('sb-view', { t: 'Facilitator notes', sub: 'Under each slide in Scroll', tog: true, act: () => { notesBox.click(); setTog(vFac, notesBox.checked); } }) : null;
+  $('#sb-view').addEventListener('sb:open', () => { setTog(vTitles, ui.hide); if (vFac) setTog(vFac, notesBox.checked); });
+
+  // Share: the PDF, then the three copies (Client and Review copy add themselves, before Editable copy)
+  if ($('#export-btn')) { item('sb-share', { t: 'Save as PDF', sub: 'One slide per page, from the Print window', act: () => $('#export-btn').click() }); sep('sb-share'); }
+  const editableCopy = $('#save-copy') ? item('sb-share', { t: 'Editable copy', sub: 'The whole deck with notes and comments, for you', id: 'sb-editable-copy',
+    title: 'Every version, your notes and comments, and editing: keep it for yourself', act: () => $('#save-copy').click() }) : null;
+  const shareItem = (o) => item('sb-share', Object.assign({ before: editableCopy }, o));
+
+  // Present: from this slide (in Focus the slide on screen is the one to start from)
+  const fromHere = () => { if (cur && ui.view === 'focus') { const w = wrapOf(cur); if (w) w.scrollIntoView({ block: 'center' }); } };
+  const presentNow = (e) => { fromHere(); $('#present-btn').dispatchEvent(new MouseEvent('click', { bubbles: true, shiftKey: !!(e && e.shiftKey) })); };
+  if (hasPresent && hasPresenter) {
+    item('sb-present', { t: 'Present', sub: 'Full screen from this slide', key: PKEY, act: presentNow });
+    item('sb-present', { t: 'Presenter view', sub: 'Your notes, the next slide, and a clock', act: (e) => { fromHere(); $('#presenter-btn').dispatchEvent(new MouseEvent('click', { bubbles: true, shiftKey: !!(e && e.shiftKey) })); } });
+  } else if (hasPresent) $('#sb-present').addEventListener('click', presentNow);
+
   const help = h('div'); help.id = 'sb-help';
   help.innerHTML = `<button class="sb-help-x" data-helpx aria-label="Close" title="Close (Esc)">×</button><h4>How this works</h4><ul>
     <li>Click any text on a slide to edit it. It saves to disk as you type.</li>
-    <li>Write a comment for a slide, then say <b>process changes</b> to Claude. Tick “Still drafting” to hold one back.</li>
+    <li>Write a comment for a slide, then click <b>Ask Claude</b> (or say <b>process changes</b> to Claude). Tick “Still drafting” to hold one back.</li>
     <li>Claude replies under your comment. <b>Looks good</b> clears it; <b>Reopen</b> sends it back.</li>
     <li>In the left bar, × leaves a slide out of this version; add slides back from “Not in this version”.</li>
-    <li>Presenting and PDF export are in this ⋯ menu and the top bar, when the deck has them.</li>
-    <li>Sending the deck out: <b>Client copy</b> is this version’s slides to read or present, and nothing else. <b>Review copy</b> is for someone who should comment and edit: this version only, no notes or comments of yours, and they send it back for Claude to bring in. <b>Editable copy</b> carries your notes, comments, and every version: keep it for yourself.</li></ul>
-    <h4 style="margin-top:14px">Keyboard shortcuts</h4>
+    <li><b>View</b> holds Titles only, the side bars, and facilitator notes. <b>Present</b> starts the show or presenter view, when the deck has them.</li>
+    <li><b>Share</b> saves a PDF or a copy to send. <b>Client copy</b> is this version’s slides to read or present, and nothing else. <b>Review copy</b> is for someone who should comment and edit: this version only, no notes or comments of yours, and they send it back for Claude to bring in. <b>Editable copy</b> carries your notes, comments, and every version: keep it for yourself.</li></ul>
+    <h4 style="margin-top:14px" id="sb-keys-h">Keyboard shortcuts</h4>
     <table class="sb-keys">
       <tr><td><kbd>F</kbd> <kbd>S</kbd> <kbd>G</kbd> <kbd>C</kbd></td><td>Focus, Scroll, Sorter, Checks</td></tr>
       <tr><td><kbd>←</kbd> <kbd>→</kbd></td><td>Previous and next slide (<kbd>Home</kbd> <kbd>End</kbd>: first and last)</td></tr>
       <tr><td><kbd>${SEND}</kbd></td><td>Ask Claude: copy the prompt, or start the round when Claude is watching. Works while you type a comment, too.</td></tr>
+      ${hasPresent ? `<tr><td><kbd>${PKEY}</kbd></td><td>Present from this slide</td></tr>` : ''}
+      <tr><td><kbd>N</kbd></td><td>New slide after this one</td></tr>
       <tr><td><kbd>H</kbd></td><td>Titles only (hide the content)</td></tr>
-      <tr><td><kbd>[</kbd> <kbd>]</kbd></td><td>Hide the slides bar or the notes bar</td></tr>
+      <tr><td><kbd>[</kbd> <kbd>]</kbd></td><td>Hide the slide list or the notes panel</td></tr>
       <tr><td><kbd>1</kbd>–<kbd>5</kbd></td><td>Checks: 5-second test, 10-second test, horizontal flow, vertical flow, guides. From Focus or Scroll they run that check on the slide you’re on</td></tr>
       <tr><td><kbd>Space</kbd></td><td>Start a timed test, or reveal the slide</td></tr>
       <tr><td><kbd>A</kbd> <kbd>M</kbd></td><td>After a timed test: show again, missed it</td></tr>
@@ -139,15 +193,21 @@
       <tr><td><kbd>?</kbd></td><td>Show this card</td></tr>
     </table>`;
   document.body.appendChild(help);
-  { const b = h('button', null, 'How this works and shortcuts (?)'); b.addEventListener('click', (e) => { e.stopPropagation(); more.classList.remove('open'); help.classList.toggle('on'); }); moreBox.prepend(b); }
+  const openHelp = (keys) => { help.classList.add('on'); help.scrollTop = keys ? $('#sb-keys-h', help).offsetTop - 12 : 0; };
   // close: the ×, Esc, or a click anywhere else (caught before the page's own handlers, which stop some clicks)
   help.addEventListener('click', (e) => { if (e.target.closest('[data-helpx]')) help.classList.remove('on'); });
-  document.addEventListener('pointerdown', (e) => { if (help.classList.contains('on') && !help.contains(e.target) && !e.target.closest('#sb-more, [data-keys]')) help.classList.remove('on'); }, true);
-  if (!(SB.hideVersions || []).length) { const b = h('button', null, 'Open the plain deck file'); b.addEventListener('click', () => { window.open(location.pathname + '?raw=1', '_blank'); }); moreBox.appendChild(b); }
-  more.firstElementChild.addEventListener('click', (e) => { e.stopPropagation(); more.classList.toggle('open'); });
-  document.addEventListener('click', () => more.classList.remove('open'));
-  const pres = $('#sb-present');
-  if (pres) pres.addEventListener('click', (e) => { if (cur && ui.view === 'focus') { const w = wrapOf(cur); if (w) w.scrollIntoView({ block: 'center' }); } $('#present-btn').dispatchEvent(new MouseEvent('click', { bubbles: true, shiftKey: e.shiftKey })); });
+  document.addEventListener('pointerdown', (e) => { if (help.classList.contains('on') && !help.contains(e.target) && !e.target.closest('#sb-q, [data-keys]')) help.classList.remove('on'); }, true);
+
+  // ?: help, and the plain file
+  item('sb-q', { t: 'How this works', sub: 'Comment, Ask Claude, read the replies', act: () => openHelp(false) });
+  item('sb-q', { t: 'Keyboard shortcuts', sub: 'Every key in one list', key: '?', act: () => openHelp(true) });
+  if (!(SB.hideVersions || []).length) { sep('sb-q'); item('sb-q', { t: 'Open the plain deck file', sub: 'The file itself, without Decks around it', act: () => window.open(location.pathname + '?raw=1', '_blank') }); }
+  sep('sb-q');
+  item('sb-q', { t: 'Send feedback', sub: 'Email Paul what works and what you’d want next', title: 'Email paul@strategyu.co', act: async () => {
+    const ok = await copyText('paul@strategyu.co'); window.open('mailto:paul@strategyu.co?subject=' + encodeURIComponent('Decks feedback'), '_blank');
+    say(ok ? '<b>Opening an email to paul@strategyu.co.</b> The address is copied too, in case your mail app doesn’t open.' : 'Email <b>paul@strategyu.co</b>.'); } });
+  item('sb-q', { t: 'Made by StrategyU ↗', sub: 'Where Paul teaches the method behind Decks',
+    act: () => window.open('https://strategyu.co/?utm_source=decks&utm_medium=app&utm_campaign=deck-menu', '_blank', 'noopener') });
 
   // ---------- getting help from the agent ----------
   const toast = h('div'); toast.id = 'sb-toast'; document.body.appendChild(toast);
@@ -169,7 +229,6 @@
     watched = !!(p && p.watching); const b = $('#sb-ask'); if (!b) return;
     const queued = watched && p.asked;
     b.querySelector('.sb-ask-l').textContent = queued ? 'Queued…' : watched ? 'Process now' : 'Ask Claude';
-    b.classList.toggle('red', watched);
     b.title = queued ? 'Claude starts as soon as it finishes what it’s doing (' + SEND + ')' : watched ? 'Claude is watching this deck in Claude Code. Click to start a round (' + SEND + ').' : 'Copy a prompt that asks Claude (or Codex) to work through your comments (' + SEND + ')';
   }
   $('#sb-ask').addEventListener('click', async () => {
@@ -232,12 +291,10 @@
   deck.after(under);
   film.querySelector('[data-hide]').addEventListener('click', () => toggleSide('left'));
   panel.querySelector('[data-hide]').addEventListener('click', () => toggleSide('right'));
-  $('#sb-left').addEventListener('click', () => toggleSide('left'));
-  $('#sb-right').addEventListener('click', () => toggleSide('right'));
   $('#sb-prev').addEventListener('click', () => step(-1));
   $('#sb-next').addEventListener('click', () => step(1));
   $('#sb-reveal').addEventListener('click', () => reveal());
-  under.addEventListener('click', (e) => { if (e.target.closest('[data-keys]')) { e.stopPropagation(); more.classList.remove('open'); help.classList.toggle('on'); } });
+  under.addEventListener('click', (e) => { if (e.target.closest('[data-keys]')) { e.stopPropagation(); closeMenus(); help.classList.toggle('on'); } });
 
   const thumbs = new IntersectionObserver((es) => es.forEach((e) => { if (!e.isIntersecting) return; const box = e.target; thumbs.unobserve(box); fillThumb(box); }), { root: $('#sb-film-list'), rootMargin: '300px' });
   function fillThumb(box) {
@@ -601,8 +658,7 @@
     else if (u === 'reveal') reveal();
     else if (u === 'prev') { step(-1); if (isTimed()) tenReady(); } else if (u === 'next') { step(1); if (isTimed()) tenReady(); } });
 
-  const hideBtn = () => $('#sb-hide');
-  function setHide(on) { ui.hide = on; saveUi(); document.body.classList.toggle('sb-titles-only', !!on); hideBtn().classList.toggle('on', !!on); document.querySelectorAll('.slide.sb-reveal').forEach((x) => x.classList.remove('sb-reveal')); requestAnimationFrame(masks); }
+  function setHide(on) { ui.hide = on; saveUi(); document.body.classList.toggle('sb-titles-only', !!on); setTog(vTitles, on); document.querySelectorAll('.slide.sb-reveal').forEach((x) => x.classList.remove('sb-reveal')); requestAnimationFrame(masks); }
   function reveal() { const w = cur && wrapOf(cur), sl = w && w.querySelector('.slide'); if (sl) sl.classList.toggle('sb-reveal'); masks(); }
   // Vertical flow and Titles only hide everything but the title. When the title sits right in the slide,
   // CSS does it. When a layout nests it (a column, a panel), a mask covers the slide with a hole cut around
@@ -656,13 +712,12 @@
     document.body.classList.toggle('sb-noleft', !!ui.noleft);
     document.body.classList.toggle('sb-noright', !!ui.noright);
     const noL = ui.view === 'sorter' || ui.view === 'checks', noR = noL;   // Focus and Scroll share both side bars
-    $('#sb-left').classList.toggle('on', !ui.noleft && !noL); $('#sb-right').classList.toggle('on', !ui.noright && !noR);
-    $('#sb-left').disabled = noL; $('#sb-right').disabled = noR;
-    $('#sb-left').title = noL ? 'No side bar in this view' : 'Show or hide the slides bar ( [ )';
-    $('#sb-right').title = noR ? 'Notes are in Focus and Scroll' : 'Show or hide notes ( ] )';
+    setTog(vLeft, !ui.noleft && !noL); setTog(vRight, !ui.noright && !noR);
+    vLeft.disabled = noL; vRight.disabled = noR;
+    vLeft.title = vRight.title = noL ? 'The side bars are in Focus and Scroll' : '';
     size();
   }
-  function toggleSide(which) { if ($(which === 'left' ? '#sb-left' : '#sb-right').disabled) return; if (which === 'left') ui.noleft = !ui.noleft; else ui.noright = !ui.noright; saveUi(); sideState(); }
+  function toggleSide(which) { if ((which === 'left' ? vLeft : vRight).disabled) return; if (which === 'left') ui.noleft = !ui.noleft; else ui.noright = !ui.noright; saveUi(); sideState(); }
 
   function size() {
     const test = ui.view === 'checks';
@@ -809,8 +864,8 @@
     if (isTimed() && tenState === 'asked' && (e.key === 'm' || e.key === 'M')) { tenVerdict(false); return; }
     if (isTimed() && tenState === 'asked' && (e.key === 'a' || e.key === 'A')) { tenStart(); return; }
     const k = e.key.toLowerCase();
-    if (e.key === '?') { help.classList.toggle('on'); return; }
-    if (e.key === 'Escape') { help.classList.remove('on'); more.classList.remove('open'); return; }
+    if (e.key === '?') { closeMenus(); help.classList.toggle('on'); return; }
+    if (e.key === 'Escape') { help.classList.remove('on'); closeMenus(); return; }
     const views = { f: 'focus', s: 'scroll', g: 'sorter', c: 'checks' }, tests = { 1: 'five', 2: 'ten', 3: 'horizontal', 4: 'vertical', 5: 'guides' };
     if (views[k]) { setView(views[k]); return; }
     if (tests[k]) { openCheck(tests[k]); return; }
@@ -873,7 +928,7 @@
 
   // ---------- agent-friendly handle (Claude can drive the page with this) ----------
   window.SlideBuilder = {
-    go, step, setView, say, current: () => cur, filter: (f) => { filter = f; refresh(); }, order: (ids) => saveOrder(ids), title, hidden: (id) => clientOnly.has(id),
+    go, step, setView, say, shareItem, current: () => cur, filter: (f) => { filter = f; refresh(); }, order: (ids) => saveOrder(ids), title, hidden: (id) => clientOnly.has(id),
     slides: () => wraps().map((w, k) => Object.assign({ n: k + 1, id: w.dataset.id, title: title(w.dataset.id) }, (({ text, st, changed, hold }) => ({ comment: text, reply: st, changed, draft: hold }))(info(w.dataset.id)))),
   };
 
@@ -882,7 +937,6 @@
   if (wantV && sideSelect && !(SB.hideVersions || []).includes(wantV) && [...sideSelect.options].some((o) => o.value === wantV) && sideSelect.value !== wantV) { sideSelect.value = wantV; sideSelect.dispatchEvent(new Event('change', { bubbles: true })); }
   const want = decodeURIComponent((location.hash.match(/[#&]s=([^&]+)/) || [])[1] || '');
   cur = want && wrapOf(want) ? want : null;
-  hideBtn().addEventListener('click', () => setHide(!ui.hide));
   setHide(!!ui.hide);
   watch();
   loadReview().then(() => { setView(['scroll', 'sorter', 'checks'].includes(ui.view) ? ui.view : 'focus'); requestAnimationFrame(() => document.body.classList.add('sb-ready')); });

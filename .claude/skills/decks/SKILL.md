@@ -86,7 +86,7 @@ Keep going until the user says to stop; then don't start it again. A click that 
 - A source line goes in the footer via `src:'Source: …'`, not a subtitle.
 - Colors, title font, and logo: a `<style id="deck-theme">` block in the deck file, and `LOGO` for the deck's logo in `img/`. Restyle by editing that block, not individual slides. Without `LOGO`, slides have no logo.
 - Big visual changes (a new layout, a redesign): show the user a mockup or two options first, then build.
-- When the user wants a file to send someone, that is the ⋯ menu's **Client copy**: the version on screen as slides only (no notes, comments, facilitator slides, other versions, or editing), pictures inside, with a Present button. **Editable copy** is the whole deck with notes and comments: never send that one to a client.
+- When the user wants a file to send someone, that is the Share menu's **Client copy**: the version on screen as slides only (no notes, comments, facilitator slides, other versions, or editing), pictures inside, with a Present button. **Editable copy** is the whole deck with notes and comments: never send that one to a client.
 - Decks come off the dashboard with `./sb hide <deck>` (back with `./sb show`). `./sb delete <deck> --yes` moves a deck this app made to the Trash and only unregisters a deck in a folder of the user's own. Only delete when the user asks.
 - Downloading images or logos needs the user's OK each time. Tell them the filename, source, size, and license, and put the credit in the footer.
 
