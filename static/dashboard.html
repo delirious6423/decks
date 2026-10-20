@@ -78,6 +78,15 @@
   .nd { width: 500px; max-width: 100%; background: #fff; border-radius: 12px; box-shadow: 0 18px 50px rgba(35,31,32,.25); padding: 22px 26px 24px; }
   .nd-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px; }
   .nd-step { font-size: 12px; color: var(--faint); }
+  /* where you are in New deck: the three steps, numbered; a step you've done is a link back */
+  .nd-steps { display: flex; flex-wrap: wrap; gap: 6px 16px; list-style: none; margin: 0 0 12px; padding: 0; font-size: 12.5px; color: var(--faint); }
+  .nd-steps li { display: flex; align-items: center; gap: 7px; }
+  .nd-steps i { display: inline-grid; place-items: center; width: 20px; height: 20px; box-sizing: border-box; border: 1.5px solid #CFC9C5; border-radius: 50%; font-style: normal; font-size: 11px; font-weight: 700; }
+  .nd-steps li.on { color: var(--ink); font-weight: 600; }
+  .nd-steps li.on i { background: var(--red); border-color: var(--red); color: #fff; }
+  .nd-steps li.done, .nd-steps li.seen { color: var(--mute); cursor: pointer; }
+  .nd-steps li.done:hover, .nd-steps li.seen:hover { color: var(--ink); }
+  .nd-steps li.done i { border-color: var(--mute); }
   .nd-head h3 { margin: 2px 0 0; font-size: 19px; }
   .nd-x { border: 0; background: none; font-size: 22px; line-height: 1; color: var(--faint); cursor: pointer; padding: 2px 4px; }
   .nd label { display: block; font-size: 13px; color: var(--mute); margin: 16px 0 6px; }
@@ -188,7 +197,7 @@
 <div class="nd-back" id="nd-back">
   <div class="nd" id="nd" data-step="1" role="dialog" aria-modal="true" aria-labelledby="nd-title">
     <div class="nd-form">
-      <div class="nd-head"><div><div class="nd-step" id="nd-step">Step 1 of 2</div><h3 id="nd-title">What are you making?</h3></div><button class="nd-x" id="nd-x" aria-label="Close">×</button></div>
+      <div class="nd-head"><div><ol class="nd-steps" id="nd-steps" aria-label="Steps"><li data-s="1"><i>1</i>What you’re making</li><li data-s="2"><i>2</i>Who it’s for</li><li data-s="3"><i>3</i>How it looks</li></ol><h3 id="nd-title">What are you making?</h3></div><button class="nd-x" id="nd-x" aria-label="Close">×</button></div>
       <div class="nd-p1">
         <label for="nd-name">Name</label>
         <input type="text" id="nd-name" placeholder="AI for finance teams" autocomplete="off">
@@ -196,7 +205,7 @@
         <label>What are you building?</label>
         <div class="nd-uses" id="nd-kinds"></div>
         <div id="nd-alongwrap"><label>Build alongside it</label><div class="nd-checks" id="nd-pieces"></div></div>
-        <div class="nd-foot"><button class="nd-link" id="nd-blank">Or start from a blank deck</button><button class="btn red" id="nd-next">Next</button></div>
+        <div class="nd-foot"><button class="nd-link" id="nd-blank">Or start from a blank deck</button><button class="btn red" id="nd-next">Next: who it’s for</button></div>
       </div>
       <div class="nd-p2">
         <label for="nd-aud">The audience</label>
@@ -215,7 +224,7 @@
           <label for="nd-notes">Notes or source material</label>
           <textarea id="nd-notes" placeholder="Paste notes, or a folder path"></textarea>
         </details>
-        <div class="nd-foot"><button class="btn" id="nd-backbtn">Back</button><button class="btn red" id="nd-next2">Next</button></div>
+        <div class="nd-foot"><button class="btn" id="nd-backbtn">Back</button><button class="btn red" id="nd-next2">Next: how it looks</button></div>
       </div>
       <div class="nd-p3">
         <label>Colors</label>
@@ -320,7 +329,10 @@ function preset() {   // defaults for the kind; anything picked by hand stays
   renderKinds();
 }
 function stepTo(n) {
-  $('nd').dataset.step = n; $('nd-step').textContent = `Step ${n} of 3`; $('nd-title').textContent = ['What are you making?', 'Who is it for?', 'How should it look?'][n - 1];
+  $('nd').dataset.step = n; nd.furthest = Math.max(nd.furthest || 1, n);
+  $('nd-steps').querySelectorAll('li').forEach((li) => { const k = +li.dataset.s; li.classList.toggle('on', k === n); li.classList.toggle('done', k < n); li.classList.toggle('seen', k > n && k <= nd.furthest);
+    li.querySelector('i').textContent = k < n ? '✓' : k; if (k === n) li.setAttribute('aria-current', 'step'); else li.removeAttribute('aria-current'); });
+  $('nd-title').textContent = ['What are you making?', 'Who is it for?', 'How should it look?'][n - 1];
   if (n === 3) renderLook();
   setTimeout(() => (n === 3 ? $('nd-sws').querySelector('.on') || $('nd-sws').firstElementChild : $(n === 1 ? 'nd-name' : 'nd-aud'))?.focus(), 30);
 }
@@ -346,7 +358,7 @@ function askPrompt() {   // for when Claude should set it up as well
 }
 async function copy(text) { try { await navigator.clipboard.writeText(text); return true; } catch (e) { return false; } }
 function openNew() {
-  $('nd').classList.remove('ok'); $('nd-err').textContent = ''; $('nd-back').classList.add('on'); stepTo(1);
+  $('nd').classList.remove('ok'); $('nd-err').textContent = ''; $('nd-back').classList.add('on'); nd.furthest = 1; stepTo(1);
   fetch('/api/templates').then((r) => r.json()).then((d) => {
     nd.tpls = d.templates || []; nd.themes = d.themes || []; preset(); renderLook();
   });
@@ -368,6 +380,7 @@ $('nd-next').addEventListener('click', next);
 $('nd-name').addEventListener('keydown', (e) => { if (e.key === 'Enter') next(); });
 $('nd-backbtn').addEventListener('click', () => stepTo(1));
 $('nd-next2').addEventListener('click', () => stepTo(3));
+$('nd-steps').addEventListener('click', (e) => { const li = e.target.closest('li.done, li.seen'); if (li) stepTo(+li.dataset.s); });   // to any step you've been to
 $('nd-back3').addEventListener('click', () => stepTo(2));
 $('nd-sws').addEventListener('click', (e) => { const b = e.target.closest('[data-style]'); if (!b) return; $('nd-style').value = b.dataset.style; nd.touched.add('style'); renderLook(); $('nd-sws').querySelector('.on').focus(); });
 $('nd-fonts').addEventListener('click', (e) => { const b = e.target.closest('[data-font]'); if (!b) return; $('nd-titles').value = b.dataset.font; nd.touched.add('titles'); renderLook(); });
