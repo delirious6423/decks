@@ -154,7 +154,8 @@
   .upd .t { flex: 1; }
   .upd a { color: var(--red); text-decoration: underline; text-underline-offset: 2px; }
   .upd code { font-size: 12.5px; background: #fff; border: 1px solid #F0D9A8; border-radius: 4px; padding: 1px 5px; }
-  .upd button { border: 0; background: none; font-size: 18px; line-height: 1; color: var(--faint); cursor: pointer; }
+  .upd .x { border: 0; background: none; font-size: 18px; line-height: 1; color: var(--faint); cursor: pointer; }
+  .upd .btn { flex: none; background: #fff; }
   .howto { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) auto; gap: 14px; align-items: start; background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; }
   .howto .st { display: flex; gap: 10px; font-size: 13.5px; color: var(--mute); line-height: 1.5; }
   .howto .st i { flex: none; width: 24px; height: 24px; border-radius: 50%; background: var(--red); color: #fff; font: 700 12.5px/24px 'DM Sans', sans-serif; text-align: center; font-style: normal; }
@@ -239,7 +240,7 @@
   </div>
 </div>
 <main>
-  <div class="upd" id="upd" role="status" hidden><span class="t"></span><button aria-label="Hide until the next version" title="Hide until the next version">×</button></div>
+  <div class="upd" id="upd" role="status" hidden><span class="t"></span><button class="btn" id="upd-copy" title="A prompt that asks Claude Code or Codex to update Decks and restart it">Copy update prompt</button><button class="x" id="upd-x" aria-label="Hide until the next version" title="Hide until the next version">×</button></div>
   <div class="howto" id="howto" hidden>
     <div class="st"><i>1</i><div><b>Start a deck.</b> Click New deck, answer a few questions, and paste the prompt it copies into Claude Code or Codex.</div></div>
     <div class="st"><i>2</i><div><b>Comment on slides.</b> Click any text on a slide to edit it, or leave a comment under the slide.</div></div>
@@ -410,7 +411,7 @@ function card(d) {
 }
 const row = (href, t, r, muted) => `<a class="row${muted ? ' muted' : ''}" href="${href}"><span class="t">${esc(t)}</span><span class="r">${esc(r)}</span></a>`;
 
-let hideClients = false, decksDir = '';
+let hideClients = false, decksDir = '', updPrompt = '';
 document.getElementById('clients').addEventListener('click', async () => {
   const r = await fetch('/api/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ hideClients: !hideClients }) });
   if (r.ok) load();
@@ -422,7 +423,7 @@ async function load() {
   hideClients = !!(data.settings && data.settings.hideClients); decksDir = data.decksDir || '';
   { const u = data.update, box = document.getElementById('upd'); let gone = ''; try { gone = localStorage.getItem('__decks_upd_hidden') || ''; } catch (e) {}
     box.hidden = !u || gone === u.version;   // a newer release on GitHub, until you hide it
-    if (u) box.querySelector('.t').innerHTML = `<b>Decks ${esc(u.version)} is out</b> (<a href="${esc(u.url)}" target="_blank" rel="noopener">what's new</a>). To update, run <code>git pull</code> in your Decks folder, then restart the server.`; }
+    if (u) { box.querySelector('.t').innerHTML = `<b>Decks ${esc(u.version)} is out</b> (<a href="${esc(u.url)}" target="_blank" rel="noopener">what's new</a>). Paste the update prompt into Claude Code or Codex, or run <code>git pull</code> and restart.`; updPrompt = u.prompt || ''; } }
   version = data.version || version;
   document.getElementById('hver').textContent = version;
   if (data.version) document.getElementById('ver').innerHTML = `Decks ${esc(data.version)} (<a href="https://github.com/paulmil11/decks/blob/main/CHANGELOG.md" target="_blank" rel="noopener">what's new</a>)`;
@@ -476,7 +477,9 @@ document.getElementById('del-x').addEventListener('click', closeDel);
 document.getElementById('del-back').addEventListener('click', (e) => { if (e.target.id === 'del-back') closeDel(); });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeDel(); document.querySelectorAll('.dmenu.open').forEach((x) => x.classList.remove('open')); } });
 
-document.querySelector('#upd button').addEventListener('click', () => { try { localStorage.setItem('__decks_upd_hidden', (document.querySelector('#upd b').textContent.match(/[\d.]+\d/) || [''])[0]); } catch (e) {} document.getElementById('upd').hidden = true; });
+document.getElementById('upd-copy').addEventListener('click', async () => { const b = document.getElementById('upd-copy'), ok = updPrompt && await copy(updPrompt);
+  b.textContent = ok ? 'Copied: paste it into Claude Code or Codex' : 'Couldn’t copy: run git pull, then restart'; setTimeout(() => { b.textContent = 'Copy update prompt'; }, 2600); });
+document.getElementById('upd-x').addEventListener('click', () => { try { localStorage.setItem('__decks_upd_hidden', (document.querySelector('#upd b').textContent.match(/[\d.]+\d/) || [''])[0]); } catch (e) {} document.getElementById('upd').hidden = true; });
 // Check for updates: the server asks GitHub now, instead of waiting for its next check
 document.getElementById('chk').addEventListener('click', async () => {
   const b = document.getElementById('chk'), out = document.getElementById('chk-say');
@@ -486,7 +489,7 @@ document.getElementById('chk').addEventListener('click', async () => {
   if (!d || !d.ok) { out.textContent = 'Couldn’t reach GitHub. Check your connection, then try again.'; return; }
   if (!d.update) { out.textContent = `You’re up to date: ${d.version} is the newest.`; return; }
   try { localStorage.removeItem('__decks_upd_hidden'); } catch (e) {}   // show the note at the top again, even if you hid it
-  out.innerHTML = `<b>Decks ${esc(d.update.version)} is out</b> (<a href="${esc(d.update.url)}" target="_blank" rel="noopener">what's new</a>). To update, run <code>git pull</code> in your Decks folder, then restart the server.`;
+  out.innerHTML = `<b>Decks ${esc(d.update.version)} is out</b> (<a href="${esc(d.update.url)}" target="_blank" rel="noopener">what's new</a>). The note at the top has a prompt that updates it.`;
   load();
 });
 // feedback goes to Paul by email; in-app browsers don't always open a mail app, so the address is copied too

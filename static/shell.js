@@ -212,7 +212,7 @@
     if (d && d.ok) updateNote(d.update);
     say(!d || !d.ok ? 'Couldn’t reach GitHub. Check your connection, then try again.'
       : !d.update ? `<b>You’re up to date.</b> Decks ${esc(d.version)} is the newest.`
-      : `<b>Decks ${esc(d.update.version)} is out.</b> To update, run <code>git pull</code> in your Decks folder, then restart the server. What’s new is linked on the dashboard.`); } });
+      : `<b>Decks ${esc(d.update.version)} is out.</b> Open this menu again and click its first row to copy a prompt that updates it.`); } });
   item('sb-q', { t: 'Made by StrategyU ↗', sub: 'Where Paul teaches the method behind Decks',
     act: () => window.open('https://strategyu.co/?utm_source=decks&utm_medium=app&utm_campaign=deck-menu', '_blank', 'noopener') });
   // a newer Decks (the server's check, in the pulse): a row at the top of ?, and a dot on ? until you open it
@@ -222,8 +222,10 @@
     if (!u) { if (updBox) { updBox.remove(); updBox = null; } qb.classList.remove('sb-newdot'); return; }
     if (updBox && updBox.dataset.v === u.version) return;
     if (updBox) updBox.remove();
-    const row = item('sb-q', { t: `Decks ${u.version} is out`, sub: 'To update, run git pull in your Decks folder, then restart the server. Click for what’s new.',
-      act: () => window.open(u.url, '_blank', 'noopener') });
+    const row = item('sb-q', { t: `Decks ${u.version} is out`, sub: 'Click to copy a prompt that updates it, for Claude Code or Codex', act: async () => {
+      const ok = u.prompt && await copyText(u.prompt);
+      say(ok ? `<b>Update prompt copied.</b> Paste it into Claude Code or Codex, and it updates Decks to ${esc(u.version)} and restarts it. What’s new is linked on the dashboard.`
+        : 'Couldn’t copy. To update, run <code>git pull</code> in your Decks folder, then restart the server.'); } });
     updBox = h('div', 'sb-updbox'); updBox.dataset.v = u.version; updBox.append(row, h('div', 'sb-msep'));
     $('#sb-q .sb-pop').prepend(updBox);
     qb.classList.toggle('sb-newdot', updSeen !== u.version);

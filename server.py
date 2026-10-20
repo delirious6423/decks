@@ -805,7 +805,16 @@ def update_loop():
 
 def update_info():
     v = LATEST.get('version')
-    return {'version': v, 'url': LATEST['url']} if v and vtuple(v) > vtuple(VERSION) else None
+    return {'version': v, 'url': LATEST['url'], 'prompt': update_prompt(v, LATEST['url'])} if v and vtuple(v) > vtuple(VERSION) else None
+
+
+def update_prompt(v, url):
+    """What Copy update prompt puts on the clipboard, for Claude Code or Codex to do the update."""
+    app = sbconfig.tilde(APP)
+    return (f'Update Decks to {v}. In {app}, run `git pull`. If it stops because of local changes, show me what changed and stop there. '
+            f'Then restart the Decks server. If it runs at login (~/Library/LaunchAgents/local.decks.plist), run `launchctl kickstart -k gui/$(id -u)/local.decks`. '
+            f'Otherwise, stop the running `python3 server.py` and start it again from {app}, in the background. '
+            f'Then open http://localhost:{sbconfig.PORT}/ and check that the footer says Decks {v}. What changed: {url}')
 
 
 def main():
