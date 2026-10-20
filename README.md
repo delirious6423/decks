@@ -229,6 +229,23 @@ slide.
 
 ![Checks › Horizontal flow: the deck's titles read in order, as paragraphs](docs/checks.png)
 
+### Proposed slides
+
+Sometimes the agent has another take on one of your slides: a redraw, a different layout, a
+tighter version. It doesn't replace yours. It adds the new one right after it, as a proposal.
+
+- Under the proposal, **Accept** (A) puts it in your original's place, and **Keep original**
+  (K) takes it out. Both apply to the version on screen at once, and U undoes.
+- Above it, **Original | Proposed** (Space) flips between the two in the same spot, and the
+  notes panel shows the original next to the agent's note on what's different.
+- The **Proposed** filter on the left goes through the ones you haven't decided yet.
+- To ask for a change instead, write it in the proposal's comment box.
+
+At the next round the agent writes your decisions into the deck file with
+`sb proposals <deck> --bake`: an accepted proposal takes the original's place in every version
+and the original moves to the extras; a rejected one is deleted (git keeps it). It checks the
+deck afterward and puts the file back if anything is off.
+
 ## Working in a deck
 
 Four views, each with the slides on the left and the notes on the right:
@@ -244,7 +261,9 @@ The top bar keeps the rest in a few places:
 - **The deck's name** shows the version on screen. Click it to switch versions (say, the full
   deck, a short cut, and a facilitator pack), which share slides.
 - **View**: Titles only (H) hides everything but the titles, in any view. Switches for the
-  slide list ([), the notes panel (]), and facilitator notes under each slide in Scroll.
+  slide list ([), the notes panel (]), and facilitator notes under each slide in Scroll. And
+  **What changed, round by round**: each round's summary, the proposals you accepted or kept
+  in it, its PDF and its commit, newest first.
 - **Share**: Download PDF (the slides as they look now, one landscape 16:9 page each, made by the
   server so the print window's paper settings can't turn it sideways), Print, and the three copies below.
 - **Present**: full screen from the slide you're on (⌘↵), or presenter view.
@@ -393,6 +412,7 @@ Run it from this folder (or by its full path). It talks to the running server.
 | `sb decks` | Every deck, with open comments and questions |
 | `sb comments <deck> [--all]` | Comments to act on, numbered like the deck (`--all` adds drafts) |
 | `sb edits <deck> [--version v]` | Text the reviewer edited on the slides, and slide moves |
+| `sb proposals <deck> [--bake]` | Proposed slides and the decision on each; `--bake` writes the decided ones into the deck file and checks it |
 | `sb working <deck> <slide>` | Show "Claude working" on a slide |
 | `sb reply <deck> <slide> done\|question\|skipped "<text>"` | Reply on a slide |
 | `sb status <deck> "<text>" [--done N --total M]` | The live line in the top bar; `sb idle <deck>` clears it |
@@ -439,7 +459,8 @@ systemctl --user enable --now decks
 | `newdeck.py` | Themes, templates, and new decks (used by the server and `sb new`) |
 | `templates/` | `_engine/engine.html` (the deck engine), `_engine/basics.js`, and one folder per template |
 | `static/` | The browser shell: `boot.js`, `shell.js`, `shell.css`, `guides.js`, `addslide.js`, `pictures.js`, `clientcopy.js`, and `dashboard.html` |
-| `tools/browser.mjs` | Headless Chrome jobs behind `sb`: titles, edits, shots, audit, PDF, and thumbnails |
+| `tools/browser.mjs` | Headless Chrome jobs behind `sb`: titles, edits, proposals, shots, audit, PDF, and thumbnails |
+| `tools/proposals.py` | `sb proposals --bake`: writes accept / keep decisions into a deck file's JavaScript, touching code only, never a slide's words |
 | `tools/pptx2native.py` | Converts PowerPoint slides into editable native slides (how the consulting starter was made) |
 
 The server accepts changes only from its own pages (and from `sb` and the headless tools),
@@ -454,8 +475,8 @@ deck, it still shows those saved edits.)
 Saved next to each deck, in `.slidebuilder/`:
 
 - `state.json`: the reviewer's edits, comments, and slide order, mirrored from the page.
-- `review.json`: the agent's replies, rounds, history, and "changed" badges, written
-  through `sb`.
+- `review.json`: the agent's replies, rounds, history, "changed" badges, and your decisions
+  on proposed slides, written through `sb` and the page.
 
 **Hide client work** (dashboard) is for recording or screen sharing. Mark a deck
 `"client": true` in `decks.json`, or list client versions in `"clientVersions"`. With
@@ -467,8 +488,8 @@ API (what `sb` uses):
 - `GET /api/decks/<slug>/comments`: open comments, with the agent's reply if there is one.
 - `GET|PUT /api/decks/<slug>/state`: the deck's saved browser state.
 - `GET /api/decks/<slug>/review`, `POST /api/decks/<slug>/review`: replies, live status,
-  and rounds. The agent posts `{op: 'reply' | 'claude' | 'round'}`; the page posts
-  `{op: 'comment-state' | 'resolve' | 'reopen' | 'seen'}`.
+  and rounds. The agent posts `{op: 'reply' | 'claude' | 'round' | 'baked' | 'committed'}`; the page posts
+  `{op: 'comment-state' | 'resolve' | 'reopen' | 'seen' | 'decide'}`.
 - `GET /api/decks/<slug>/pulse`: modified times, polled by the page for live updates.
 - `GET /api/templates`, `POST /api/new-deck`: templates and new decks.
 - `POST /api/decks/<slug>/manage`: `{op: 'hide' | 'show' | 'delete'}`.

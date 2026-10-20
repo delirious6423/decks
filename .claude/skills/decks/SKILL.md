@@ -25,6 +25,8 @@ The user reviews a deck in the browser. They type a comment under a slide (or ed
   - Checks has five checks, keys 1 to 5: the 5-second test (first impression), the 10-second test (legibility; a miss leaves a comment on the slide for the next round), horizontal flow (the titles alone, editable in place), vertical flow (the title first, the body hidden until revealed), and Guides.
   - Comments can come from Checks: "Five-second test: …" and "Ten-second test: …" after a missed timed test, and "Guides: …" from Ask Claude to fix in Checks › Guides, naming what the slide breaks. Fix the slide so it passes, like any comment.
   - H hides everything but the titles. ? lists every shortcut.
+  - **Proposed slides** (see Proposing a slide): a slide you proposed shows Accept and Keep original under it, and Original | Proposed above it (Space flips; the right bar shows the original too). The Proposed filter goes through the undecided ones; A accepts, K keeps the original, U undoes. A decision changes the version on screen at once (Accept takes the original out, Keep takes the proposal out) and is saved in `review.json`. You write it into the deck file at the next round with `sb proposals --bake`.
+  - **View › What changed, round by round**: each round's summary, the proposals accepted or kept in it, and its commit, with decisions still waiting for a round at the top.
 - **Add a slide** (N, "+ Slide", or the + between slides) suggests layouts and can add one the deck carries. Its Copy prompt gives you the deck file, the position, and what the slide should say. When a prompt says "I just added a … slide (LIBRARY['id'])", fill that slide in; when it says "add a new slide …", build it in the deck file at that position.
 - When the reviewer edits a title in Checks, that is an inline edit: bake it like any other.
 - **Hide client work** (a dashboard switch, `settings.json` in the decks folder) is for recording or screen sharing. With it on, the server leaves out decks marked `client` and versions listed in `clientVersions`. Never show client names on screen when it is on.
@@ -32,7 +34,7 @@ The user reviews a deck in the browser. They type a comment under a slide (or ed
 ## A round ("process changes")
 
 1. `cd` to the app folder.
-2. `./sb comments <deck>` lists the comments to act on, numbered like the deck. Drafts are skipped. `./sb edits <deck>` shows the reviewer's inline text edits and slide moves. Both read from disk, so you don't need their browser tab.
+2. `./sb comments <deck>` lists the comments to act on, numbered like the deck. Drafts are skipped. `./sb edits <deck>` shows the reviewer's inline text edits and slide moves. Both read from disk, so you don't need their browser tab. When the deck has proposed slides, `sb comments` starts with how many are decided and how many still wait; `./sb proposals <deck>` lists each one.
 3. `./sb status <deck> "Reading your 9 comments" --done 0 --total 9`. The reviewer sees this live in the top bar. Update it as you go.
 4. For each comment:
    - `./sb working <deck> <slide>`.
@@ -40,18 +42,18 @@ The user reviews a deck in the browser. They type a comment under a slide (or ed
    - `./sb reply <deck> <slide> done "one plain sentence on what changed"`.
    - If you need the reviewer's call, use `question` instead of `done`. For something you deliberately left alone, use `skipped` and say why.
    - A half-typed comment gets a `question` reply, not a guess.
-5. Bake the reviewer's inline edits into the deck file (their edit wins). Git has the old version.
+5. Bake the decisions on proposed slides: `./sb proposals <deck> --bake` (see Proposing a slide). Then bake the reviewer's inline edits into the deck file (their edit wins). Git has the old version. `sb edits` marks the slides that left a version because of a proposal decision: the bake handles those, so don't move them by hand.
 6. Check every slide you touched:
    - `./sb shot <deck> <ids…>`, then look at each image.
    - `./sb audit <deck>` finds overflow, overlapping labels, and anything the Guides flag.
    - `./sb comments <deck>` should show nothing new and unhandled.
 7. Finish:
    - `./sb export <deck>` writes the next numbered PDF from the deck file and moves older ones to `_archive/`. If the browser still holds edits that aren't baked in, it says so: bake them first. `--with-edits` exports exactly what the browser shows instead.
-   - `./sb round <deck> --summary "…" --changed id="what changed" … --export vN`.
+   - `./sb round <deck> --summary "…" --changed id="what changed" … --export vN`. It records the proposal decisions you baked since the last round; `sb commit` adds the commit to the same record.
    - `./sb commit <deck> "Round N: …"`.
    - `./sb idle <deck>`.
    - Tell the user where the PDF is.
-8. The page reloads itself once the reviewer stops typing. Don't reload or clear their tab. In chat: a few lines, plus anything that needs their decision.
+8. The page reloads itself once the reviewer stops typing. Don't reload or clear their tab. In chat: a few lines, plus anything that needs their decision, including how many proposed slides still wait for them.
 
 New comments can arrive while you work. Run `./sb comments` again before finishing.
 
@@ -82,8 +84,24 @@ Keep going until the user says to stop; then don't start it again. A click that 
   - figures: `FIGS` functions returning inline SVG
   - versions: `PITCHES` (each a name and a list of slide ids)
 - The default version is LIBRARY order within each part. To reorder, move LIBRARY entries. A saved order that equals an old default follows the file.
-- Retire a slide with `alt:true` (it goes to the Sorter's shelf), and put its replacement just before it. Don't delete the user's slides. An alternative version of a slide gets `prop:true, replaces:'…'` (tagged "Proposed").
+- Retire a slide with `alt:true` (it goes to the Sorter's shelf), and put its replacement just before it. Don't delete the user's slides. When you'd change a slide nobody asked you to change, or offer another take on one they did, propose it instead (below).
 - A source line goes in the footer via `src:'Source: …'`, not a subtitle.
+
+### Proposing a slide
+
+A proposal is your alternative to one of the user's slides (a redraw, another layout, a tighter version), shown next to it for them to accept or not.
+- Write it as its own LIBRARY entry right after the original, in the same part (`cat`): `'<id>-2': { cat, layout, …, prop: true, replaces: '<original id>', title, notes }`. Write it as a plain `{ … }` object (not through a helper), so the bake can edit it. Leave the original exactly as it is.
+- Start its notes with what's different, so the reviewer can judge it from the right bar: "Proposed redraw, same idea and words: …".
+- One proposal per original. To offer a second idea, wait for the call on the first, or ask in a comment reply.
+- An original that is an extra (`alt:true`) can have a proposal too; give the proposal `alt:true` as well, and it shows in the version that carries the extras.
+- The reviewer decides in the deck (Accept, Keep original, or a comment on the proposal). A comment on a proposal asks for a change to it: change the proposal in place, keep `prop` and `replaces`, and reply as usual. Never accept or reject one yourself.
+
+Decisions come back through `./sb proposals <deck>`: each decided proposal with how it was decided (Accept or Keep original clicked, or one of the two taken out of a version by hand), then the undecided ones. `./sb proposals <deck> --bake` writes the decided ones into the deck file:
+- **Accept:** the original gets `alt:true` (it moves to the shelf), the proposal loses `prop` and `replaces`, and every version that lists slides by hand (PITCHES blocks) lists the proposal in the original's place. Versions built from the parts follow on their own.
+- **Keep original:** the proposal's LIBRARY entry is deleted (git keeps it) and leaves every hand-made list. If it printed that a figure in FIGS drew only that slide, delete the figure too.
+- It then loads the deck to check every decision landed in every version and nothing broke, and puts the file back if not. A line that says NOT BAKED, or a put-back, means do that one by hand with the rules above, then run `./sb proposals <deck> --bake` again: it sees the ones you did by hand and records them for the round.
+- It refuses to run until the server knows about proposals (after an update, restart it).
+- A kept proposal that still has a comment on it: reply `skipped`, saying the original was kept.
 - When a comment gives raw data for a chart or a 2x2, rebuild the slide from the numbers rather than by eye, and say the range and source in the source line. The consulting template's 2x2 is a converted slide: its shapes live in the deck's `ct-slides.js`, under the slide's key (`sp6`). The plot area runs x 105 to 661 and y 131 to 477 on the 1000-wide slide. The quadrant lines sit at x 383 and y 304, so put the bar each axis must clear there and scale each half out to the end of the range. Each dot is a 20 px box placed so its center lands on the option's two scores (higher is right and up), and its label box sits at the dot's x + 23 and y − 2. Dots in the recommended quadrant take the accent color and the rest are gray. If a label would run past the plot's right edge, put it on the dot's left instead: its x is the dot's x − 3 − the label's width, with `align: 'r'`. Add or drop dot-and-label pairs to match the options, and update the count in the callout.
 - Colors, title font, and logo: a `<style id="deck-theme">` block in the deck file, and `LOGO` for the deck's logo in `img/`. Restyle by editing that block, not individual slides. Without `LOGO`, slides have no logo.
 - Big visual changes (a new layout, a redesign): show the user a mockup or two options first, then build.

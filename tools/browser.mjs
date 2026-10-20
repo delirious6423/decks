@@ -3,6 +3,7 @@
 //
 //   node browser.mjs titles <slug> [--version v]
 //   node browser.mjs edits  <slug> [--version v]   (the reviewer's inline edits and order, read-only)
+//   node browser.mjs proposals <slug> [ids…]      (proposed slides, and what each version shows of each pair, read-only)
 //   node browser.mjs deckinfo <slug> [--version v] (versions, slide ids, storage key, fingerprints: what sb import checks against)
 //   node browser.mjs shot   <slug> <outdir> [--version v] <slide-id> ...
 //   node browser.mjs audit  <slug> [--version v]
@@ -78,6 +79,37 @@ async function main() {
     console.log(JSON.stringify(await order(page)));
     await browser.close(); return;
   }
+  if (cmd === 'proposals') {   // proposed slides (prop:true, replaces:'id'), and which of each pair every version shows with the saved state
+    // extra ids after the slug: report their flags too (sb proposals --bake checks the file with them)
+    const { browser, page, errors } = await open(slug, 1600, true);
+    const res = await page.evaluate((extra) => {
+      const L = LIBRARY, out = { version: String(current), versions: {}, blocks: {}, pairs: [], shown: {}, saved: [], flags: {} };   // eslint-disable-line no-undef
+      const plain = (s) => String(s || '').replace(/<[^>]+>/g, '').replace(/\*\*/g, '');
+      const t = (id) => { try { return plain(titleOf(id)); } catch (e) { return plain((L[id] || {}).title || (L[id] || {}).q || id); } };   // eslint-disable-line no-undef
+      Object.keys(PITCHES).forEach((k) => { out.versions[k] = String(PITCHES[k].name || k); out.blocks[k] = PITCHES[k].blocks.slice(); });   // eslint-disable-line no-undef
+      // versions that carry the extras too ("Everything"): an accepted proposal's original stays in them
+      out.extras = Object.fromEntries(Object.entries(out.blocks).map(([k, b]) => [k, b.some((id) => L[id] && L[id].alt && !L[id].lib && !L[id].prop)]));
+      out.pairs = Object.keys(L).filter((id) => L[id].prop && L[id].replaces).map((id) => ({ p: id, o: L[id].replaces, title: t(id), otitle: L[L[id].replaces] ? t(L[id].replaces) : '',
+        missing: !L[L[id].replaces], palt: !!L[id].alt, oalt: !!(L[L[id].replaces] || {}).alt, notes: plain(L[id].notes).slice(0, 300) }));
+      const flag = (id) => ({ exists: !!L[id], prop: !!(L[id] || {}).prop, alt: !!(L[id] || {}).alt, replaces: (L[id] || {}).replaces || null });
+      [...out.pairs.flatMap((x) => [x.p, x.o]), ...extra].forEach((id) => { out.flags[id] = flag(id); });
+      const sel = document.querySelector('.sidebar select'), first = String(current);   // eslint-disable-line no-undef
+      const ids = () => [...document.getElementById('deck').children].filter((n) => n.dataset && n.dataset.id).map((n) => n.dataset.id);
+      const has = (v) => { try { const d = savedFor(v); return !!(d && Array.isArray(d.__order)); } catch (e) { return false; } };   // eslint-disable-line no-undef
+      Object.keys(PITCHES).forEach((v) => {   // eslint-disable-line no-undef
+        if (has(v)) out.saved.push(v);
+        if (v !== String(current) && sel && [...sel.options].some((o) => o.value === v)) { sel.value = v; sel.dispatchEvent(new Event('change', { bubbles: true })); }   // eslint-disable-line no-undef
+        if (String(current) !== v) return;   // eslint-disable-line no-undef
+        const on = new Set(ids()); out.shown[v] = {};
+        out.pairs.forEach((x) => { out.shown[v][x.p] = [on.has(x.o), on.has(x.p)]; });
+      });
+      if (sel && first !== String(current)) { sel.value = first; sel.dispatchEvent(new Event('change', { bubbles: true })); }   // eslint-disable-line no-undef
+      return out;
+    }, args);
+    res.errors = errors;
+    console.log(JSON.stringify(res));
+    await browser.close(); return;
+  }
   if (cmd === 'deckinfo') {   // what sb import checks a returned file against: versions, slide ids, storage key, each slide's text fingerprint
     // --version v: fingerprints as that version builds its slides (a review copy says which); a version the deck lacks is reported, not fatal
     const want = version; version = null;
@@ -115,7 +147,15 @@ async function main() {
       let defaults = []; try { defaults = PITCHES[current].blocks; } catch (e) {}           // eslint-disable-line no-undef
       const order = wraps.map((w) => w.dataset.id);
       let version = ''; try { version = current; } catch (e) {}                              // eslint-disable-line no-undef
-      return { version, edits, removed: defaults.filter((id) => !order.includes(id)), added: order.filter((id) => !defaults.includes(id)),
+      const removed = defaults.filter((id) => !order.includes(id));
+      // a slide taken out because a proposal was decided: sb proposals --bake writes that, not a hand edit
+      const L = (() => { try { return LIBRARY; } catch (e) { return {}; } })(), proposals = {};   // eslint-disable-line no-undef
+      removed.forEach((id) => {
+        const b = L[id] || {}, by = Object.keys(L).find((x) => L[x].prop && L[x].replaces === id && order.includes(x));
+        if (b.prop && b.replaces && order.includes(b.replaces)) proposals[id] = `kept the original ${b.replaces}: bake with sb proposals --bake`;
+        else if (by) proposals[id] = `accepted the proposal ${by}: bake with sb proposals --bake`;
+      });
+      return { version, edits, removed, added: order.filter((id) => !defaults.includes(id)), proposals,
         reordered: JSON.stringify(order.filter((id) => defaults.includes(id))) !== JSON.stringify(defaults.filter((id) => order.includes(id))) };
     });
     console.log(JSON.stringify(res, null, 1));
@@ -189,7 +229,7 @@ async function main() {
     if (el) await el.screenshot({ path: out });
     console.log(out); await browser.close(); return;
   }
-  console.log('usage: node browser.mjs titles|edits|shot|audit|export|thumb <slug> ...  |  node browser.mjs chrome');
+  console.log('usage: node browser.mjs titles|edits|proposals|shot|audit|export|thumb <slug> ...  |  node browser.mjs chrome');
   process.exitCode = 2;
 }
 main().catch((e) => { console.error(e.message); process.exitCode = 1; });

@@ -4,6 +4,11 @@
   sb decks                                  every deck, with open comments
   sb comments <deck> [--all]                comments to act on (numbered like the deck); --all adds drafts
   sb edits <deck> [--version v]             the reviewer's inline text edits and slide moves (read-only)
+  sb proposals <deck> [--bake]              proposed slides (prop:true) and the reviewer's decision on each: accept,
+                                            or keep the original. --bake writes the decided ones into the deck file
+                                            (accept: the original becomes an extra and the proposal takes its
+                                            place in every version; keep: the proposal is deleted), checks the
+                                            result, and puts the file back if anything is off
   sb import <deck> <file.html> [--keep-mine] [--dry-run]
                                             a reviewer sent the deck file back (a Review copy, or an Editable copy):
                                             bring its comments and edits in,
@@ -436,6 +441,138 @@ def import_copy(slug, path, keep_mine=False, dry=False):
     print(f"The state before the import: {record.relative_to(deck_dir)}\nNext: process changes as usual (./sb comments {slug}, ./sb edits {slug}).")
 
 
+# ---------- sb proposals: the reviewer's accept / keep decisions on proposed slides ----------
+
+def proposal_state(slug):
+    """Every proposed slide with the reviewer's decision on it: the one they clicked in the deck (review.json), or,
+    when there is none, what they did by hand in a version (took the original or the proposal out of it)."""
+    info = json.loads(node('proposals', slug))
+    said = call('GET', f'/api/decks/{slug}/review').get('proposals') or {}
+    rows = []
+    for x in info['pairs']:
+        d = said.get(x['p'])
+        if d and not d.get('baked'):
+            x.update(decision=d['decision'], how=f"you clicked {'Accept' if d['decision'] == 'accept' else 'Keep original'}"
+                     + (f" in {d['version']}" if d.get('version') else ''), at=d.get('at'))
+        else:   # a version with saved state that should show both, and shows only one
+            seen = {}
+            for v in info['saved']:
+                blocks, shown = info['blocks'].get(v, []), info['shown'].get(v, {}).get(x['p'])
+                if not shown or x['p'] not in blocks or x['o'] not in blocks:
+                    continue
+                o_on, p_on = shown
+                if p_on and not o_on:
+                    seen.setdefault('accept', []).append(v)
+                elif o_on and not p_on:
+                    seen.setdefault('keep', []).append(v)
+            if len(seen) == 1:
+                (dec, vs), = seen.items()
+                x.update(decision=dec, how=f"you took the {'original' if dec == 'accept' else 'proposal'} out of {', '.join(vs)}")
+            elif len(seen) > 1:
+                x.update(decision=None, how='mixed: ' + '; '.join(f"{'accepted' if k == 'accept' else 'kept the original'} in {', '.join(v)}" for k, v in seen.items()))
+            else:
+                x.update(decision=None, how='')
+        rows.append(x)
+    # decisions whose proposal is no longer a proposal in the file: baked by hand, or the file changed under them
+    info['loose'] = {k: v for k, v in said.items() if not v.get('baked') and k not in {x['p'] for x in info['pairs']}}
+    return info, rows
+
+
+def proposals_cmd(slug, bake=False):
+    sys.path.insert(0, str(TOOLS))
+    import proposals as P
+    info, rows = proposal_state(slug)
+    if bake and info['loose']:   # done by hand: record the ones the file shows, so the next round lists them
+        ids = [i for k, v in info['loose'].items() for i in (k, v.get('replaces', ''))]
+        f = json.loads(node('proposals', slug, *[i for i in ids if i]))['flags']
+        landed = {k: v for k, v in info['loose'].items()
+                  if (v['decision'] == 'accept' and f[k]['exists'] and not f[k]['prop'] and (not v.get('replaces') or not f[v['replaces']]['exists'] or f[v['replaces']]['alt']))
+                  or (v['decision'] == 'keep' and not f[k]['exists'])}
+        if landed:
+            call('POST', f'/api/decks/{slug}/review', {'op': 'baked', 'decisions': {k: dict(v, how='baked by hand') for k, v in landed.items()}})
+            print('Recorded, done by hand: ' + ', '.join(landed))
+        for k in set(info['loose']) - set(landed):
+            print(f"{k}: the decision was {info['loose'][k]['decision']}, but the deck file doesn't show it and {k} isn't a proposal anymore. Check it.")
+    if not rows:
+        print('No proposed slides in this deck.')
+        return
+    decided = [r for r in rows if r.get('decision')]
+    pending = [r for r in rows if not r.get('decision')]
+    word = {'accept': 'ACCEPT', 'keep': 'KEEP ORIGINAL'}
+    if not bake:
+        for r in decided:
+            print(f"{word[r['decision']]:<14}{r['p']}  (would replace {r['o']}): {r['title']}\n              {r['how']}")
+        for r in pending:
+            print(f"{'UNDECIDED':<14}{r['p']}  (would replace {r['o']}): {r['title']}" + (f"\n              {r['how']}" if r['how'] else ''))
+        print(f"\n{len(decided)} decided, {len(pending)} still to decide."
+              + (f" Bake the decided ones into the deck file: ./sb proposals {slug} --bake" if decided else ''))
+        return
+    if not decided:
+        if not info['loose']:
+            print('No decisions to bake.')
+        return
+    # the server records what was baked; one that predates proposals can't, so stop before the file changes
+    req = urllib.request.Request(BASE + f'/api/decks/{slug}/review', method='POST', headers={'Content-Type': 'application/json'},
+                                 data=json.dumps({'op': 'baked', 'decisions': {}}).encode())
+    try:
+        urllib.request.urlopen(req, timeout=30).read()
+    except urllib.error.HTTPError:
+        sys.exit(f'The Decks server is older than sb proposals. Restart it first: stop it and run python3 {APP / "server.py"} (or launchctl kickstart -k gui/$(id -u)/local.decks if it runs at login).')
+    d, path = folder(slug)
+    deck_file = path / d['entry']
+    src = deck_file.read_text(encoding='utf-8')
+    want = {r['p']: {'decision': r['decision'], 'replaces': r['o']} for r in decided}
+    out, notes, problems = P.bake(src, want)
+    done = [r for r in decided if r['p'] in notes]
+    if done:
+        deck_file.write_text(out, encoding='utf-8')
+        # check the file as the deck builds it: each decision shows in every version, and nothing broke
+        after = json.loads(node('proposals', slug, *[i for r in done for i in (r['p'], r['o'])]))
+        wrong = []
+        if after.get('errors'):
+            wrong.append('the deck has errors now: ' + '; '.join(after['errors'][:3]))
+        f = after['flags']
+        for r in done:
+            p, o = r['p'], r['o']
+            if r['decision'] == 'accept':
+                if not f[p]['exists'] or f[p]['prop'] or f[p]['replaces']:
+                    wrong.append(f'{p} is still marked proposed')
+                if f[o]['exists'] and not f[o]['alt']:
+                    wrong.append(f'{o} is not an extra')
+                for v, blocks in info['blocks'].items():
+                    if o in blocks and v in after['blocks'] and (p not in after['blocks'][v] or (o in after['blocks'][v] and not after['extras'].get(v))):
+                        wrong.append(f'version {v} should show {p} in place of {o}')
+            else:
+                if f[p]['exists']:
+                    wrong.append(f'{p} is still in LIBRARY')
+                for v, blocks in info['blocks'].items():
+                    if o in blocks and v in after['blocks'] and o not in after['blocks'][v]:
+                        wrong.append(f'version {v} lost {o}')
+        if wrong:
+            deck_file.write_text(src, encoding='utf-8')
+            sys.exit('Put the deck file back as it was: the bake didn\'t check out.\n  ' + '\n  '.join(wrong)
+                     + '\nMake these changes by hand instead (see the decks skill), or say so in the chat.')
+        said = call('GET', f'/api/decks/{slug}/review').get('proposals') or {}
+        call('POST', f'/api/decks/{slug}/review', {'op': 'baked', 'decisions': {r['p']: dict(said.get(r['p']) or {}, decision=r['decision'], replaces=r['o'],
+                                                                                                    title=(said.get(r['p']) or {}).get('title') or r['title'],
+                                                                                                    how=r['how']) for r in done}})
+    for r in done:
+        print(f"{word[r['decision']]:<14}{r['p']}  (in place of {r['o']}): {r['title']}" if r['decision'] == 'accept'
+              else f"{word[r['decision']]:<14}{r['o']}: {r['otitle']}  ({r['p']} deleted)")
+        for n in notes[r['p']]:
+            print(f'              {n}')
+    for p, why in problems.items():
+        print(f'NOT BAKED     {p}: {why}. Make this one by hand.')
+    if done:
+        print(f"\nBaked {len(done)} decision{'s' * (len(done) != 1)} into {d['entry']}. They go into the next ./sb round's record.")
+        kept = [r['p'] for r in done if r['decision'] == 'keep']
+        open_on = {c['slide'] for c in call('GET', f'/api/decks/{slug}/comments')['comments']}
+        if open_on & set(kept):
+            print('Comments on proposals that are gone now (reply to them): ' + ', '.join(sorted(open_on & set(kept))))
+    if problems:
+        sys.exit(1)
+
+
 def watch(slug=None):
     """Wait for a Process now click in the deck (or, with no deck, in any deck), then exit saying which.
     Run it in the background; after the round, start it again."""
@@ -509,7 +646,7 @@ def main(argv):
         print(f"{d['slug']}  {BASE}{d['path']}\n{d['folder']}\n\n{d['prompt']}")
         return
 
-    known = ('url', 'watch', 'comments', 'edits', 'import', 'working', 'reply', 'status', 'idle', 'round', 'shot', 'audit', 'export', 'thumb', 'commit', 'hide', 'show', 'delete')
+    known = ('url', 'watch', 'comments', 'edits', 'proposals', 'import', 'working', 'reply', 'status', 'idle', 'round', 'shot', 'audit', 'export', 'thumb', 'commit', 'hide', 'show', 'delete')
     if cmd not in known:
         sys.exit(f'unknown command {cmd!r}\n' + __doc__)
     if cmd == 'watch' and not rest:
@@ -525,6 +662,16 @@ def main(argv):
         rows = call('GET', f'/api/decks/{slug}/comments')['comments']
         if not show_all:
             rows = [r for r in rows if r['state'] != 'draft']
+        d, path = folder(slug)
+        try:
+            has_props = re.search(r'\bprop\s*:\s*true\b', (path / d['entry']).read_text(encoding='utf-8'))
+        except OSError:
+            has_props = None
+        if has_props:
+            _, prs = proposal_state(slug)
+            n_dec, n_open = sum(1 for r in prs if r.get('decision')), sum(1 for r in prs if not r.get('decision'))
+            if n_dec or n_open:
+                print(f"Proposed slides: {n_dec} decided{f' (bake them: ./sb proposals {slug} --bake)' if n_dec else ''}, {n_open} still waiting for a decision.\n")
         if not rows:
             print('No open comments.')
             return
@@ -546,6 +693,8 @@ def main(argv):
     elif cmd == 'edits':
         version = opt(rest, '--version')
         print(node('edits', slug, *(['--version', version] if version else [])), end='')
+    elif cmd == 'proposals':
+        proposals_cmd(slug, bake='--bake' in rest)
     elif cmd == 'import':
         keep, dry = '--keep-mine' in rest, '--dry-run' in rest
         files = [a for a in rest if a not in ('--keep-mine', '--dry-run')]
@@ -630,6 +779,10 @@ def main(argv):
         subprocess.run(['git', '-C', str(path), 'add', '-A'], check=True)
         res = subprocess.run(['git', '-C', str(path), 'commit', '-q', '-m', msg], capture_output=True, text=True)
         print(res.stdout.strip() or res.stderr.strip() or 'committed')
+        if res.returncode == 0:   # the round's record names its commit
+            head = subprocess.run(['git', '-C', str(path), 'rev-parse', '--short', 'HEAD'], capture_output=True, text=True).stdout.strip()
+            if head:
+                call('POST', f'/api/decks/{slug}/review', {'op': 'committed', 'commit': head})
     else:
         sys.exit(f'unknown command {cmd!r}\n' + __doc__)
 

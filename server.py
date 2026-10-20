@@ -121,7 +121,7 @@ def settings():
 
 
 def empty_review():
-    return {'comments': {}, 'replies': {}, 'history': [], 'changed': {}, 'rounds': [], 'claude': None}
+    return {'comments': {}, 'replies': {}, 'history': [], 'changed': {}, 'rounds': [], 'claude': None, 'proposals': {}}
 
 
 # ---------- what the dashboard and Claude need to know ----------
@@ -394,15 +394,36 @@ def apply_review_op(deck, op):
             rep = r['replies'].pop(slide, None)
             r['history'].append({'slide': slide, 'reply': rep, 'reopened': now})
             r['comments'][slide] = {'state': 'ready', 'text': op.get('text', ''), 'at': now}
+        elif kind == 'decide':                 # page: accept a proposed slide, keep its original, or undo (decision None)
+            if op.get('decision') in ('accept', 'keep'):
+                r['proposals'][slide] = {'decision': op['decision'], 'replaces': op.get('replaces', ''), 'version': op.get('version', ''),
+                                         'title': op.get('title', ''), 'applied': bool(op.get('applied')), 'at': now}
+            elif op.get('decision') is None:
+                r['proposals'].pop(slide, None)
+            else:
+                raise ValueError(f"unknown decision {op.get('decision')!r}")
+        elif kind == 'baked':                  # sb proposals --bake: these decisions are in the deck file now
+            for s, d in (op.get('decisions') or {}).items():
+                r['proposals'][s] = dict(d, baked=now)
         elif kind == 'claude':                 # Claude: live progress line, or null when idle
             r['claude'] = None if op.get('idle') else {'text': op.get('text', ''), 'done': op.get('done'),
                                                        'total': op.get('total'), 'at': now}
         elif kind == 'round':                  # Claude: end of a round
             number = (r['rounds'][-1]['number'] + 1) if r['rounds'] else 1
-            r['rounds'].append({'number': op.get('number') or number, 'summary': op.get('summary', ''),
-                                'export': op.get('export'), 'changed': list((op.get('changed') or {}).keys()), 'at': now})
+            baked = {k: v for k, v in r['proposals'].items() if v.get('baked')}   # proposal decisions baked into the deck file since the last round
+            rnd = {'number': op.get('number') or number, 'summary': op.get('summary', ''),
+                   'export': op.get('export'), 'changed': list((op.get('changed') or {}).keys()), 'at': now}
+            if baked:
+                rnd['proposals'] = [{'slide': k, 'decision': v['decision'], 'replaces': v.get('replaces', ''), 'title': v.get('title', ''),
+                                     'how': v.get('how', ''), 'at': v.get('at')} for k, v in baked.items()]
+                for k in baked:
+                    r['proposals'].pop(k)
+            r['rounds'].append(rnd)
             r['changed'].update({s: {'note': n, 'round': op.get('number') or number} for s, n in (op.get('changed') or {}).items()})   # earlier unseen changes stay until marked seen
             r['claude'] = None
+        elif kind == 'committed':              # sb commit: the round it saves to the deck's git history
+            if r['rounds'] and not r['rounds'][-1].get('commit'):
+                r['rounds'][-1]['commit'] = op.get('commit', '')
         elif kind == 'seen':                   # page: clear a changed badge
             for s in op.get('slides') or ([slide] if slide else []):
                 r['changed'].pop(s, None)
