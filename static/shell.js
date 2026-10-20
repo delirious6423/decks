@@ -206,6 +206,12 @@
   item('sb-q', { t: 'Send feedback', sub: 'Email Paul what works and what you’d want next', title: 'Email paul@strategyu.co', act: async () => {
     const ok = await copyText('paul@strategyu.co'); window.open('mailto:paul@strategyu.co?subject=' + encodeURIComponent('Decks feedback'), '_blank');
     say(ok ? '<b>Opening an email to paul@strategyu.co.</b> The address is copied too, in case your mail app doesn’t open.' : 'Email <b>paul@strategyu.co</b>.'); } });
+  item('sb-q', { t: 'Check for updates', sub: 'Ask GitHub now whether a newer Decks is out', act: async () => {
+    say('Checking for updates…'); let d = null;
+    try { const r = await fetch('/api/check-updates', { method: 'POST' }); if (r.ok) d = await r.json(); } catch (e) {}
+    say(!d || !d.ok ? 'Couldn’t reach GitHub. Check your connection, then try again.'
+      : !d.update ? `<b>You’re up to date.</b> Decks ${esc(d.version)} is the newest.`
+      : `<b>Decks ${esc(d.update.version)} is out.</b> To update, run <code>git pull</code> in your Decks folder, then restart the server. What’s new is linked on the dashboard.`); } });
   item('sb-q', { t: 'Made by StrategyU ↗', sub: 'Where Paul teaches the method behind Decks',
     act: () => window.open('https://strategyu.co/?utm_source=decks&utm_medium=app&utm_campaign=deck-menu', '_blank', 'noopener') });
 

@@ -127,13 +127,14 @@ Linux, if screenshots or PDFs fail, Chrome is missing system libraries:
 
 Decks has numbered versions. [CHANGELOG.md](CHANGELOG.md) says what changed in each, and the
 dashboard footer shows the version you're running. When a new version is out, the dashboard
-says so. To update, run `git pull` here and restart the server. To hear by email, watch the
+says so. **Check for updates** (in the dashboard footer, or `?` in a deck) asks GitHub right
+away instead of waiting for the daily check. To update, run `git pull` here and restart the server. To hear by email, watch the
 repository on GitHub (Watch › Custom › Releases).
 
 To know about new versions, the server asks GitHub once a day which release is newest: one
 small request, read from a redirect. GitHub sees your IP address and that a check happened.
 Nothing about your decks is sent. To turn it off, set `"check_updates": false` in
-`config.json`, or `SB_CHECK_UPDATES=0`.
+`config.json`, or `SB_CHECK_UPDATES=0`. Check for updates still asks when you click it.
 
 ### Settings
 
@@ -434,6 +435,7 @@ API (what `sb` uses):
 - `POST /api/decks/<slug>/manage`: `{op: 'hide' | 'show' | 'delete'}`.
 - `POST /api/decks/<slug>/bundle`: a copy of the deck with its pictures and scripts embedded.
 - `POST /api/decks/<slug>/upload`: a picture for a slide, saved in the deck's `img/uploads/`.
+- `POST /api/check-updates`: asks GitHub now which release is newest (the Check for updates button).
 
 ## License
 

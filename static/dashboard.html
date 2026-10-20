@@ -137,6 +137,12 @@
   .side a, footer a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
   .side a:hover, footer a:hover { color: var(--red); }
   footer { max-width: 1180px; margin: -40px auto 0; padding: 0 22px 28px; font-size: 12px; color: var(--faint); }
+  footer .lnk { font: inherit; color: inherit; background: none; border: 0; padding: 0; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+  footer .lnk:hover { color: var(--red); }
+  footer .lnk:disabled { cursor: default; text-decoration: none; }
+  #chk-say:not(:empty) { margin-left: 8px; color: var(--ink); }
+  #chk-say a { color: var(--red); }
+  #chk-say code { font-size: 11.5px; background: #fff; border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; }
 </style>
 </head>
 <body>
@@ -216,7 +222,7 @@
     <h2>About</h2><div class="side" id="about">Decks is made by Paul Millerd at <a href="https://strategyu.co/?utm_source=decks&utm_medium=app&utm_campaign=dashboard" target="_blank" rel="noopener">StrategyU</a>, where he teaches the consulting method it is built on. The consulting template comes from his <a href="https://strategyu.co/strategy-consulting-powerpoint-templates/?utm_source=decks&utm_medium=app&utm_campaign=dashboard" target="_blank" rel="noopener">free consulting PowerPoint templates</a>.</div>
   </aside>
 </main>
-<footer><span id="ver">Decks</span> · <a href="https://github.com/paulmil11/decks/blob/main/LICENSE" target="_blank" rel="noopener">MIT license</a> · Made by <a href="https://strategyu.co/?utm_source=decks&utm_medium=app&utm_campaign=footer" target="_blank" rel="noopener">StrategyU</a></footer>
+<footer><span id="ver">Decks</span> · <button type="button" class="lnk" id="chk" title="Ask GitHub now whether a newer Decks is out">Check for updates</button><span id="chk-say" role="status"></span> · <a href="https://github.com/paulmil11/decks/blob/main/LICENSE" target="_blank" rel="noopener">MIT license</a> · Made by <a href="https://strategyu.co/?utm_source=decks&utm_medium=app&utm_campaign=footer" target="_blank" rel="noopener">StrategyU</a></footer>
 <script>
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const ago = (t) => { if (!t) return ''; const s = Date.now() / 1000 - t; if (s < 90) return 'just now'; if (s < 3600) return Math.round(s / 60) + ' min ago'; if (s < 86400) return Math.round(s / 3600) + 'h ago'; return new Date(t * 1000).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }); };
@@ -417,6 +423,18 @@ document.getElementById('del-back').addEventListener('click', (e) => { if (e.tar
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeDel(); document.querySelectorAll('.dmenu.open').forEach((x) => x.classList.remove('open')); } });
 
 document.querySelector('#upd button').addEventListener('click', () => { try { localStorage.setItem('__decks_upd_hidden', (document.querySelector('#upd b').textContent.match(/[\d.]+\d/) || [''])[0]); } catch (e) {} document.getElementById('upd').hidden = true; });
+// Check for updates: the server asks GitHub now, instead of waiting for its daily check
+document.getElementById('chk').addEventListener('click', async () => {
+  const b = document.getElementById('chk'), out = document.getElementById('chk-say');
+  b.disabled = true; out.textContent = 'Checking…';
+  let d = null; try { const r = await fetch('/api/check-updates', { method: 'POST' }); if (r.ok) d = await r.json(); } catch (e) {}
+  b.disabled = false;
+  if (!d || !d.ok) { out.textContent = 'Couldn’t reach GitHub. Check your connection, then try again.'; return; }
+  if (!d.update) { out.textContent = `You’re up to date: ${d.version} is the newest.`; return; }
+  try { localStorage.removeItem('__decks_upd_hidden'); } catch (e) {}   // show the note at the top again, even if you hid it
+  out.innerHTML = `<b>Decks ${esc(d.update.version)} is out</b> (<a href="${esc(d.update.url)}" target="_blank" rel="noopener">what's new</a>). To update, run <code>git pull</code> in your Decks folder, then restart the server.`;
+  load();
+});
 // feedback goes to Paul by email; in-app browsers don't always open a mail app, so the address is copied too
 let version = '';
 document.getElementById('feedback').addEventListener('click', async () => {

@@ -34,7 +34,7 @@ APP = Path(__file__).resolve().parent
 STATIC = APP / 'static'
 LOCK = threading.Lock()
 STARTED = time.time()
-VERSION = '0.7.0'   # see CHANGELOG.md
+VERSION = '0.7.1'   # see CHANGELOG.md
 UPDATE_REPO = 'paulmil11/decks'   # where new versions are released (a fork points this at its own)
 LATEST = {}   # the newest release, from GitHub once a day (sbconfig.CHECK_UPDATES)
 
@@ -667,6 +667,9 @@ class Handler(BaseHTTPRequestHandler):
             return self.json(403, {'error': 'Changes are accepted only from Decks’ own pages.'})
         if urlparse(self.path).path == '/api/watch':   # sb watch, no deck named: a Process now click on any deck
             return self.json(200, {'request': wait_for_click()})
+        if urlparse(self.path).path == '/api/check-updates':   # the Check for updates button: ask GitHub now
+            ok = check_latest()
+            return self.json(200, {'ok': ok, 'version': VERSION, 'update': update_info()})
         if urlparse(self.path).path == '/api/settings':
             with LOCK:
                 st = settings()
@@ -769,7 +772,8 @@ def vtuple(v):
 
 def check_latest():
     """Which release is newest: one HEAD request to GitHub, read from where it redirects
-    (/releases/latest -> /releases/tag/v0.3.0). Nothing about your decks is sent."""
+    (/releases/latest -> /releases/tag/v0.3.0). Nothing about your decks is sent.
+    True when GitHub answered, False when it couldn't be reached."""
     import http.client
     try:
         c = http.client.HTTPSConnection('github.com', timeout=6)
@@ -779,8 +783,10 @@ def check_latest():
         m = re.search(r'/releases/tag/v?(\d+\.\d+\.\d+)', loc)
         if m:
             LATEST.update({'version': m.group(1), 'url': f'https://github.com/{UPDATE_REPO}/releases/tag/v{m.group(1)}', 'at': time.time()})
+            return True
     except (OSError, http.client.HTTPException):
         pass   # offline, or GitHub didn't answer: try again tomorrow
+    return False
 
 
 def update_loop():

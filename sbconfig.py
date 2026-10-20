@@ -10,7 +10,8 @@ Settings come from, in order (later wins):
 
 check_updates: once a day the server asks GitHub which release of Decks is newest, so the
 dashboard can say when there's a new version. Set it to false (or SB_CHECK_UPDATES=0) to
-turn that off.
+turn that off. The Check for updates button (dashboard footer, and ? in a deck) still asks
+GitHub when you click it.
 
 The deck registry (decks.json) and settings.json live in the decks folder, next to
 the decks themselves, so the app folder never holds your work. Command line tools
