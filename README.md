@@ -126,10 +126,15 @@ Linux, if screenshots or PDFs fail, Chrome is missing system libraries:
 ### Updates
 
 Decks has numbered versions. [CHANGELOG.md](CHANGELOG.md) says what changed in each, and the
-dashboard footer shows the version you're running. When a new version is out, the dashboard
-says so, and `?` in a deck gets a dot and a line about it. **Check for updates** (in the dashboard footer, or `?` in a deck) asks GitHub right
-away instead of waiting for the next check. To update, run `git pull` here and restart the server. To hear by email, watch the
-repository on GitHub (Watch › Custom › Releases).
+dashboard shows the version you're running, next to its name. When a new version is out, the
+dashboard says so, and `?` in a deck gets a dot and a line about it. **Check for updates** (in
+the dashboard footer, or `?` in a deck) asks GitHub right away instead of waiting for the next
+check.
+
+To update, click **Copy update prompt** on that note and paste it into Claude Code or Codex: it
+pulls the new version, restarts the server, and checks the version. Or run `git pull` here and
+restart the server yourself. To hear by email, watch the repository on GitHub
+(Watch › Custom › Releases).
 
 To know about new versions, the server asks GitHub every six hours which release is newest
 (and again ten minutes later if GitHub couldn't be reached): one small request, read from a

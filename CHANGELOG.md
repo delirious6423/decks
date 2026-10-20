@@ -4,6 +4,13 @@ What changed in each version of Decks. To update, run `git pull` in your Decks f
 restart the server. To hear about new versions, watch this repository on GitHub
 (Watch › Custom › Releases).
 
+## 0.7.4 (October 20, 2026)
+
+- When a new version is out, **Copy update prompt** puts a prompt on your clipboard for Claude
+  Code or Codex. It names your Decks folder and port, pulls the new version (and stops to show
+  you any local changes first), restarts the server, and checks the version in the footer. The
+  button is on the dashboard's new-version note; in a deck, the first row of `?` copies it.
+
 ## 0.7.3 (October 20, 2026)
 
 - The consulting template's 2x2 asks for your raw data. Paste each option's name and its score
