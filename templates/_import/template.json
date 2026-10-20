@@ -1,0 +1,9 @@
+{
+  "name": "Imported deck",
+  "description": "A deck brought in from PowerPoint or PDF",
+  "kind": "workshop",
+  "sub": "Imported deck",
+  "entry": "deck.html",
+  "folderPrefix": "deck",
+  "scripts": ["ct-slides.js"]
+}

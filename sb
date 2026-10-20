@@ -32,6 +32,12 @@
          [--point P] [--structure S] [--density D] [--style Navy|Dark|Minimal|Forest|Teal|Plum] [--titles Serif]
          [--pieces "Main deck; CEO deck: what it is"] [--logo path.png] [--notes N]
                                             a new deck: folder, storage prefix, decks.json, git, BRIEF.md
+  sb new "<name>" --from <deck.pptx|deck.pdf> [--rebuild [--style S] [--titles Serif] [--logo L]] [--notes N]
+                                            import a deck (New deck › Import a deck): the file goes into the
+                                            new deck's source/, and BRIEF.md says how to bring it in with
+                                            tools/importdeck.py. It keeps each slide's look, every word
+                                            editable; --rebuild redoes it in Decks' layouts instead.
+                                            (Not sb import: that brings a returned Review copy back in.)
 
 The server must be running: python3 server.py (port and decks folder: sbconfig.py).
 sb finds it at SB_URL, or at http://localhost:<port> from config.json / SB_PORT.
@@ -483,9 +489,18 @@ def main(argv):
             if not f.is_file():
                 sys.exit(f'no logo file at {lp}')
             logo = {'name': f.name, 'data': f'data:{mimetypes.guess_type(f.name)[0] or "image/png"};base64,' + base64.b64encode(f.read_bytes()).decode()}
-        name = ' '.join(rest).strip() or sys.exit('usage: sb new "<name>" [--template id] [--audience A] [--length L] [--point P] [--notes N]')
+        source, rebuild = opt(rest, '--from'), '--rebuild' in rest
+        if rebuild:
+            rest.remove('--rebuild')
+        if source:   # Import a deck: the server copies the file into the new deck's source/
+            f = Path(os.path.expanduser(source)).resolve()
+            if not f.is_file():
+                sys.exit(f'no file at {source}')
+            source = {'path': str(f), 'mode': 'rebuild' if rebuild else 'keep'}
+        name = ' '.join(rest).strip() or sys.exit('usage: sb new "<name>" [--template id] [--audience A] [--length L] [--point P] [--notes N]\n'
+                                                  '       sb new "<name>" --from <deck.pptx|deck.pdf> [--rebuild]')
         req = urllib.request.Request(BASE + '/api/new-deck', method='POST', headers={'Content-Type': 'application/json'},
-                                     data=json.dumps({'name': name, 'template': tmpl, 'brief': brief, 'pieces': pieces, 'logo': logo}).encode())
+                                     data=json.dumps({'name': name, 'template': tmpl, 'brief': brief, 'pieces': pieces, 'logo': logo, 'source': source}).encode())
         try:
             with urllib.request.urlopen(req, timeout=60) as r:
                 d = json.loads(r.read())

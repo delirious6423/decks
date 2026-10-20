@@ -127,6 +127,18 @@
   .nd-where { font-size: 12px; color: var(--faint); }
   .nd-err { color: var(--red); font-size: 12.5px; margin-top: 6px; }
   .nd[data-step="1"] .nd-p2, .nd[data-step="1"] .nd-p3, .nd[data-step="2"] .nd-p1, .nd[data-step="2"] .nd-p3, .nd[data-step="3"] .nd-p1, .nd[data-step="3"] .nd-p2 { display: none; }
+  .nd-pi, .nd[data-step="i"] :is(.nd-p1, .nd-p2, .nd-p3) { display: none; }
+  .nd[data-step="i"] .nd-pi { display: block; }
+  .nd-steps[hidden] { display: none; }
+  .nd-alts { display: flex; gap: 18px; }
+  /* Import a deck: the file (dropped, chosen, or its path) and how it comes in */
+  .nd-drop { display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; min-height: 72px; border: 1.5px dashed #CFC8C3; border-radius: 10px; padding: 14px; font-size: 13px; color: var(--mute); text-align: center; background: #FCFBFA; }
+  .nd-drop.over { border-color: var(--red); background: #FDF4F4; }
+  .nd-drop.has { justify-content: space-between; border-style: solid; border-color: var(--line); background: #fff; text-align: left; }
+  .nd-drop .fn { min-width: 0; flex: 1; }
+  .nd-drop .fn b { display: block; font-weight: 500; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .nd-drop .fn small { display: block; font-size: 12px; color: var(--faint); }
+  .nd-drop[hidden], .nd-path[hidden] { display: none; }
   /* step 3: a sample slide in each color set, with the title font and logo you pick */
   .nd-sws { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
   .nd-sw { font: inherit; text-align: left; color: var(--ink); border: 1px solid var(--line); border-radius: 10px; padding: 6px 6px 8px; background: #fff; cursor: pointer; }
@@ -205,7 +217,22 @@
         <label>What are you building?</label>
         <div class="nd-uses" id="nd-kinds"></div>
         <div id="nd-alongwrap"><label>Build alongside it</label><div class="nd-checks" id="nd-pieces"></div></div>
-        <div class="nd-foot"><button class="nd-link" id="nd-blank">Or start from a blank deck</button><button class="btn red" id="nd-next">Next: who it’s for</button></div>
+        <div class="nd-foot"><span class="nd-alts"><button class="nd-link" id="nd-blank">Start from a blank deck</button><button class="nd-link" id="nd-import">Import a deck</button></span><button class="btn red" id="nd-next">Next: who it’s for</button></div>
+      </div>
+      <div class="nd-pi">
+        <label for="nd-iname">Name</label>
+        <input type="text" id="nd-iname" placeholder="The file’s name, unless you give it another" autocomplete="off">
+        <label>The deck</label>
+        <div class="nd-drop" id="nd-drop"></div>
+        <input type="text" class="nd-path" id="nd-ipath" placeholder="~/Documents/Q3 pricing review.pptx" autocomplete="off" hidden>
+        <input type="file" id="nd-ifile" accept=".pptx,.pdf,application/pdf,application/vnd.openxmlformats-officedocument.presentationml.presentation" hidden>
+        <div class="nd-desc">PowerPoint (.pptx) or PDF. From Keynote or Google Slides, export it to PowerPoint first. <button type="button" class="nd-link" id="nd-ipath-btn">Paste its path instead</button></div>
+        <div class="nd-err" id="nd-ierr"></div>
+        <label>How should it come in?</label>
+        <div class="nd-uses" id="nd-imodes"></div>
+        <label for="nd-inotes">Anything your agent should know? <span>(optional)</span></label>
+        <textarea id="nd-inotes" placeholder="Slides to leave out, who will see it, what it’s for"></textarea>
+        <div class="nd-foot"><button class="btn" id="nd-iback">Back</button><button class="btn red" id="nd-igo">Import deck</button></div>
       </div>
       <div class="nd-p2">
         <label for="nd-aud">The audience</label>
@@ -302,7 +329,7 @@ const KINDS = {
              { id: 'short', name: 'Short version', desc: 'A few slides for the decision maker' }] },
   blank: { name: 'A blank deck', template: 'blank', lengths: ['About 5 slides', 'About 10 slides', 'About 20 slides', '30 min', '60 min'], pieces: [{ id: 'deck', name: 'The deck', on: true }] },
 };
-const nd = { kind: 'presentation', picked: {}, touched: new Set(), tpls: [], themes: [], logoUrl: '' };
+const nd = { kind: 'presentation', picked: {}, touched: new Set(), tpls: [], themes: [], logoUrl: '', importing: false, imode: 'keep', file: null, upload: null, byPath: false };
 const SELECTS = { length: 'nd-length', audienceType: 'nd-atype', structure: 'nd-structure', density: 'nd-density', style: 'nd-style', titles: 'nd-titles' };
 const readLogo = () => new Promise((ok) => { const f = $('nd-logo').files[0]; if (!f) return ok(null); const r = new FileReader(); r.onload = () => ok({ name: f.name, data: r.result }); r.onerror = () => ok(null); r.readAsDataURL(f); });
 const slugify = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 48).replace(/-+$/, '') || 'deck';
@@ -328,16 +355,19 @@ function preset() {   // defaults for the kind; anything picked by hand stays
   Object.entries(SELECTS).forEach(([key, id]) => { if (nd.touched.has(key) || !$(id).querySelector('option[value=""]')) return; $(id).value = [...$(id).options].some((o) => o.value === k[key]) ? k[key] : ''; });
   renderKinds();
 }
-function stepTo(n) {
-  $('nd').dataset.step = n; nd.furthest = Math.max(nd.furthest || 1, n);
-  $('nd-steps').querySelectorAll('li').forEach((li) => { const k = +li.dataset.s; li.classList.toggle('on', k === n); li.classList.toggle('done', k < n); li.classList.toggle('seen', k > n && k <= nd.furthest);
-    li.querySelector('i').textContent = k < n ? '✓' : k; if (k === n) li.setAttribute('aria-current', 'step'); else li.removeAttribute('aria-current'); });
-  $('nd-title').textContent = ['What are you making?', 'Who is it for?', 'How should it look?'][n - 1];
+const STEPS = { new: [[1, 'What you’re making'], [2, 'Who it’s for'], [3, 'How it looks']], keep: [['i', 'The deck']], rebuild: [['i', 'The deck'], [3, 'How it looks']] };
+function stepTo(n) {   // n: 1, 2, 3, or 'i' (Import a deck)
+  const list = STEPS[nd.importing ? nd.imode : 'new'], at = list.findIndex(([k]) => k === n);
+  $('nd').dataset.step = n; nd.furthest = Math.max(nd.furthest || 0, at);
+  $('nd-steps').hidden = list.length < 2;
+  $('nd-steps').innerHTML = list.map(([k, label], i) => `<li data-s="${k}" class="${i === at ? 'on' : i < at ? 'done' : i <= nd.furthest ? 'seen' : ''}"${i === at ? ' aria-current="step"' : ''}><i>${i < at ? '✓' : i + 1}</i>${label}</li>`).join('');
+  $('nd-title').textContent = n === 'i' ? 'Import a deck' : ['What are you making?', 'Who is it for?', 'How should it look?'][n - 1];
+  $('nd-copy').style.display = nd.importing ? 'none' : ''; $('nd-go').textContent = nd.importing ? 'Import deck' : 'Create deck';
   if (n === 3) renderLook();
-  setTimeout(() => (n === 3 ? $('nd-sws').querySelector('.on') || $('nd-sws').firstElementChild : $(n === 1 ? 'nd-name' : 'nd-aud'))?.focus(), 30);
+  setTimeout(() => (n === 3 ? $('nd-sws').querySelector('.on') || $('nd-sws').firstElementChild : $(n === 'i' ? 'nd-iname' : n === 1 ? 'nd-name' : 'nd-aud'))?.focus(), 30);
 }
 function renderLook() {   // a sample slide per color set, titled with the deck's name, in the title font and with the logo you picked
-  const style = $('nd-style').value, font = $('nd-titles').value, title = esc(val('nd-name') || 'Each title says the point');
+  const style = $('nd-style').value, font = $('nd-titles').value, title = esc(val(nd.importing ? 'nd-iname' : 'nd-name') || 'Each title says the point');
   $('nd').classList.toggle('serif', font === 'Serif');
   $('nd-sws').innerHTML = nd.themes.map((t) => `<button type="button" class="nd-sw${t.name === style ? ' on' : ''}${t.dark ? ' dark' : ''}" role="radio" aria-checked="${t.name === style}" data-style="${esc(t.name)}">`
     + `<span class="nd-sw-slide" style="--bg:${t.bg};--t:${t.title};--x:${t.text};--a:${t.accent};--b:${t.block};--l:${t.line}"><b>${title}</b><i class="tx"></i><i class="tx"></i><span class="bars"><i></i><i></i><i></i></span>${nd.logoUrl ? `<img src="${nd.logoUrl}" alt="">` : ''}</span>`
@@ -358,7 +388,7 @@ function askPrompt() {   // for when Claude should set it up as well
 }
 async function copy(text) { try { await navigator.clipboard.writeText(text); return true; } catch (e) { return false; } }
 function openNew() {
-  $('nd').classList.remove('ok'); $('nd-err').textContent = ''; $('nd-back').classList.add('on'); nd.furthest = 1; stepTo(1);
+  $('nd').classList.remove('ok'); $('nd-err').textContent = ''; $('nd-back').classList.add('on'); nd.importing = false; nd.furthest = 0; stepTo(1);
   fetch('/api/templates').then((r) => r.json()).then((d) => {
     nd.tpls = d.templates || []; nd.themes = d.themes || []; preset(); renderLook();
   });
@@ -380,8 +410,8 @@ $('nd-next').addEventListener('click', next);
 $('nd-name').addEventListener('keydown', (e) => { if (e.key === 'Enter') next(); });
 $('nd-backbtn').addEventListener('click', () => stepTo(1));
 $('nd-next2').addEventListener('click', () => stepTo(3));
-$('nd-steps').addEventListener('click', (e) => { const li = e.target.closest('li.done, li.seen'); if (li) stepTo(+li.dataset.s); });   // to any step you've been to
-$('nd-back3').addEventListener('click', () => stepTo(2));
+$('nd-steps').addEventListener('click', (e) => { const li = e.target.closest('li.done, li.seen'); if (li) stepTo(li.dataset.s === 'i' ? 'i' : +li.dataset.s); });   // to any step you've been to
+$('nd-back3').addEventListener('click', () => stepTo(nd.importing ? 'i' : 2));
 $('nd-sws').addEventListener('click', (e) => { const b = e.target.closest('[data-style]'); if (!b) return; $('nd-style').value = b.dataset.style; nd.touched.add('style'); renderLook(); $('nd-sws').querySelector('.on').focus(); });
 $('nd-fonts').addEventListener('click', (e) => { const b = e.target.closest('[data-font]'); if (!b) return; $('nd-titles').value = b.dataset.font; nd.touched.add('titles'); renderLook(); });
 $('nd-logo-btn').addEventListener('click', () => $('nd-logo').click());
@@ -390,20 +420,95 @@ $('nd-logo').addEventListener('change', () => { const f = $('nd-logo').files[0];
 $('nd-logo-x').addEventListener('click', () => { $('nd-logo').value = ''; $('nd-logo').dispatchEvent(new Event('change')); });
 $('nd-copy').addEventListener('click', async () => { const ok = await copy(askPrompt()); $('nd-copy').textContent = ok ? 'Copied' : 'Copy failed'; setTimeout(() => { $('nd-copy').textContent = 'Copy prompt'; }, 1600); });
 $('nd-go').addEventListener('click', async () => {
+  if (nd.importing) return importDeck();
   const name = val('nd-name'); if (!name) { stepTo(1); $('nd-err').textContent = 'Enter a name first.'; return; }
   const go = $('nd-go'); go.disabled = true; go.textContent = 'Creating…';
   let r, d; try { r = await fetch('/api/new-deck', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, template: tplId(), brief: brief(), pieces: pieces(), logo: await readLogo() }) }); d = await r.json(); } catch (e) { d = { error: 'The server is not responding.' }; }
   go.disabled = false; go.textContent = 'Create deck';
   if (!r || !r.ok) { stepTo(1); $('nd-err').textContent = d.error || 'That didn’t work. Try again.'; return; }
-  const ok = await copy(d.prompt);
+  ready(d);
+});
+async function ready(d) {   // the deck is made: its prompt, copied, and the way in
+  const ok = await copy(d.prompt), what = d.source ? 'brings the slides in' : 'builds the first draft';
   $('nd-done').innerHTML = `<div class="nd-head"><div><div class="nd-step">Ready</div><h3>${esc(d.name)}</h3></div><button class="nd-x" onclick="document.getElementById('nd-back').classList.remove('on')" aria-label="Close">×</button></div>
-    <div class="meta" style="margin-top:10px">${ok ? 'The prompt is on your clipboard. Paste it to Claude and it builds the first draft.' : 'Copy this prompt and paste it to Claude to build the first draft:'}</div>
+    <div class="meta" style="margin-top:10px">${ok ? `The prompt is on your clipboard. Paste it into Claude Code or Codex and it ${what}.` : `Copy this prompt and paste it into Claude Code or Codex to ${what.replace(/s\b/, '')}:`}</div>
     <div class="nd-prompt">${esc(d.prompt)}</div>
     <div class="nd-foot"><span class="nd-where">${esc(d.folder)}</span><span>${ok ? '' : '<button class="btn" id="nd-copy2">Copy prompt</button> '}<a class="btn red" href="${esc(d.path)}">Open deck</a></span></div>`;
   $('nd').classList.add('ok'); load();
   const c2 = $('nd-copy2'); if (c2) c2.addEventListener('click', async () => { c2.textContent = (await copy(d.prompt)) ? 'Copied' : 'Select the text above and copy it'; });
   if (ok) setTimeout(() => { if ($('nd-back').classList.contains('on')) location.href = d.path; }, 2200);
-});
+}
+
+// ---------- Import a deck: a PowerPoint or PDF you already have ----------
+const IMPORT_NOT = { key: 'That’s a Keynote file. In Keynote, choose File › Export To › PowerPoint, then import the .pptx file.',
+  ppt: 'That’s an older PowerPoint file (.ppt). Open it in PowerPoint, save it as .pptx, then import that.' };
+const mbs = (n) => n >= 1e6 ? Math.round(n / 1e6) + ' MB' : Math.max(1, Math.round(n / 1e3)) + ' KB';
+const fileName = () => nd.byPath ? val('nd-ipath').split(/[\\/]/).pop() : (nd.file ? nd.file.name : '');
+function openImport() {
+  nd.importing = true; nd.furthest = 0; $('nd-ierr').textContent = '';
+  if (!val('nd-iname') && val('nd-name')) $('nd-iname').value = val('nd-name');
+  renderDrop(); renderModes(); stepTo('i');
+}
+function renderDrop() {
+  const f = nd.file, box = $('nd-drop');
+  box.classList.toggle('has', !!f); box.hidden = nd.byPath; $('nd-ipath').hidden = !nd.byPath;
+  $('nd-ipath-btn').textContent = nd.byPath ? 'Choose the file instead' : 'Paste its path instead';
+  box.innerHTML = f ? `<span class="fn"><b>${esc(f.name)}</b><small>${/\.pdf$/i.test(f.name) ? 'PDF' : 'PowerPoint'} · ${mbs(f.size)}</small></span><button type="button" class="nd-link" data-a="remove">Remove</button>`
+    : '<span>Drop a PowerPoint or PDF here, or</span><button type="button" class="btn" data-a="choose">Choose a file</button>';
+}
+function renderModes() {
+  const pdf = /\.pdf$/i.test(fileName());
+  $('nd-imodes').innerHTML = [['keep', 'Keep its look', pdf ? 'Each page as it is, with every word on it editable' : 'Each slide as it is, converted so every word is editable'],
+    ['rebuild', 'Rebuild it in Decks’ layouts', 'The same words and notes, laid out in Decks’ own layouts and colors']]
+    .map(([k, b, s]) => `<button type="button" class="nd-use${nd.imode === k ? ' on' : ''}" data-mode="${k}"><i></i><span><b>${b}</b><small>${s}</small></span></button>`).join('');
+  $('nd-igo').textContent = nd.imode === 'rebuild' ? 'Next: how it looks' : 'Import deck';
+}
+function pickFile(f) {
+  if (!f) return;
+  const ext = (f.name.split('.').pop() || '').toLowerCase();
+  if (!['pptx', 'pdf'].includes(ext)) { $('nd-ierr').textContent = IMPORT_NOT[ext] || 'Import a deck takes a PowerPoint file (.pptx) or a PDF. From Keynote or Google Slides, export it to PowerPoint first.'; return; }
+  const was = nd.file ? nd.file.name.replace(/\.[^.]+$/, '') : '';
+  if (!val('nd-iname') || val('nd-iname') === was) $('nd-iname').value = f.name.replace(/\.[^.]+$/, '');   // named after the file, until you name it
+  nd.file = f; nd.upload = null; $('nd-ierr').textContent = ''; renderDrop(); renderModes();
+}
+async function importDeck() {
+  const name = val('nd-iname') || fileName().replace(/\.[^.]+$/, '');
+  const fail = (msg) => { stepTo('i'); $('nd-ierr').textContent = msg; };
+  if (nd.byPath ? !val('nd-ipath') : !nd.file) return fail(nd.byPath ? 'Paste the file’s path.' : 'Choose the deck to import.');
+  if (!name) return fail('Enter a name first.');
+  const go = nd.imode === 'rebuild' ? $('nd-go') : $('nd-igo'), label = go.textContent; go.disabled = true;
+  const source = { mode: nd.imode };
+  if (nd.byPath) source.path = val('nd-ipath');
+  else {
+    if (!nd.upload || nd.upload.file !== nd.file) {   // sent once: trying again with another name doesn't send it again
+      go.textContent = `Uploading ${mbs(nd.file.size)}…`;
+      try { const r = await fetch('/api/upload-source', { method: 'POST', headers: { 'Content-Type': 'application/octet-stream', 'X-File-Name': encodeURIComponent(nd.file.name) }, body: nd.file });
+        const u = await r.json(); if (!r.ok) throw new Error(u.error); nd.upload = { file: nd.file, token: u.token };
+      } catch (e) { go.disabled = false; go.textContent = label; return fail(e.message && !/fetch|network/i.test(e.message) ? e.message : 'The upload didn’t work. Try again, or paste the file’s path instead.'); }
+    }
+    source.token = nd.upload.token;
+  }
+  go.textContent = 'Setting it up…';
+  const b = { notes: val('nd-inotes') }; if (nd.imode === 'rebuild') Object.assign(b, { style: $('nd-style').value, titles: $('nd-titles').value });
+  let r, d; try { r = await fetch('/api/new-deck', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, brief: b, logo: nd.imode === 'rebuild' ? await readLogo() : null, source }) }); d = await r.json(); } catch (e) { d = { error: 'The server is not responding.' }; }
+  go.disabled = false; go.textContent = label;
+  if (!r || !r.ok) { if (/gone/.test(d.error || '')) nd.upload = null; return fail(d.error || 'That didn’t work. Try again.'); }
+  nd.file = nd.upload = null; $('nd-ifile').value = ''; $('nd-iname').value = ''; $('nd-inotes').value = ''; $('nd-ipath').value = '';
+  ready(d);
+}
+$('nd-import').addEventListener('click', openImport);
+$('nd-iback').addEventListener('click', () => { nd.importing = false; nd.furthest = 0; stepTo(1); });
+$('nd-drop').addEventListener('click', (e) => { const a = e.target.closest('[data-a]'); if (!a) return; if (a.dataset.a === 'choose') $('nd-ifile').click(); else { nd.file = nd.upload = null; $('nd-ifile').value = ''; renderDrop(); renderModes(); } });
+$('nd-ifile').addEventListener('change', () => pickFile($('nd-ifile').files[0]));
+['dragenter', 'dragover'].forEach((ev) => $('nd-drop').addEventListener(ev, (e) => { e.preventDefault(); $('nd-drop').classList.add('over'); }));
+['dragleave', 'drop'].forEach((ev) => $('nd-drop').addEventListener(ev, (e) => { e.preventDefault(); $('nd-drop').classList.remove('over'); if (ev === 'drop') pickFile(e.dataTransfer.files[0]); }));
+$('nd-ipath-btn').addEventListener('click', () => { nd.byPath = !nd.byPath; $('nd-ierr').textContent = ''; renderDrop(); renderModes(); if (nd.byPath) $('nd-ipath').focus(); });
+$('nd-ipath').addEventListener('input', () => { $('nd-ierr').textContent = ''; renderModes(); });
+$('nd-iname').addEventListener('input', () => { $('nd-ierr').textContent = ''; });
+$('nd-imodes').addEventListener('click', (e) => { const b = e.target.closest('[data-mode]'); if (!b) return; nd.imode = b.dataset.mode; nd.furthest = 0; renderModes(); stepTo('i'); });
+$('nd-igo').addEventListener('click', () => { if (nd.imode !== 'rebuild') return importDeck();
+  if (nd.byPath ? !val('nd-ipath') : !nd.file) { $('nd-ierr').textContent = nd.byPath ? 'Paste the file’s path.' : 'Choose the deck to import.'; return; }
+  stepTo(3); });
 
 const menu = (d) => `<span class="dmenu"><button class="btn" data-menu aria-label="More for ${esc(d.name)}" title="Hide or delete">⋯</button><div class="dmenu-box">
   <button data-op="hide" data-slug="${esc(d.slug)}">Hide from the dashboard</button><button class="danger" data-op="ask-delete" data-slug="${esc(d.slug)}">Delete…</button></div></span>`;

@@ -1,6 +1,6 @@
 ---
 name: decks
-description: Run feedback rounds and build slides in Decks, HTML slide decks reviewed in the browser at http://localhost:8790 (or the configured port). Use when the user says "process changes", "read my feedback", "check my comments", pastes an "Ask Claude" prompt from a deck, asks to find, open, or export a deck, or wants a new deck built. Covers the round procedure, the sb command line, the deck file, slide style rules, and the StrategyU slide method it applies to every slide (action titles, vertical and horizontal flow, the five- and ten-second tests, charts that prove the title).
+description: Run feedback rounds and build slides in Decks, HTML slide decks reviewed in the browser at http://localhost:8790 (or the configured port). Use when the user says "process changes", "read my feedback", "check my comments", pastes an "Ask Claude" prompt from a deck, asks to find, open, or export a deck, or wants a new deck built or an existing PowerPoint or PDF imported. Covers the round procedure, the sb command line, the deck file, slide style rules, and the StrategyU slide method it applies to every slide (action titles, vertical and horizontal flow, the five- and ten-second tests, charts that prove the title).
 ---
 
 # Decks
@@ -142,7 +142,7 @@ On top of the method:
 
 ## Starting a new deck
 
-The user starts decks from the dashboard's **New deck** form, in two steps. Step 1: a name, what they're building (a presentation, a training, a talk, a proposal, or a blank deck), and the pieces to build alongside it. Step 2: who it's for, what they know and care about, the one point, and optional length, kind of audience, structure, density, colors, title font, logo, and notes. Create deck makes the folder, gives it its own storage prefix, adds it to `decks.json`, starts its git history, writes the brief to `BRIEF.md`, copies a prompt to their clipboard, and opens the deck. When they paste that prompt:
+The user starts decks from the dashboard's **New deck** form, in three steps. Step 1: a name, what they're building (a presentation, a training, a talk, a proposal, or a blank deck), and the pieces to build alongside it. Step 2: who it's for, what they know and care about, the one point, and optional length, kind of audience, structure, density, and notes. Step 3: colors, title font, and logo. (Step 1 also offers **Import a deck**, for a deck they already have: see Importing a deck below.) Create deck makes the folder, gives it its own storage prefix, adds it to `decks.json`, starts its git history, writes the brief to `BRIEF.md`, copies a prompt to their clipboard, and opens the deck. When they paste that prompt:
 
 1. Read `BRIEF.md` in the deck folder and shape the template to it before writing slides. The template is a starting point, not a fixed form:
    - **How it will be used.** Presented: one idea per slide, big type, little text; it must pass the 5-second test. Sent to read: each slide stands on its own with a fuller body; it must pass the 10-second test. Presented, then sent: presentable slides, with the detail in the notes or an appendix.
@@ -162,3 +162,41 @@ When the user asks in chat instead, run `./sb new "<name>" --template <id>` with
 
 - Templates live in `templates/<id>/` (`template.json`, `content.js`, `pitches.js`, assets). They fill the engine `templates/_engine/engine.html`.
 - `consulting` (a presentation: a guided eight-slide storyline), `workshop` (a training), `talk`, `proposal`, and `blank`. Every new deck also carries the basic guided layouts in `templates/_engine/basics.js` (big number, points, two columns, process, table, quotes, divider, question, exercise) for Add a slide. Dividers show "Part N of M" with every part along the bottom; give each divider a `short` label.
+- `templates/_import` is the hidden template Import a deck starts from: the `ct()` helper for converted slides, an empty `ct-slides.js`, and one placeholder slide between the `IMPORTED SLIDES` lines.
+
+## Importing a deck
+
+The user brings in a deck they already have with **Import a deck** (in New deck), or you run `./sb new "<name>" --from <file.pptx|file.pdf>`. Add `--rebuild` for a rebuild, with `--style` and `--titles` if they gave them. This is not `sb import`, which brings a returned Review copy back in.
+
+It takes a PowerPoint file (.pptx) or a PDF. From Keynote: File › Export To › PowerPoint. From Google Slides: File › Download › Microsoft PowerPoint. An old .ppt: open it in PowerPoint and save it as .pptx. The deck folder gets the file in `source/`, a placeholder slide, and `BRIEF.md` with the steps for this deck, and the user gets a prompt to paste. BRIEF.md says which of two ways the user picked:
+
+- **Keep its look**: every slide converted as it is, so every word on it is editable, with its speaker notes. Rewrite nothing; the user reviews it first.
+- **Rebuild it**: the same slides in the same order, with the user's words and speaker notes, laid out in Decks' own layouts and the color set they picked.
+
+**Before you start.** Work from the app folder. `python3 tools/importdeck.py --check` says whether python-pptx, lxml, Pillow, and PyMuPDF are installed, and whether LibreOffice is. If packages are missing, ask the user before installing them: `python3 -m pip install python-pptx lxml Pillow PyMuPDF`.
+
+**A PDF of the deck.** For a PowerPoint file, the converter cuts charts, SmartArt, and icons out of a PDF of each slide, and the PDF gives each slide a picture of the original to compare with (`img/imp-NNN.jpg`, and the slide's "original" button in the deck). `importdeck.py` uses a PDF in `source/` if there is one, or makes one with LibreOffice when it's installed. Otherwise ask the user to export one into the deck's `source/` folder: in PowerPoint, File › Export › PDF; in Keynote, File › Export To › PDF; in Google Slides, File › Download › PDF. If they can't, `--no-pdf` brings in every word, box, line, table, and picture and leaves out charts, SmartArt, and icons: tell them that. PowerPoint leaves hidden slides out of its PDF, and the tool matches the pages to the slides that show.
+
+**Keep its look.**
+1. `python3 tools/importdeck.py <deck>` converts every slide with `tools/pptx2native.py`. Each slide's shapes go into `ct-slides.js` (`CT.s1`, `CT.s2`, …) and its pictures into `img/`. The slides go into the deck file between the `IMPORTED SLIDES` lines, one `ct('s7', part, title, { src, notes })` per slide, in order:
+   - PowerPoint sections become parts (`CATS`), and hidden slides go on the shelf (`alt:true`).
+   - The speaker notes become each slide's notes.
+   - The title is the title placeholder's text, or the biggest words near the top. A slide with neither is named "Slide N".
+   - A slide whose background is a photo or a gradient keeps it as a picture under the editable shapes. A deck of another size or shape (Google Slides' 10-inch slides, an old 4:3 deck) is scaled onto the slide.
+2. It prints what came in: how many slides are editable, which came in as a picture of the original and why, how many have notes, and which have no title.
+3. A PDF on its own also keeps its look. Each page is drawn without its words, and the words go back on top as text, one text box per line, at the page's own sizes, weights, and colors. Every word is editable, but a line doesn't rewrap as it grows, and a PDF has no speaker notes.
+4. Check it. `./sb shot <deck> <ids>` for the first and last slides and every slide with a chart, table, photo, or diagram, and compare each with its `img/imp-NNN.jpg`. Converted text is drawn in the deck's font, so a line can break in a slightly different place. Then `./sb audit <deck>`, and fix text that is cut off or runs off the slide. Its Guides lines (text in the footer, close to the edge) describe the original's layout: list them in your report, but don't move things in a keep-look import.
+5. Fix what's off in `ct-slides.js` (a shape's `x`, `y`, `w`, `h`, or its text runs) or in the slide's LIBRARY entry (`title`, `notes`). Give each "Slide N" a title made of the words on that slide.
+6. Running it again replaces the imported slides, so once the deck has changed it stops unless you add `--force` (git keeps the old version). `--slides 3-9 --no-wire` converts a few slides again into `ct-slides.js` and `img/` only.
+7. `./sb export <deck>`, then `./sb commit <deck> "Imported from <file>"`. Tell the user how many slides came in editable, which came in as pictures and why, the titles you added, and anything that looks different from the original.
+
+A keep-look import has no color set or logo of its own: its slides bring theirs. The `deck-theme` block still styles any slide the user adds from Add a slide.
+
+**Rebuild it.**
+1. `python3 tools/importdeck.py <deck> --outline` writes `source/outline.md`: each slide's title, its words in reading order (indented by bullet level), its tables, the numbers behind its charts, and its speaker notes. With a PDF, a picture of each slide goes into `source/pages/`.
+2. Replace the placeholder slide with one LIBRARY entry per slide, in the same order. Use the engine's layouts and the basic layouts from Add a slide that the deck already carries (points, two columns, process, table, big number, quotes, divider, question).
+3. Keep the user's words: cut nothing and paraphrase nothing. When a slide holds more than its layout fits, split it into two slides or move the detail into the notes, and say which. Speaker notes go in `notes`. Each section of the file becomes a part (`CATS`), with a divider when the deck is long.
+4. Rebuild a chart from its numbers in the outline as a `FIGS` figure, following the method (bars, columns, or lines; no pies). A slide that can't be rebuilt well, like a dense diagram or a photo collage, can stay as it was: `python3 tools/importdeck.py <deck> --slides 7 --no-wire` converts it into `ct-slides.js` (it needs the PDF), and `ct('s7', part, title, { notes })` puts it in LIBRARY.
+5. Keep the user's titles. Where one is a label ("Q3 revenue") rather than a sentence, suggest an action title in that slide's notes instead of changing it.
+6. Check it: `./sb shot` against the pictures in `source/pages/`, and `./sb audit`. Everything passes Checks › Guides.
+7. `./sb export`, `./sb commit <deck> "Rebuilt from <file>"`, and tell the user which layouts the slides went into, what you split or moved to the notes, any slide you kept as it was, and the titles you'd change.

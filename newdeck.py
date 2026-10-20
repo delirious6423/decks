@@ -38,6 +38,15 @@ ENGINE = TEMPLATES / '_engine' / 'engine.html'   # the bundled engine every deck
 _REG = threading.Lock()          # decks.json: read-check-reserve and write are short; building the deck happens outside
 _RESERVED = set()                # prefixes handed out to decks still being built
 GITIGNORE = '*.pdf\n*.zip\n*.pptx\n_archive/\n.DS_Store\n.slidebuilder/thumb.png\n'
+IMPORT = '_import'               # the hidden template Import a deck starts from
+IMPORT_TYPES = {'.pptx': 'PowerPoint', '.pdf': 'PDF'}
+IMPORT_NOT = {   # files Import a deck can't read, and how to get one it can
+    '.key': 'That’s a Keynote file. In Keynote, choose File › Export To › PowerPoint, then import the .pptx file.',
+    '.ppt': 'That’s an older PowerPoint file (.ppt). Open it in PowerPoint, save it as .pptx (File › Save As), then import that.',
+    '.pps': 'That’s a PowerPoint show (.pps). Open it in PowerPoint, save it as .pptx, then import that.',
+    '.ppsx': 'That’s a PowerPoint show (.ppsx). Open it in PowerPoint, save it as .pptx, then import that.',
+    '.odp': 'That’s an OpenDocument deck. Save it as PowerPoint (.pptx) in LibreOffice or Keynote, then import that.',
+}
 
 # ---------- themes ----------
 # Each theme sets the engine's colors (CSS variables, written into the deck as one <style> block) and
@@ -103,10 +112,12 @@ def theme_previews():
     return out
 
 
-def theme_css(key, serif=False):
+def theme_css(key, serif=False, originals=False):
     t = THEMES.get(key)
-    css = ['.ctrls .cbtn.orig { display: none; }   /* the PowerPoint picture behind a converted slide: not useful in a new deck */']
+    css = [] if originals else ['.ctrls .cbtn.orig { display: none; }   /* the PowerPoint picture behind a converted slide: not useful in a new deck */']
     if not t and not serif:
+        if not css:
+            return '<style id="deck-theme">\n</style>'
         return '<style id="deck-theme">\n' + css[0] + '\n</style>'
     css += [f'/* Deck theme: {t["name"] if t else "engine colors"}{", serif titles" if serif else ""}. Change these to restyle the whole deck. */']
     if t:
@@ -193,6 +204,10 @@ def template(tid):
     for t in list_templates():
         if t['id'] == tid:
             return t
+    if tid == IMPORT:   # hidden from the list: Import a deck uses it
+        t = json.loads((TEMPLATES / IMPORT / 'template.json').read_text(encoding='utf-8'))
+        t['id'] = IMPORT
+        return t
     raise ValueError(f'No template called {tid!r}. Try one of: ' + ', '.join(t['id'] for t in list_templates()))
 
 
@@ -219,7 +234,7 @@ def pieces_js(pieces, template_pitches):
     return '\n'.join(js)
 
 
-def assemble(tid, name, prefix, pieces=None, theme=None, serif=False, logo=None):
+def assemble(tid, name, prefix, pieces=None, theme=None, serif=False, logo=None, originals=False):
     """A template's deck file, ready to open."""
     t = template(tid)
     d = TEMPLATES / tid
@@ -237,7 +252,7 @@ def assemble(tid, name, prefix, pieces=None, theme=None, serif=False, logo=None)
     if logo:
         head.append(f'const LOGO = {js_str(logo)}, LOGO_ALT = {js_str(name)};')
     content = '\n'.join(head) + '\n' + content
-    out = (engine.replace('/*{{CONTENT}}*/', content).replace('/*{{PITCHES}}*/', pitches).replace('<!--{{THEME}}-->', theme_css(theme, serif))
+    out = (engine.replace('/*{{CONTENT}}*/', content).replace('/*{{PITCHES}}*/', pitches).replace('<!--{{THEME}}-->', theme_css(theme, serif, originals))
            .replace('<!--{{SCRIPTS}}-->', scripts)
            .replace('{{TITLE}}', html.escape(name)).replace('{{BRAND}}', 'Strategy<span>U</span> · ' + html.escape(name))
            .replace('{{SUB}}', html.escape(t.get('sub', t['name']))).replace('{{PREFIX}}', prefix))
@@ -292,6 +307,94 @@ def prompt_for(deck, brief, tmpl, pieces=None):
     lines.append('Read BRIEF.md and shape the template to it (structure, density, style, and the slides themselves), then build a first draft. '
                  'Titles are plain sentences, two lines max, everything passes Checks › Guides, and mark any wording you drafted for me in the notes.')
     return ' '.join(lines)
+
+
+def check_source(source):
+    """Import a deck: the file to bring in, checked before anything is made. Returns (path, its name, mode)."""
+    path = Path(os.path.expanduser(str(source.get('path') or '').strip().strip('"\''))) if source.get('path') else None
+    if not path:
+        raise ValueError('Choose the deck to import: a PowerPoint file (.pptx) or a PDF.')
+    name = re.sub(r'[\\/:\x00-\x1f]', '-', str(source.get('name') or path.name)).strip(' .') or path.name
+    ext = Path(name).suffix.lower()
+    if ext in IMPORT_NOT:
+        raise ValueError(IMPORT_NOT[ext])
+    if ext not in IMPORT_TYPES:
+        raise ValueError('Import a deck takes a PowerPoint file (.pptx) or a PDF. From Keynote or Google Slides, export it to PowerPoint first.')
+    if not path.is_file():
+        raise ValueError(f'There’s no file at {source.get("path")}. Check the path, or choose the file instead.')
+    with open(path, 'rb') as f:
+        head = f.read(5)
+    if (ext == '.pptx' and head[:2] != b'PK') or (ext == '.pdf' and head[:4] != b'%PDF'):
+        raise ValueError(f'{name} doesn’t look like a {IMPORT_TYPES[ext]} file. Export it again, then import that.')
+    mode = 'rebuild' if source.get('mode') == 'rebuild' else 'keep'
+    return path, name, mode
+
+
+def size_label(n):
+    return f'{n / 1e6:.0f} MB' if n >= 1e6 else f'{max(n, 1000) / 1e3:.0f} KB'
+
+
+def import_brief(deck, src, mode, brief):
+    """BRIEF.md for an imported deck: what the user asked for, and the steps that bring it in."""
+    slug, app, kind = deck['slug'], sbconfig.tilde(APP), IMPORT_TYPES[Path(src).suffix.lower()]
+    pdf = kind == 'PDF'
+    look = [brief.get('style') and f'the {brief["style"]} color set', brief.get('titles') == 'Serif' and 'serif titles', deck.get('logo') and 'the logo in img/']
+    look = ', '.join(x for x in look if x)
+    md = [f'# {deck["name"]}', '', f'Imported {time.strftime("%B %-d, %Y")} from `{src}` ({kind}, {deck["sourceSize"]}).', '', '## What to do', '']
+    if mode == 'keep':
+        md += ['Bring every slide in and keep its look: each slide converted so every word on it can be edited' + ('' if pdf else ', with its speaker notes')
+               + '. Don’t rewrite anything yet. The user reviews it in Decks first.', '']
+    else:
+        md += [f'Rebuild it in Decks’ own layouts{" and " + look if look else ""}: one slide for each slide in the file, in the same order, '
+               'with the same words and the same speaker notes.', '']
+    if brief.get('notes'):
+        md += ['## Notes from the user', '', brief['notes'], '']
+    md += ['## How', '', f'Run these from the Decks folder, `{app}`. The Decks skill has the same steps under “Importing a deck”.', '',
+           '1. `python3 tools/importdeck.py --check`. If it says Python packages are missing, ask the user before installing them '
+           '(`python3 -m pip install python-pptx lxml Pillow PyMuPDF`).']
+    if mode == 'keep':
+        if pdf:
+            md.append('2. A PDF converts on its own: each page is drawn without its words, and the words go back on top as text, one line per text box.')
+        else:
+            md.append('2. A PDF of the same deck in `source/` makes it come out right: charts, SmartArt, and icons are cut from it, and each slide gets a '
+                      'picture of the original to compare with. With none there, the tool makes one with LibreOffice if it’s installed. Otherwise ask the '
+                      'user to export one into the source folder (PowerPoint: File › Export › PDF; Keynote: File › Export To › PDF), or run with '
+                      '`--no-pdf` and tell them what that leaves out.')
+        md += [f'3. `python3 tools/importdeck.py {slug}` converts every slide into `ct-slides.js` and `img/`, writes them into `{deck["entry"]}` with '
+               'each slide’s title and speaker notes, and prints what came in.',
+               f'4. Check it. `./sb shot {slug} <slide ids>` for a spread of slides (the first, the last, and any with charts, tables, or photos), '
+               'and compare each with its original (`img/imp-NNN.jpg`, or the slide’s “original” button in the deck). Then `./sb audit '
+               f'{slug}`. Fix what’s off in the slide’s shapes in `ct-slides.js`, and give a title to any slide the tool named “Slide N”.',
+               f'5. `./sb export {slug}`, then `./sb commit {slug} "Imported from {Path(src).name}"`.',
+               '6. Tell the user how many slides came in editable, which came in as pictures and why, and anything that looks different from the original.']
+    else:
+        md += [f'2. `python3 tools/importdeck.py {slug} --outline` writes `source/outline.md`: each slide’s title, words, tables, chart numbers, and notes, '
+               'with a picture of each slide in `source/pages/`. ' + ('' if pdf else 'The pictures need a PDF of the deck in `source/` (or LibreOffice to make one); '
+               'without one, ask the user to export it, or work from the words alone.'),
+               f'3. Rebuild each slide in `{deck["entry"]}`, replacing the placeholder slide. Pick the layout that fits what the slide does (Add a slide’s basic '
+               'layouts are in the deck already), keep its words, and put its speaker notes in `notes`. Keep the order, and make each section of the '
+               'file a part (CATS). Rebuild a chart from its numbers in the outline as a FIGS figure. A slide that can’t be rebuilt well, like a dense '
+               f'diagram or a photo collage, can stay as it was: `python3 tools/importdeck.py {slug} --slides 7,12 --no-wire` converts just those, '
+               'and `ct(\'s7\', part, title, { notes })` puts one in LIBRARY.',
+               '4. Keep the user’s titles. Where one is a label rather than a sentence, suggest an action title in that slide’s notes instead of changing it.',
+               f'5. Check it: `./sb shot {slug} <slide ids>` against the pictures in `source/pages/`, and `./sb audit {slug}`. Everything passes Checks › Guides.',
+               f'6. `./sb export {slug}`, then `./sb commit {slug} "Rebuilt from {Path(src).name}"`.',
+               '7. Tell the user which layouts the slides went into, any chart or slide you kept as it was, anything you left out, and the titles you’d change.']
+    return '\n'.join(md) + '\n'
+
+
+def import_prompt(deck, src, mode, brief):
+    where = f'It is set up at {deck["url"]} ({deck["folder"]}, slug {deck["slug"]}), with the file in source/.'
+    steps = 'Follow the steps in BRIEF.md there (the Decks skill has the same under “Importing a deck”), and ask me before installing any Python packages.'
+    if mode == 'keep':
+        notes = '' if Path(src).suffix.lower() == '.pdf' else ', with its speaker notes'
+        return (f'Import “{deck["name"]}” into Decks from {Path(src).name}, keeping each slide’s look: every slide converted so each word on it is '
+                f'editable{notes}. {where} {steps} When it’s done, tell me how many slides came in editable, which came in as '
+                'pictures and why, and anything that looks different from the original.')
+    look = f' and the {brief["style"]} color set' if brief.get('style') else ''
+    return (f'Import “{deck["name"]}” into Decks from {Path(src).name}, rebuilt in Decks’ own layouts{look}: the same slides in the same order, '
+            f'with my words and my speaker notes. {where} {steps} Mark anything you rewrote in the notes. When it’s done, tell me which layouts '
+            'the slides went into, any slide you kept as it was, and the titles you’d change.')
 
 
 def made_root(deck):
@@ -357,11 +460,21 @@ def manage_deck(slug, op, registry_path=None):
     return {'slug': slug, 'op': op, 'trashed': sbconfig.tilde(trashed) if trashed else None}
 
 
-def create_deck(name, tid, brief=None, pieces=None, logo=None, registry_path=None):
+def create_deck(name, tid, brief=None, pieces=None, logo=None, registry_path=None, source=None):
+    """source (Import a deck): {'path', 'name', 'mode': 'keep' or 'rebuild', 'move'}. The file goes into the deck's
+    source/ folder (moved there with move, for a file the server just received), and the deck starts from the
+    _import template. Keeping the look takes no color set or logo: the slides bring their own."""
     name = (name or '').strip()
     if not name:
         raise ValueError('Enter a name for the deck.')
     brief = {k: str(v).strip() for k, v in (brief or {}).items() if v and str(v).strip()}
+    src_path = src_name = mode = None
+    if source:
+        src_path, src_name, mode = check_source(source)
+        tid, pieces = IMPORT, []
+        if mode == 'keep':
+            brief = {k: v for k, v in brief.items() if k not in ('style', 'titles')}
+            logo = None
     pieces = [{'id': re.sub(r'[^a-z0-9-]', '', str(pc.get('id', '')).lower()) or f'piece{i}', 'name': str(pc.get('name', '')).strip() or 'Version',
                'desc': str(pc.get('desc', '')).strip()} for i, pc in enumerate(pieces or []) if isinstance(pc, dict)]
     logo_raw = logo_ext = None
@@ -388,7 +501,8 @@ def create_deck(name, tid, brief=None, pieces=None, logo=None, registry_path=Non
         prefix = new_prefix(name, [p for d in reg['decks'] for p in d.get('prefixes', [])] + list(_RESERVED))
         _RESERVED.add(prefix)
         folder.mkdir(parents=True)   # reserves the address
-    try:   # if building fails, take back the reserved folder and prefix
+    moved = None
+    try:   # if building fails, take back the reserved folder and prefix (and put a moved source file back)
         entry = tmpl.get('entry', 'deck.html')
 
         src = TEMPLATES / tid
@@ -408,24 +522,38 @@ def create_deck(name, tid, brief=None, pieces=None, logo=None, registry_path=Non
         serif = 'serif' in brief.get('titles', '').lower() and 'sans' not in brief.get('titles', '').lower()
         if theme:
             recolor_images(folder, theme)
-        (folder / entry).write_text(assemble(tid, name, prefix, pieces, theme, serif, logo_path), encoding='utf-8')
-        (folder / '.gitignore').write_text(GITIGNORE, encoding='utf-8')
+        (folder / entry).write_text(assemble(tid, name, prefix, pieces, theme, serif, logo_path, originals=bool(source)), encoding='utf-8')
+        (folder / '.gitignore').write_text(GITIGNORE + ('source/\n' if source else ''), encoding='utf-8')
+        if source:   # the file being imported, kept as it came
+            (folder / 'source').mkdir()
+            dest = folder / 'source' / src_name
+            size = src_path.stat().st_size
+            if source.get('move'):
+                shutil.move(str(src_path), str(dest))
+                moved = (dest, src_path)
+            else:
+                shutil.copy2(src_path, dest)
 
         deck = {'slug': slug, 'name': name, 'group': 'active', 'kind': tmpl.get('kind', 'workshop'),
                 'folder': sbconfig.tilde(folder), 'entry': entry,
                 'prefixes': [prefix], 'exportName': name, 'template': tid}
         if pieces:
             deck['pieces'] = [{'id': pc['id'], 'name': pc['name']} for pc in pieces]
+        if source:
+            deck.update({'source': f'source/{src_name}', 'importMode': mode, 'sourceSize': size_label(size)})
         deck['url'] = f'http://localhost:{sbconfig.PORT}/d/{slug}/{entry}'
-        md = [f'# {name}', '', f'Started {__import__("time").strftime("%B %-d, %Y")} from {tmpl_phrase(tmpl)}.', '']
-        if pieces:
-            md += ['## What to build', '', *[f'- **{pc["name"]}**' + (f': {pc["desc"]}' if pc.get('desc') else '') + (' (the main deck)' if i == 0 else '') for i, pc in enumerate(pieces)], '']
-        for k, label in BRIEF_FIELDS:
-            if brief.get(k):
-                md += [f'## {label}', '', brief[k], '']
-        (folder / 'BRIEF.md').write_text('\n'.join(md), encoding='utf-8')
-
-        deck['prompt'] = prompt_for(deck, brief, tmpl, pieces)
+        if source:
+            (folder / 'BRIEF.md').write_text(import_brief(dict(deck, logo=logo_path), f'source/{src_name}', mode, brief), encoding='utf-8')
+            deck['prompt'] = import_prompt(deck, src_name, mode, brief)
+        else:
+            md = [f'# {name}', '', f'Started {time.strftime("%B %-d, %Y")} from {tmpl_phrase(tmpl)}.', '']
+            if pieces:
+                md += ['## What to build', '', *[f'- **{pc["name"]}**' + (f': {pc["desc"]}' if pc.get('desc') else '') + (' (the main deck)' if i == 0 else '') for i, pc in enumerate(pieces)], '']
+            for k, label in BRIEF_FIELDS:
+                if brief.get(k):
+                    md += [f'## {label}', '', brief[k], '']
+            (folder / 'BRIEF.md').write_text('\n'.join(md), encoding='utf-8')
+            deck['prompt'] = prompt_for(deck, brief, tmpl, pieces)
         with _REG:   # re-read: other decks may have been added while this one was built
             reg = json.loads(registry_path.read_text(encoding='utf-8')) if registry_path.exists() else {'decks': []}
             reg['decks'].insert(0, {k: v for k, v in deck.items() if k != 'url'})
@@ -435,6 +563,8 @@ def create_deck(name, tid, brief=None, pieces=None, logo=None, registry_path=Non
             _RESERVED.discard(prefix)
 
     except BaseException:
+        if moved and moved[0].exists():
+            shutil.move(str(moved[0]), str(moved[1]))
         shutil.rmtree(folder, ignore_errors=True)
         _RESERVED.discard(prefix)
         raise
@@ -442,7 +572,7 @@ def create_deck(name, tid, brief=None, pieces=None, logo=None, registry_path=Non
         git = lambda *a: subprocess.run(['git', *a], cwd=folder, capture_output=True, text=True)
         git('init', '-q')
         git('add', '-A')
-        git('commit', '-q', '-m', f'New deck from the {tmpl["name"]} template')
+        git('commit', '-q', '-m', f'New deck imported from {src_name}' if source else f'New deck from the {tmpl["name"]} template')
     except OSError:
         pass
     return deck

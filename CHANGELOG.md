@@ -4,6 +4,28 @@ What changed in each version of Decks. To update, run `git pull` in your Decks f
 restart the server. To hear about new versions, watch this repository on GitHub
 (Watch › Custom › Releases).
 
+## Unreleased
+
+- **Import a deck**, in New deck, brings in a deck you already have: a PowerPoint file (.pptx)
+  or a PDF. From Keynote or Google Slides, export to PowerPoint first. Choose the file or paste
+  its path, then pick how it comes in. **Keep its look** converts every slide as it is, so every
+  word on it can be edited, with its speaker notes. **Rebuild it in Decks' layouts** keeps your
+  slides, words, and notes and lays them out in Decks' own layouts and colors. The deck keeps
+  the file in `source/`, and `BRIEF.md` has the steps for your agent. Paste the prompt it
+  copies into Claude Code or Codex.
+- `tools/importdeck.py` does the converting. It writes each slide's title and speaker notes
+  into the deck, turns PowerPoint sections into parts, puts hidden slides on the shelf, and
+  gives each slide a picture of the original to compare with. A PDF on its own keeps its look
+  too: each page's words come back as text you can edit. For a rebuild, `--outline` lists every
+  slide's words, tables, chart numbers, and notes.
+- The PowerPoint converter (`tools/pptx2native.py`) handles more decks: slides of any size
+  (Google Slides' 10-inch slides, older 4:3 decks), photo and gradient backgrounds, logos and
+  graphics on the slide layout and master, gradient fills with transparency, oval speech
+  bubbles, and the deck's own fonts where your machine has them.
+- `sb new "<name>" --from <file>` imports from the command line (`--rebuild` for a rebuild).
+  It's separate from `sb import`, which brings a reviewer's returned file back in.
+- `sb audit` no longer reports a cropped picture as running off the slide or cutting off text.
+
 ## 0.7.4 (October 20, 2026)
 
 - When a new version is out, **Copy update prompt** puts a prompt on your clipboard for Claude

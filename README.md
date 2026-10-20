@@ -331,6 +331,36 @@ Colors: Navy, Dark, Minimal, Forest, Teal, or Plum, with serif or sans serif tit
 They're written into the deck as one `<style id="deck-theme">` block, so you can restyle
 the whole deck in one place. Upload a logo and it goes in the corner of every slide.
 
+### Importing a deck you already have
+
+**Import a deck**, at the bottom of New deck's first step, brings in a PowerPoint file or a
+PDF. From Keynote or Google Slides, export to PowerPoint first. Choose the file (or paste its
+path), then pick how it comes in:
+
+- **Keep its look.** Every slide is converted as it is, so every word on it can be edited,
+  and its speaker notes come along. Charts, SmartArt, and icons come in as pictures cut from a
+  PDF of the deck. A PDF on its own works too: each page keeps its look, and its words come
+  back as text you can edit.
+- **Rebuild it in Decks' layouts.** The same slides in the same order, with your words and
+  notes, laid out in Decks' own layouts and the colors you pick next.
+
+**Import deck** puts the file in the deck's `source/` folder, writes the steps for your agent
+to `BRIEF.md`, and copies a prompt. Paste it into Claude Code or Codex. The agent runs
+`tools/importdeck.py`, which needs four Python packages (python-pptx, lxml, Pillow, and
+PyMuPDF); it asks you before installing them. A PowerPoint file comes in best with a PDF of
+the same deck next to it in `source/` (in PowerPoint, File › Export › PDF): the charts and
+icons are cut from it, and every slide gets a picture of the original to compare with, behind
+its "original" button. If LibreOffice is installed, the tool makes the PDF itself.
+
+From the command line:
+
+```bash
+./sb new "Q3 pricing review" --from "~/Downloads/Q3 pricing review.pptx"
+./sb new "Q3 pricing review" --from "~/Downloads/Q3 pricing review.pptx" --rebuild --style Navy
+```
+
+This is different from `sb import`, which brings a reviewer's returned file back into a deck.
+
 ## The dashboard
 
 ![The dashboard: every deck, its open comments, and recent rounds](docs/dashboard.png)
@@ -374,6 +404,7 @@ Run it from this folder (or by its full path). It talks to the running server.
 | `sb watch [<deck>]` | Wait until you click Process now in any deck (or the one named), then exit saying which (watch mode) |
 | `sb thumb <deck>` / `sb url <deck>` | Refresh the dashboard thumbnail / print the deck's address |
 | `sb templates` / `sb new "<name>" [--template id] ...` | Templates, and a new deck |
+| `sb new "<name>" --from <file.pptx\|file.pdf> [--rebuild]` | Import a deck you already have (see Importing a deck) |
 | `sb hide <deck>` / `sb show <deck>` | Take a deck off the dashboard, or put it back |
 | `sb delete <deck> --yes` | Delete a deck (a deck this app made goes to the Trash) |
 

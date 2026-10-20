@@ -146,11 +146,12 @@ async function main() {
         const id = w.dataset.id, sl = w.querySelector('.slide'); if (!sl) return; const R = sl.getBoundingClientRect(), tag = `${k + 1} ${id}`;
         sl.querySelectorAll('*').forEach((n) => {
           if (n.closest('.ctrls, .slide-tag') || (n.closest('svg') && n.tagName.toLowerCase() !== 'svg')) return;
+          if (n.tagName === 'IMG' && n.parentElement.classList.contains('pp-pic')) return;   // a cropped picture: its frame clips it, and the frame is checked
           const r = n.getBoundingClientRect(); if (!r.width || !r.height) return;
           const over = Math.max(R.left - r.left, r.right - R.right, R.top - r.top, r.bottom - R.bottom);
           if (over > 2) out.push(`${tag}: <${n.tagName.toLowerCase()}> runs ${Math.round(over)}px past the slide edge`);
           const cs = getComputedStyle(n);
-          if (cs.overflow !== 'visible' && n.clientHeight > 0 && n.scrollHeight > n.clientHeight + 3) out.push(`${tag}: <${n.tagName.toLowerCase()}> cuts off its text`);
+          if (cs.overflow !== 'visible' && !n.classList.contains('pp-pic') && n.clientHeight > 0 && n.scrollHeight > n.clientHeight + 3) out.push(`${tag}: <${n.tagName.toLowerCase()}> cuts off its text`);
         });
         sl.querySelectorAll('svg').forEach((svg) => {
           const S = svg.getBoundingClientRect();

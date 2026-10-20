@@ -20,6 +20,8 @@ import json
 import mimetypes
 import os
 import re
+import secrets
+import shutil
 import subprocess
 import threading
 import time
@@ -564,6 +566,34 @@ class Handler(BaseHTTPRequestHandler):
             ctype += '; charset=utf-8'
         self.send(200, path.read_bytes(), ctype, cache=cache)
 
+    def upload_source(self):
+        """The file for Import a deck, streamed to a folder of its own in <decks>/.incoming: New deck then names it by
+        its token, and the deck gets it. Big decks (tens of MB) never pass through JSON."""
+        n = int(self.headers.get('Content-Length') or 0)
+        name = unquote(self.headers.get('X-File-Name') or '').replace('/', '-').replace('\\', '-').strip(' .')
+        if not n or not name:
+            return self.json(400, {'error': 'No file came through. Choose it again.'})
+        if n > MAX_SOURCE:
+            return self.json(413, {'error': f'That file is over {MAX_SOURCE // 1_000_000} MB. Paste its path instead, and the deck copies it from there.'})
+        INCOMING.mkdir(parents=True, exist_ok=True)
+        for old in INCOMING.iterdir():   # uploads nobody made a deck from
+            if time.time() - mtime(old) > 24 * 3600:
+                shutil.rmtree(old, ignore_errors=True)
+        token = secrets.token_hex(8)
+        (INCOMING / token).mkdir()
+        left = n
+        with open(INCOMING / token / name, 'wb') as f:
+            while left:
+                chunk = self.rfile.read(min(left, 1 << 20))
+                if not chunk:
+                    break
+                f.write(chunk)
+                left -= len(chunk)
+        if left:
+            shutil.rmtree(INCOMING / token, ignore_errors=True)
+            return self.json(400, {'error': 'The upload stopped partway. Try again.'})
+        return self.json(200, {'token': token, 'name': name, 'size': n})
+
     # -- routes
     def do_HEAD(self):
         self.do_GET()
@@ -682,15 +712,21 @@ class Handler(BaseHTTPRequestHandler):
                 sbconfig.DECKS.mkdir(parents=True, exist_ok=True)
                 write_json(sbconfig.SETTINGS, st)
             return self.json(200, st)
+        if urlparse(self.path).path == '/api/upload-source':   # Import a deck: the file, as it is, before the deck is made
+            return self.upload_source()
         if urlparse(self.path).path == '/api/new-deck':
             try:
                 body = self.body()
                 if not isinstance(body, dict) or not isinstance(body.get('name', ''), str) or not isinstance(body.get('brief') or {}, dict) \
-                        or not isinstance(body.get('pieces') or [], list) or not isinstance(body.get('logo') or {}, dict):
+                        or not isinstance(body.get('pieces') or [], list) or not isinstance(body.get('logo') or {}, dict) or not isinstance(body.get('source') or {}, dict):
                     return self.json(400, {'error': 'That request didn’t look right.'})
-                deck = newdeck.create_deck(body.get('name'), str(body.get('template') or 'blank'), body.get('brief') or {}, body.get('pieces') or [], body.get('logo'))   # newdeck locks decks.json itself, briefly
+                source, staged = import_source(body.get('source'))
+                deck = newdeck.create_deck(body.get('name'), str(body.get('template') or 'blank'), body.get('brief') or {}, body.get('pieces') or [], body.get('logo'),
+                                           source=source)   # newdeck locks decks.json itself, briefly
             except (ValueError, json.JSONDecodeError) as e:
                 return self.json(400, {'error': str(e)})
+            if staged:
+                shutil.rmtree(staged, ignore_errors=True)
             deck['path'] = f'/d/{deck["slug"]}/{deck["entry"]}'
             make_thumb(deck)
             return self.json(200, deck)
@@ -742,6 +778,29 @@ class Handler(BaseHTTPRequestHandler):
             (folder / name).write_bytes(raw)
             return self.json(200, {'path': f'img/uploads/{name}'})
         self.json(404, {'error': 'unknown'})
+
+
+MAX_SOURCE = 1_000_000_000   # an uploaded deck; a pasted path has no limit
+INCOMING = sbconfig.DECKS / '.incoming'
+
+
+def import_source(src):
+    """New deck's source (Import a deck) -> (what create_deck takes, the upload folder to clear after), or (None, None).
+    Either a token from /api/upload-source, or a path to a file on this machine, which is copied."""
+    if not src:
+        return None, None
+    mode = 'rebuild' if src.get('mode') == 'rebuild' else 'keep'
+    token = str(src.get('token') or '')
+    if token:
+        if not re.fullmatch(r'[0-9a-f]{16}', token) or not (INCOMING / token).is_dir():
+            raise ValueError('The uploaded file is gone. Choose it again.')
+        files = [f for f in (INCOMING / token).iterdir() if f.is_file()]
+        if not files:
+            raise ValueError('The uploaded file is gone. Choose it again.')
+        return {'path': str(files[0]), 'name': files[0].name, 'mode': mode, 'move': True}, INCOMING / token
+    if str(src.get('path') or '').strip():
+        return {'path': str(src['path']).strip(), 'mode': mode}, None
+    raise ValueError('Choose the deck to import: a PowerPoint file (.pptx) or a PDF.')
 
 
 def make_thumb(deck):

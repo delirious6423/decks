@@ -11,6 +11,10 @@ how a deck file is organized, and the slide style rules.
 Every slide follows the method in that file: action titles, vertical and horizontal flow, the
 five- and ten-second tests, and charts that prove the title.
 
+If a pasted prompt says "Import … into Decks", follow Importing a deck in that file: BRIEF.md in
+the deck folder has the steps, and `tools/importdeck.py` does the conversion. Ask before
+installing its Python packages.
+
 If the user says "watch my decks", follow Watch mode in that file: `./sb watch` in the background (every deck), a round
 for the deck it names each time it returns, then watch again.
 
@@ -26,6 +30,8 @@ Working on Decks itself (not a deck):
 
 - `server.py` and `sb` use only the Python standard library. Keep it that way.
 - `tools/browser.mjs` needs `playwright-core` (`./setup.sh` installs it).
+- `tools/importdeck.py` and `tools/pptx2native.py` (Import a deck) need python-pptx, lxml,
+  Pillow, and PyMuPDF. The server never imports them.
 - Check a change by starting the server on a spare port with a scratch decks folder,
   `SB_PORT=8799 SB_DECKS_DIR=/tmp/sb-test python3 server.py`, then `sb new` a deck from
   each template and run `sb audit` and `sb export` on it.
