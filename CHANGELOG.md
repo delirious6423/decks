@@ -4,6 +4,13 @@ What changed in each version of Decks. To update, run `git pull` in your Decks f
 restart the server. To hear about new versions, watch this repository on GitHub
 (Watch › Custom › Releases).
 
+## 0.7.2 (October 20, 2026)
+
+- New deck has three steps: what you're making, who it's for, and how it looks. The new third
+  step shows a sample slide in each color set, titled with your deck's name, in the title font
+  you pick. Upload your logo and it shows on the samples too. Without one, slides have no logo.
+- The dashboard shows the version next to the name. Click it for what changed.
+
 ## 0.7.1 (October 20, 2026)
 
 - **Check for updates**, in the dashboard footer and under `?` in a deck, asks GitHub right

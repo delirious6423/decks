@@ -296,8 +296,9 @@ until the server answers.
 Click **New deck** on the dashboard. First, a name, what you're making (a presentation, a
 training, a talk, a proposal, or a blank deck), and any pieces to build alongside it, like
 a facilitator pack or a short version. Then who it's for, what they know, and the one
-point they should leave with, plus optional length, structure, density, colors, title
-font, logo, and notes.
+point they should leave with, plus optional length, structure, density, and notes. Last,
+how it looks: a sample slide in each color set, the title font, and your logo if you want
+one on every slide.
 
 **Create deck** sets up the folder and its git history, writes your brief to `BRIEF.md`,
 copies a prompt for your agent, and opens the deck. Paste the prompt, and the agent builds
