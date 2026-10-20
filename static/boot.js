@@ -58,11 +58,11 @@
     set.call(ls, DIRTY, JSON.stringify(Object.assign(p, queue))); set.call(ls, DBASE, JSON.stringify(b)); } catch (e) {} };
   const flush = (keepalive) => {
     if (inflight && !keepalive) { clearTimeout(timer); timer = setTimeout(() => flush(), 300); return; }
-    const batch = queue; queue = {}; if (!Object.keys(batch).length) return;
+    const batch = queue; queue = {}; if (!Object.keys(batch).length) return Promise.resolve();
     const body = { set: {}, remove: [], base: {}, tab: TAB };
     Object.entries(batch).forEach(([k, v]) => { if (v === null) body.remove.push(k); else { body.set[k] = v; body.base[k] = k in synced ? synced[k] : null; } });
     inflight = true;
-    fetch(api, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), keepalive: !!keepalive })
+    return fetch(api, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), keepalive: !!keepalive })
       .then((r) => { if (!r.ok) throw new Error(r.status);
         Object.entries(batch).forEach(([k, v]) => { if (v === null) delete synced[k]; else synced[k] = v; });
         retry = 0; try { del.call(ls, DIRTY); del.call(ls, DBASE); } catch (e) {} if (Object.keys(queue).length) keep();

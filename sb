@@ -15,6 +15,8 @@
   sb thumb <deck>                           refresh the dashboard thumbnail
   sb commit <deck> <message>                save the deck folder to version history
   sb url <deck>
+  sb watch <deck>                           wait until you click Process now in the deck, then exit saying so
+                                            (run it in the background; after the round, start it again)
   sb hide <deck> / sb show <deck>           take a deck off the dashboard (into Hidden), or put it back
   sb delete <deck> --yes                    a deck this app made: its folder goes to the Trash;
                                             a deck in a folder of your own: leaves the registry, files stay
@@ -28,6 +30,7 @@ The server must be running: python3 server.py (port and decks folder: sbconfig.p
 sb finds it at SB_URL, or at http://localhost:<port> from config.json / SB_PORT.
 """
 import json
+import time
 import os
 import re
 import shutil
@@ -138,13 +141,28 @@ def main(argv):
         print(f"{d['slug']}  {BASE}{d['path']}\n{d['folder']}\n\n{d['prompt']}")
         return
 
-    known = ('url', 'comments', 'edits', 'working', 'reply', 'status', 'idle', 'round', 'shot', 'audit', 'export', 'thumb', 'commit', 'hide', 'show', 'delete')
+    known = ('url', 'watch', 'comments', 'edits', 'working', 'reply', 'status', 'idle', 'round', 'shot', 'audit', 'export', 'thumb', 'commit', 'hide', 'show', 'delete')
     if cmd not in known:
         sys.exit(f'unknown command {cmd!r}\n' + __doc__)
     slug = rest.pop(0) if rest else sys.exit('which deck? try: sb decks')
 
     if cmd == 'url':
         print(BASE + call('GET', f'/api/decks/{slug}')['url'])
+    elif cmd == 'watch':
+        # wait for the user to click Process now in the deck; exits with a line saying so (run it in the background)
+        call('GET', f'/api/decks/{slug}')   # the deck exists
+        while True:
+            req = urllib.request.Request(f'{BASE}/api/decks/{slug}/watch', method='POST', headers={'Content-Type': 'application/json'}, data=b'{}')
+            try:
+                with urllib.request.urlopen(req, timeout=40) as r:
+                    got = (json.loads(r.read() or b'{}') or {}).get('request')
+            except (urllib.error.URLError, TimeoutError, OSError):
+                time.sleep(5); continue   # the server restarted or is busy: keep waiting
+            if got:
+                n = got.get('open')
+                print(f"Process now was clicked on {slug}{f' ({n} open comment' + ('s' if n != 1 else '') + ')' if n is not None else ''}. "
+                      f"Run the round (process changes), then start ./sb watch {slug} again to keep watching.", flush=True)
+                return
     elif cmd == 'comments':
         show_all = '--all' in rest
         rows = call('GET', f'/api/decks/{slug}/comments')['comments']

@@ -34,7 +34,7 @@ APP = Path(__file__).resolve().parent
 STATIC = APP / 'static'
 LOCK = threading.Lock()
 STARTED = time.time()
-VERSION = '0.3.0'   # see CHANGELOG.md
+VERSION = '0.4.0'   # see CHANGELOG.md
 UPDATE_REPO = 'paulmil11/decks'   # where new versions are released (a fork points this at its own)
 LATEST = {}   # the newest release, from GitHub once a day (sbconfig.CHECK_UPDATES)
 
@@ -123,6 +123,14 @@ def empty_review():
 # ---------- what the dashboard and Claude need to know ----------
 
 SAVES = {}   # slug -> the last save: when, and which tab made it (so other tabs know to catch up)
+WATCH = {}   # slug -> the last moment an agent was waiting on the deck (sb watch)
+ASKED = {}   # slug -> a "Process now" click no agent has picked up yet
+
+
+def watching(slug):
+    return time.time() - WATCH.get(slug, 0) < 75   # sb watch asks again every 25 s; a round in between doesn't count as leaving
+
+
 
 
 def merge3(base, mine, theirs):
@@ -156,7 +164,8 @@ def merge_saved(base, mine, theirs):
 def pulse_of(deck):
     sb = sb_dir(deck)
     return {'file': mtime(deck['path'] / deck['entry']), 'review': mtime(sb / 'review.json'),
-            'state': mtime(sb / 'state.json'), 'shell': static_version(), 'saved': SAVES.get(deck['slug'])}
+            'state': mtime(sb / 'state.json'), 'shell': static_version(), 'saved': SAVES.get(deck['slug']),
+            'watching': watching(deck['slug']), 'asked': deck['slug'] in ASKED}
 
 
 def comments_from_state(state):
@@ -566,7 +575,18 @@ class Handler(BaseHTTPRequestHandler):
             return self.send(302, extra={'Location': path + '/'})
         self.send(404, 'Not found')
 
+    def foreign(self):
+        """A write sent by another website, or another app on this machine, rather than this server's own
+        pages. Browsers say where a request came from; sb and the headless tools send neither header."""
+        site = (self.headers.get('Sec-Fetch-Site') or '').lower()
+        origin = self.headers.get('Origin')
+        if site and site not in ('same-origin', 'none'):
+            return True
+        return bool(origin) and urlparse(origin).netloc != (self.headers.get('Host') or '')
+
     def do_PUT(self):
+        if self.foreign():
+            return self.json(403, {'error': 'Changes are accepted only from Decks’ own pages.'})
         m = re.match(r'^/api/decks/([a-z0-9-]+)/state$', urlparse(self.path).path)
         deck = visible_deck(m.group(1)) if m else None
         if not deck:
@@ -592,6 +612,8 @@ class Handler(BaseHTTPRequestHandler):
         self.json(200, {'savedAt': st['savedAt'], 'merged': merged})
 
     def do_POST(self):
+        if self.foreign():
+            return self.json(403, {'error': 'Changes are accepted only from Decks’ own pages.'})
         if urlparse(self.path).path == '/api/settings':
             with LOCK:
                 st = settings()
@@ -622,6 +644,17 @@ class Handler(BaseHTTPRequestHandler):
             body = self.body()
         except json.JSONDecodeError:
             return self.json(400, {'error': 'bad json'})
+        if what == 'watch':   # sb watch: wait up to 25 s for a Process now click, then answer either way
+            slug, end = deck['slug'], time.time() + 25
+            while True:
+                WATCH[slug] = time.time()
+                req = ASKED.pop(slug, None)
+                if req or time.time() >= end:
+                    return self.json(200, {'request': req})
+                time.sleep(0.4)
+        if what == 'process':   # the page: Process now
+            ASKED[deck['slug']] = {'at': time.time(), 'open': len([r for r in open_comments(deck) if r['state'] != 'draft' and not (r['reply'] and r['reply'].get('status') in ('done', 'skipped', 'question'))])}
+            return self.json(200, {'watching': watching(deck['slug'])})
         if what == 'review':
             try:
                 return self.json(200, apply_review_op(deck, body))

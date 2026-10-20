@@ -80,7 +80,7 @@
     <button class="sb-btn" id="sb-hide" title="Titles only: hide everything but the titles, to test that each one says the point (H). Space reveals one slide.">Titles<span class="sb-long"> only</span></button>
     <button class="sb-btn icon" id="sb-left" title="Show or hide the left side bar ( [ )">◧</button>
     <button class="sb-btn icon" id="sb-right" title="Show or hide notes ( ] )">◨</button>
-    <button class="sb-btn" id="sb-ask" title="Copy a prompt that asks Claude (or Codex) to work through your comments">Ask Claude<span class="sb-n" id="sb-ask-n"></span></button>
+    <button class="sb-btn" id="sb-ask" title="Copy a prompt that asks Claude (or Codex) to work through your comments"><span class="sb-ask-l">Ask Claude</span><span class="sb-n" id="sb-ask-n"></span></button>
     ${$('#present-btn') ? '<button class="sb-btn red" id="sb-present" title="Present from this slide">▶<span class="sb-long"> Present</span></button>' : ''}
     <div class="sb-menu" id="sb-more"><button class="sb-btn icon" aria-label="More">⋯</button><div></div></div>`;
   document.body.prepend(top);
@@ -105,6 +105,10 @@
   proxy('#notes-toggle', 'Show facilitator notes (scroll view)');
   { const b = h('button', null, 'Made by StrategyU ↗'); b.title = 'Decks is made by Paul Millerd at StrategyU, where he teaches the consulting method it is built on';
     b.addEventListener('click', () => { more.classList.remove('open'); window.open('https://strategyu.co/?utm_source=decks&utm_medium=app&utm_campaign=deck-menu', '_blank', 'noopener'); }); moreBox.appendChild(b); }
+  { const b = h('button', null, 'Send feedback to Paul'); b.title = 'Email paul@strategyu.co: what works, what doesn’t, what you’d want next';
+    b.addEventListener('click', async () => { more.classList.remove('open'); const ok = await copyText('paul@strategyu.co');
+      window.open('mailto:paul@strategyu.co?subject=' + encodeURIComponent('Decks feedback'), '_blank');
+      say(ok ? '<b>Opening an email to paul@strategyu.co.</b> The address is copied too, in case your mail app doesn’t open.' : 'Email <b>paul@strategyu.co</b>.'); }); moreBox.appendChild(b); }
   const help = h('div'); help.id = 'sb-help';
   help.innerHTML = `<h4>How this works</h4><ul>
     <li>Click any text on a slide to edit it. It saves to disk as you type.</li>
@@ -147,9 +151,26 @@
     `3. Check your work: ./sb shot ${SB.slug} <slide-ids> and ./sb audit ${SB.slug}.`,
     `4. Finish: ./sb export ${SB.slug}, then ./sb round ${SB.slug} --summary "what changed", then ./sb commit ${SB.slug} "Round N".`,
     'Titles are plain sentences, two lines at most, and every slide passes Checks › Guides.'].join('\n');
+  // watch mode: while Claude waits on this deck (sb watch), the button starts the round itself
+  let watched = false;
+  function askButton(p) {
+    watched = !!(p && p.watching); const b = $('#sb-ask'); if (!b) return;
+    const queued = watched && p.asked;
+    b.querySelector('.sb-ask-l').textContent = queued ? 'Queued…' : watched ? 'Process now' : 'Ask Claude';
+    b.classList.toggle('red', watched);
+    b.title = queued ? 'Claude starts as soon as it finishes what it’s doing' : watched ? 'Claude is watching this deck in Claude Code. Click to start a round.' : 'Copy a prompt that asks Claude (or Codex) to work through your comments';
+  }
   $('#sb-ask').addEventListener('click', async () => {
+    if (watched) {
+      // your latest typing reaches the server first: the deck saves 400 ms after a keystroke, so save it now
+      try { if (typeof snapshot === 'function') snapshot(); else await new Promise((r) => setTimeout(r, 500)); } catch (e) {}   // eslint-disable-line no-undef
+      try { await SB.flush(); } catch (e) {}
+      const r = await fetch(api('process'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).catch(() => null);
+      say(r && r.ok ? '<b>Sent.</b> Claude is starting the round in Claude Code. Its progress shows up here.' : 'Couldn’t reach the server. Try again in a moment.');
+      askButton({ watching: true, asked: true }); return;
+    }
     const ok = await copyText(askPrompt());
-    say(ok ? '<b>Prompt copied.</b> Paste it into Claude Code or Codex. In Claude Code you can also just say “process changes”.' : 'Couldn’t copy. In Claude Code, say “process changes”.');
+    say(ok ? '<b>Prompt copied.</b> Paste it into Claude Code or Codex. Tip: say “watch this deck” in Claude Code, and this button starts each round for you.' : 'Couldn’t copy. In Claude Code, say “process changes”.');
   });
   fetch(api('')).then((r) => r.json()).then((d) => {   // a deck just made from the New deck form: say what's next
     const key = '__sb_next_' + SB.slug; let gone = false; try { gone = localStorage.getItem(key) === '1'; } catch (e) {}
@@ -827,6 +848,7 @@
   function reload() { try { SB.flush(); } catch (e) {} setTimeout(() => location.reload(), 450); }
   async function pulse() {
     let p; try { p = await (await fetch(api('pulse'), { cache: 'no-store' })).json(); } catch (e) { return; }
+    askButton(p);
     if (!base) { base = p; return; }
     if (p.review !== base.review) { base.review = p.review; loadReview(); }
     if (p.file !== base.file || p.shell !== base.shell) { pending = true; banner.firstChild.textContent = 'Claude updated this deck.'; }

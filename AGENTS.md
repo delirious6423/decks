@@ -11,6 +11,9 @@ how a deck file is organized, and the slide style rules.
 Every slide follows the method in that file: action titles, vertical and horizontal flow, the
 five- and ten-second tests, and charts that prove the title.
 
+If the user says "watch my deck", follow Watch mode in that file: `./sb watch <deck>` in the background, a round each
+time it returns, then watch again.
+
 Quick reference:
 
 - Start the server if it isn't running: `python3 server.py` (port 8790 unless

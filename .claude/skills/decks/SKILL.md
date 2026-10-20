@@ -57,6 +57,16 @@ New comments can arrive while you work. Run `./sb comments` again before finishi
 
 The reviewer clears handled comments with "Looks good". Don't add them to `DONE_FB`; that list is only for copies opened outside Decks, such as a file sent to someone else.
 
+## Watch mode ("watch my deck")
+
+When the user asks you to watch a deck, they want to start each round from the deck instead of typing to you:
+
+1. Run `./sb watch <deck>` in the background (in Claude Code, a Bash command with run_in_background). It waits until the user clicks **Process now** in the deck, then exits with a line saying so. While it runs, the deck's Ask Claude button reads Process now.
+2. When it exits with that line, run a full round, exactly as for "process changes".
+3. When the round is done, start `./sb watch <deck>` in the background again, and tell the user in one line that you're watching.
+
+Keep going until the user says to stop; then don't start it again. A click that comes in during a round waits on the server, and the next `sb watch` returns with it right away. If `sb watch` exits with an error, say so instead of restarting it.
+
 ## The deck file
 
 - One self-contained HTML file per deck, with three parts you edit:

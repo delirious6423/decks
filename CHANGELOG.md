@@ -4,6 +4,16 @@ What changed in each version of Decks. To update, run `git pull` in your Decks f
 restart the server. To hear about new versions, watch this repository on GitHub
 (Watch › Custom › Releases).
 
+## 0.4.0 (October 20, 2026)
+
+- **Watch mode.** Say "watch my deck" once in Claude Code. In the deck, Ask Claude turns into
+  **Process now**, and each click starts a round in that chat without typing anything. A click
+  while Claude is busy is queued. Behind it is a new command, `sb watch <deck>`.
+- The server accepts changes only from its own pages. Before, another website you visited could
+  have sent requests to it (depending on your browser).
+- **Send feedback** on the dashboard and in each deck's ⋯ menu opens an email to Paul at
+  paul@strategyu.co (and copies the address, in case your mail app doesn't open).
+
 ## 0.3.0 (October 19, 2026)
 
 - The dashboard tells you when a new version is out, with a link to what's new. Once a day the

@@ -145,6 +145,7 @@
   <span class="app">Decks</span>
   <span class="grow"></span>
   <span class="addr" id="addr"></span>
+  <button class="btn" id="feedback" title="Email Paul at paul@strategyu.co: what works, what doesn't, what you'd want next">Send feedback</button>
   <button class="btn" id="clients" title="Hide client decks and client pitches, for recording or streaming">Hide client work</button>
   <button class="btn red" id="new">New deck</button>
 </header>
@@ -363,6 +364,7 @@ async function load() {
   { const u = data.update, box = document.getElementById('upd'); let gone = ''; try { gone = localStorage.getItem('__decks_upd_hidden') || ''; } catch (e) {}
     box.hidden = !u || gone === u.version;   // a newer release on GitHub, until you hide it
     if (u) box.querySelector('.t').innerHTML = `<b>Decks ${esc(u.version)} is out</b> (<a href="${esc(u.url)}" target="_blank" rel="noopener">what's new</a>). To update, run <code>git pull</code> in your Decks folder, then restart the server.`; }
+  version = data.version || version;
   if (data.version) document.getElementById('ver').innerHTML = `Decks ${esc(data.version)} (<a href="https://github.com/paulmil11/decks/blob/main/CHANGELOG.md" target="_blank" rel="noopener">what's new</a>)`;
   const cb = document.getElementById('clients'); cb.classList.toggle('on', hideClients); cb.textContent = hideClients ? 'Client work hidden' : 'Hide client work';
   decks = data.decks;
@@ -415,6 +417,14 @@ document.getElementById('del-back').addEventListener('click', (e) => { if (e.tar
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeDel(); document.querySelectorAll('.dmenu.open').forEach((x) => x.classList.remove('open')); } });
 
 document.querySelector('#upd button').addEventListener('click', () => { try { localStorage.setItem('__decks_upd_hidden', (document.querySelector('#upd b').textContent.match(/[\d.]+\d/) || [''])[0]); } catch (e) {} document.getElementById('upd').hidden = true; });
+// feedback goes to Paul by email; in-app browsers don't always open a mail app, so the address is copied too
+let version = '';
+document.getElementById('feedback').addEventListener('click', async () => {
+  const ok = await copy('paul@strategyu.co');
+  window.open(`mailto:paul@strategyu.co?subject=${encodeURIComponent('Decks feedback' + (version ? ' (' + version + ')' : ''))}`, '_blank');
+  const b = document.getElementById('feedback'); b.textContent = ok ? 'Address copied: paul@strategyu.co' : 'Email paul@strategyu.co';
+  setTimeout(() => { b.textContent = 'Send feedback'; }, 4000);
+});
 load(); setInterval(load, 5000);
 </script>
 </body>

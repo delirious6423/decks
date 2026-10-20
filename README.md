@@ -173,6 +173,23 @@ how it ended.
 
 ![A revised slide: the new title, the history of the back-and-forth in the side panel, and the next question under the slide](docs/history.png)
 
+### Watch mode: start each round with one click (Claude Code)
+
+Instead of typing "process changes" every time, say this once in Claude Code:
+
+```text
+Watch my deck <name> in Decks.
+```
+
+Claude starts `sb watch` in the background and waits. In the deck, **Ask Claude** turns into
+**Process now**. When your comments are ready, click it: the round starts in that Claude Code
+chat, and you follow it in the deck as usual. When the round is done, Claude goes back to
+watching. Say "stop watching" to end it.
+
+A click while Claude is busy shows **Queued…** and starts the next round as soon as it's free.
+If nothing is watching, the button goes back to Ask Claude and copies the prompt. Watch mode
+is built for Claude Code. Codex hasn't been tested with it yet; there, use Ask Claude.
+
 ## Checks: the tests I teach, one key each
 
 Press C, or a number key from any view to run that check on the slide you're on. Not sure
@@ -325,6 +342,7 @@ Run it from this folder (or by its full path). It talks to the running server.
 | `sb export <deck> [--version v] [--with-edits]` | The next numbered PDF; older ones move to `_archive/` |
 | `sb round <deck> --summary S [--changed slide="what changed" ...] [--export vN]` | Record a round |
 | `sb commit <deck> "<message>"` | Commit the deck folder |
+| `sb watch <deck>` | Wait until you click Process now in the deck, then exit saying so (watch mode) |
 | `sb thumb <deck>` / `sb url <deck>` | Refresh the dashboard thumbnail / print the deck's address |
 | `sb templates` / `sb new "<name>" [--template id] ...` | Templates, and a new deck |
 | `sb hide <deck>` / `sb show <deck>` | Take a deck off the dashboard, or put it back |
@@ -362,6 +380,9 @@ systemctl --user enable --now decks
 | `static/` | The browser shell: `boot.js`, `shell.js`, `shell.css`, `guides.js`, `addslide.js`, `pictures.js`, `clientcopy.js`, and `dashboard.html` |
 | `tools/browser.mjs` | Headless Chrome jobs behind `sb`: titles, edits, shots, audit, PDF, and thumbnails |
 | `tools/pptx2native.py` | Converts PowerPoint slides into editable native slides (how the consulting starter was made) |
+
+The server accepts changes only from its own pages (and from `sb` and the headless tools),
+so another website you visit can't add comments, start a round, or delete a deck.
 
 When the server serves a deck page, it adds a small boot script that loads the deck's
 saved state and mirrors later saves back to disk, then removes its own tags before the
