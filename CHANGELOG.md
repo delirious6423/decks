@@ -4,6 +4,13 @@ What changed in each version of Decks. To update, run `git pull` in your Decks f
 restart the server. To hear about new versions, watch this repository on GitHub
 (Watch › Custom › Releases).
 
+## 0.7.3 (October 20, 2026)
+
+- The consulting template's 2x2 asks for your raw data. Paste each option's name and its score
+  on both axes in the comment under the slide (or the path to a spreadsheet that has them), and
+  Claude renames the dots and moves each one to where its numbers put it. The decks skill says
+  how to place them, so the agent works from the numbers instead of by eye.
+
 ## 0.7.2 (October 20, 2026)
 
 - New deck has three steps: what you're making, who it's for, and how it looks. The new third
