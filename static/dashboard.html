@@ -423,7 +423,7 @@ document.getElementById('del-back').addEventListener('click', (e) => { if (e.tar
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeDel(); document.querySelectorAll('.dmenu.open').forEach((x) => x.classList.remove('open')); } });
 
 document.querySelector('#upd button').addEventListener('click', () => { try { localStorage.setItem('__decks_upd_hidden', (document.querySelector('#upd b').textContent.match(/[\d.]+\d/) || [''])[0]); } catch (e) {} document.getElementById('upd').hidden = true; });
-// Check for updates: the server asks GitHub now, instead of waiting for its daily check
+// Check for updates: the server asks GitHub now, instead of waiting for its next check
 document.getElementById('chk').addEventListener('click', async () => {
   const b = document.getElementById('chk'), out = document.getElementById('chk-say');
   b.disabled = true; out.textContent = 'Checking…';

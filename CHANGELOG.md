@@ -7,8 +7,14 @@ restart the server. To hear about new versions, watch this repository on GitHub
 ## 0.7.1 (October 20, 2026)
 
 - **Check for updates**, in the dashboard footer and under `?` in a deck, asks GitHub right
-  away whether a newer Decks is out, instead of waiting for the daily check. It says you're up
-  to date, or which version is out and how to update, or that GitHub couldn't be reached.
+  away whether a newer Decks is out. It says you're up to date, or which version is out and how
+  to update, or that GitHub couldn't be reached.
+- New versions show up sooner. The server checks every six hours instead of once a day, and a
+  check that fails (offline, or Decks started at login before the network was up) is tried
+  again ten minutes later instead of the next day. It goes by the clock, so a laptop that was
+  asleep checks soon after it wakes.
+- When a new version is out, `?` in a deck gets a dot, and its menu starts with the new version
+  and how to update. Before, only the dashboard said so.
 
 ## 0.7.0 (October 20, 2026)
 

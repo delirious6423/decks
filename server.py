@@ -36,7 +36,9 @@ LOCK = threading.Lock()
 STARTED = time.time()
 VERSION = '0.7.1'   # see CHANGELOG.md
 UPDATE_REPO = 'paulmil11/decks'   # where new versions are released (a fork points this at its own)
-LATEST = {}   # the newest release, from GitHub once a day (sbconfig.CHECK_UPDATES)
+LATEST = {}   # the newest release, from GitHub every few hours (sbconfig.CHECK_UPDATES)
+CHECK_EVERY = 6 * 3600   # seconds between checks that worked
+RETRY_AFTER = 10 * 60    # after one that didn't: offline, or the network wasn't up yet at login
 
 
 # ---------- decks and files ----------
@@ -190,7 +192,7 @@ def pulse_of(deck):
     sb = sb_dir(deck)
     return {'file': mtime(deck['path'] / deck['entry']), 'review': mtime(sb / 'review.json'),
             'state': mtime(sb / 'state.json'), 'shell': static_version(), 'saved': SAVES.get(deck['slug']),
-            'watching': watching(deck['slug']), 'asked': deck['slug'] in ASKED}
+            'watching': watching(deck['slug']), 'asked': deck['slug'] in ASKED, 'update': update_info()}
 
 
 def comments_from_state(state):
@@ -785,15 +787,19 @@ def check_latest():
             LATEST.update({'version': m.group(1), 'url': f'https://github.com/{UPDATE_REPO}/releases/tag/v{m.group(1)}', 'at': time.time()})
             return True
     except (OSError, http.client.HTTPException):
-        pass   # offline, or GitHub didn't answer: try again tomorrow
+        pass   # offline, or GitHub didn't answer: update_loop tries again soon
     return False
 
 
 def update_loop():
+    """Asks GitHub every few hours. It goes by the clock and naps a minute at a time, so a laptop
+    that was asleep checks soon after it wakes, and a check that failed is tried again in minutes."""
     time.sleep(5)   # after startup, so the first page never waits on it
+    due = 0
     while True:
-        check_latest()
-        time.sleep(24 * 3600)
+        if time.time() >= due:
+            due = time.time() + (CHECK_EVERY if check_latest() else RETRY_AFTER)
+        time.sleep(60)
 
 
 def update_info():

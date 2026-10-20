@@ -209,11 +209,27 @@
   item('sb-q', { t: 'Check for updates', sub: 'Ask GitHub now whether a newer Decks is out', act: async () => {
     say('Checking for updates…'); let d = null;
     try { const r = await fetch('/api/check-updates', { method: 'POST' }); if (r.ok) d = await r.json(); } catch (e) {}
+    if (d && d.ok) updateNote(d.update);
     say(!d || !d.ok ? 'Couldn’t reach GitHub. Check your connection, then try again.'
       : !d.update ? `<b>You’re up to date.</b> Decks ${esc(d.version)} is the newest.`
       : `<b>Decks ${esc(d.update.version)} is out.</b> To update, run <code>git pull</code> in your Decks folder, then restart the server. What’s new is linked on the dashboard.`); } });
   item('sb-q', { t: 'Made by StrategyU ↗', sub: 'Where Paul teaches the method behind Decks',
     act: () => window.open('https://strategyu.co/?utm_source=decks&utm_medium=app&utm_campaign=deck-menu', '_blank', 'noopener') });
+  // a newer Decks (the server's check, in the pulse): a row at the top of ?, and a dot on ? until you open it
+  let updBox = null, updSeen = ''; try { updSeen = localStorage.getItem('__decks_upd_seen') || ''; } catch (e) {}
+  function updateNote(u) {
+    const qb = $('#sb-q > .sb-ddb');
+    if (!u) { if (updBox) { updBox.remove(); updBox = null; } qb.classList.remove('sb-newdot'); return; }
+    if (updBox && updBox.dataset.v === u.version) return;
+    if (updBox) updBox.remove();
+    const row = item('sb-q', { t: `Decks ${u.version} is out`, sub: 'To update, run git pull in your Decks folder, then restart the server. Click for what’s new.',
+      act: () => window.open(u.url, '_blank', 'noopener') });
+    updBox = h('div', 'sb-updbox'); updBox.dataset.v = u.version; updBox.append(row, h('div', 'sb-msep'));
+    $('#sb-q .sb-pop').prepend(updBox);
+    qb.classList.toggle('sb-newdot', updSeen !== u.version);
+  }
+  $('#sb-q').addEventListener('sb:open', () => { if (!updBox) return; updSeen = updBox.dataset.v; try { localStorage.setItem('__decks_upd_seen', updSeen); } catch (e) {} $('#sb-q > .sb-ddb').classList.remove('sb-newdot'); });
+  updateNote(SB.pulse && SB.pulse.update);
 
   // ---------- getting help from the agent ----------
   const toast = h('div'); toast.id = 'sb-toast'; document.body.appendChild(toast);
@@ -921,7 +937,7 @@
   function reload() { try { SB.flush(); } catch (e) {} setTimeout(() => location.reload(), 450); }
   async function pulse() {
     let p; try { p = await (await fetch(api('pulse'), { cache: 'no-store' })).json(); } catch (e) { return; }
-    askButton(p);
+    askButton(p); updateNote(p.update);
     if (!base) { base = p; return; }
     if (p.review !== base.review) { base.review = p.review; loadReview(); }
     if (p.file !== base.file || p.shell !== base.shell) { pending = true; banner.firstChild.textContent = 'Claude updated this deck.'; }
