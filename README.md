@@ -4,6 +4,8 @@ Make slides by commenting on them. You leave a comment under a slide, your codin
 (Claude Code or Codex) changes the deck, and it replies on the slide: what it did, a
 question for you, or why it left something alone.
 
+To try it, paste the prompt under [Get started](#get-started) into Claude Code or Codex.
+
 ![A slide in Focus view: the reviewer's comment under it, and the agent's question back](docs/focus.png)
 
 ## Why I built this
@@ -69,6 +71,27 @@ in `.claude/skills/decks/SKILL.md`, and the full one is in my
 I use Decks in the Claude and Codex apps, with the deck open in the app's built-in
 browser, so the agent and I look at the same page. Models: Opus 5.5 or Sol 6.1. I haven't
 tried others yet.
+
+## Get started
+
+Paste this into Claude Code or Codex. It installs Decks, opens it, and starts your first deck
+with you.
+
+```text
+Set up Decks for me: https://github.com/paulmil11/decks
+
+1. Clone it into ~/decks and run ./setup.sh there.
+2. Start the server with python3 server.py and keep it running. Open
+   http://localhost:8790 in your built-in browser so we're looking at the same page.
+3. Read AGENTS.md in that folder and follow it from here on.
+4. Ask me what I'm making, who it's for, and the one point they should leave with.
+   Make the deck with ./sb new, then show me every slide title in order before you
+   build any slides.
+```
+
+From then on, leave comments under the slides and say "process changes" (or click **Ask
+Claude** in the deck for a prompt to paste). To install by hand instead, see
+[Install](#install).
 
 ## Each deck is one file on your machine
 
