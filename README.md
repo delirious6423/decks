@@ -266,8 +266,9 @@ The top bar keeps the rest in a few places:
   deck, a short cut, and a facilitator pack), which share slides.
 - **View**: Titles only (H) hides everything but the titles, in any view. Switches for the
   slide list ([), the notes panel (]), and facilitator notes under each slide in Scroll. And
-  **What changed, round by round**: each round's summary, the proposals you accepted or kept
-  in it, its PDF and its commit, newest first.
+  **What changed, round by round**: each round's summary, the slides it changed with what
+  changed on each (click one to open it), the proposals you accepted or kept in it, its PDF and
+  its commit, newest first. A slide's notes panel lists every round that changed it.
 - **Share**: Download PDF (the slides as they look now, one landscape 16:9 page each, made by the
   server so the print window's paper settings can't turn it sideways), Print, and the three copies below.
 - **Present**: full screen from the slide you're on (⌘↵), or presenter view.

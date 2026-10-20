@@ -389,6 +389,13 @@ def deck_summary(deck):
 
 # ---------- review operations (page and Claude) ----------
 
+def keep_note(r, slide, ch):
+    """A slide's changed note, kept in the record of the round that made it (the badge itself goes when it's seen)."""
+    for rd in r['rounds']:
+        if ch and rd.get('number') == ch.get('round') and ch.get('note'):
+            rd.setdefault('notes', {}).setdefault(slide, ch['note'])
+
+
 def apply_review_op(deck, op):
     path = sb_dir(deck) / 'review.json'
     with LOCK:
@@ -431,20 +438,24 @@ def apply_review_op(deck, op):
             baked = {k: v for k, v in r['proposals'].items() if v.get('baked')}   # proposal decisions baked into the deck file since the last round
             rnd = {'number': op.get('number') or number, 'summary': op.get('summary', ''),
                    'export': op.get('export'), 'changed': list((op.get('changed') or {}).keys()), 'at': now}
+            if op.get('changed'):
+                rnd['notes'] = dict(op['changed'])   # what changed on each slide, kept with the round
             if baked:
                 rnd['proposals'] = [{'slide': k, 'decision': v['decision'], 'replaces': v.get('replaces', ''), 'title': v.get('title', ''),
                                      'how': v.get('how', ''), 'at': v.get('at')} for k, v in baked.items()]
                 for k in baked:
                     r['proposals'].pop(k)
+            for s in op.get('changed') or {}:   # a slide changed again: its earlier note stays with its own round
+                keep_note(r, s, r['changed'].get(s))
             r['rounds'].append(rnd)
             r['changed'].update({s: {'note': n, 'round': op.get('number') or number} for s, n in (op.get('changed') or {}).items()})   # earlier unseen changes stay until marked seen
             r['claude'] = None
         elif kind == 'committed':              # sb commit: the round it saves to the deck's git history
             if r['rounds'] and not r['rounds'][-1].get('commit'):
                 r['rounds'][-1]['commit'] = op.get('commit', '')
-        elif kind == 'seen':                   # page: clear a changed badge
+        elif kind == 'seen':                   # page: clear a changed badge (its note stays in its round's record)
             for s in op.get('slides') or ([slide] if slide else []):
-                r['changed'].pop(s, None)
+                keep_note(r, s, r['changed'].pop(s, None))
         else:
             raise ValueError(f'unknown op {kind!r}')
         write_json(path, r)

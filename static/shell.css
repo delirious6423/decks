@@ -459,3 +459,14 @@ body.sb-on #deck > .sb-isprop > .slide-no { flex-wrap: wrap; row-gap: 6px; }
 body.sb-on #deck > .sb-isprop > .slide-no > * { white-space: nowrap; }
 .sb-flip { flex-wrap: nowrap; white-space: nowrap; }
 .sb-seg2 button { white-space: nowrap; }
+/* What changed, round by round: each round opens to the slides it changed and what changed on each */
+.sb-rnotes { margin-top: 6px; }
+.sb-rnotes summary { cursor: pointer; font-size: 12px; color: var(--sb-mute); list-style: none; }
+.sb-rnotes summary::-webkit-details-marker { display: none; }
+.sb-rnotes summary::before { content: '▸ '; }
+.sb-rnotes[open] summary::before { content: '▾ '; }
+.sb-rnotes ul { margin: 6px 0 0; padding: 0; list-style: none; }
+.sb-rnotes li { display: block; margin: 0 0 7px; font-size: 12.5px; line-height: 1.4; color: var(--sb-mute); }
+.sb-rgo { display: block; font: 600 12.5px/1.35 'DM Sans', sans-serif; color: var(--sb-ink); background: none; border: 0; padding: 0; text-align: left; cursor: pointer; }
+.sb-rgo:hover { color: var(--sb-red); text-decoration: underline; text-underline-offset: 2px; }
+.sb-chist li { color: var(--sb-ink); }

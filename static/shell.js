@@ -334,19 +334,32 @@
   const roundsCard = h('div'); roundsCard.id = 'sb-rounds'; document.body.appendChild(roundsCard);
   const dayOf = (t) => { if (!t) return ''; const d = new Date(t * 1000), n = new Date(), y = new Date(n - 864e5);
     return d.toDateString() === n.toDateString() ? 'Today' : d.toDateString() === y.toDateString() ? 'Yesterday' : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }); };
+  // what changed on each slide in a round: kept with the round, or still on a slide's Changed badge
+  const notesOf2 = (r) => { const n = Object.assign({}, r.notes || {});
+    Object.entries(review.changed || {}).forEach(([s, c]) => { if (c && c.round === r.number && c.note && !(s in n)) n[s] = c.note; });
+    (r.changed || []).forEach((s) => { if (!(s in n)) n[s] = ''; }); return n; };
+  const slideName = (id) => (lib()[id] ? title(id) : id);
   function openRounds() {
     const P = (d, t) => `<li><b class="${d === 'accept' ? 'a' : 'k'}">${d === 'accept' ? 'Accepted' : 'Kept'}</b>${esc(t)}</li>`;
     const wait = propDecided().map((g) => P(g.d, g.d === 'accept' ? title(g.pick) + (g.ps.length > 1 ? ` (option ${g.ps.indexOf(g.pick) + 1} of ${g.ps.length})` : '') : title(g.o)));
     const rs = (review.rounds || []).slice().reverse();
     roundsCard.innerHTML = `<button class="sb-help-x" data-roundx aria-label="Close" title="Close (Esc)">×</button><h4>What changed, round by round</h4>
       ${wait.length ? `<div class="sb-r sb-rwait"><div class="sb-rh">Next round <span>waiting for Claude</span></div><p>Your decisions on proposed slides. Claude writes them into the deck file at the next round.</p><ul>${wait.join('')}</ul></div>` : ''}
-      ${rs.map((r) => `<div class="sb-r"><div class="sb-rh">Round ${esc(r.number)} <span>${[dayOf(r.at), r.export ? `${esc(r.export)} export` : ''].filter(Boolean).join(' · ')}</span></div>
+      ${rs.map((r, i) => { const nt = notesOf2(r), ids = Object.keys(nt);
+        return `<div class="sb-r"><div class="sb-rh">Round ${esc(r.number)} <span>${[dayOf(r.at), r.export ? `${esc(r.export)} export` : ''].filter(Boolean).join(' · ')}</span></div>
         ${r.summary ? `<p>${esc(r.summary)}</p>` : ''}${(r.proposals || []).length ? `<ul>${r.proposals.map((x) => P(x.decision, x.title || x.slide)).join('')}</ul>` : ''}
-        <div class="sb-rmeta">${[(r.changed || []).length ? `${r.changed.length} slide${r.changed.length === 1 ? '' : 's'} changed` : '', r.commit ? `commit ${esc(r.commit)}` : ''].filter(Boolean).join(' · ')}</div></div>`).join('')
+        ${ids.length ? `<details class="sb-rnotes"${i === 0 ? ' open' : ''}><summary>${ids.length} slide${ids.length === 1 ? '' : 's'} changed</summary><ul>${ids.map((x) => `<li><button class="sb-rgo" data-rgo="${esc(x)}" title="Open this slide">${esc(slideName(x))}</button>${nt[x] ? `<span>${esc(nt[x])}</span>` : ''}</li>`).join('')}</ul></details>` : ''}
+        <div class="sb-rmeta">${r.commit ? `commit ${esc(r.commit)}` : ''}</div></div>`; }).join('')
         || (wait.length ? '' : '<p class="sb-hint">No rounds yet. Each time Claude works through your comments, it shows up here.</p>')}`;
     closeMenus(); help.classList.remove('on'); roundsCard.classList.add('on'); roundsCard.scrollTop = 0;
   }
-  roundsCard.addEventListener('click', (e) => { if (e.target.closest('[data-roundx]')) roundsCard.classList.remove('on'); });
+  roundsCard.addEventListener('click', (e) => {
+    if (e.target.closest('[data-roundx]')) roundsCard.classList.remove('on');
+    const g = e.target.closest('[data-rgo]'); if (!g) return;
+    const id = g.dataset.rgo;
+    if (!wrapOf(id)) { say('That slide isn’t in this version.'); return; }
+    roundsCard.classList.remove('on'); if (ui.view !== 'focus' && ui.view !== 'scroll') setView('focus'); go(id);
+  });
   document.addEventListener('pointerdown', (e) => { if (roundsCard.classList.contains('on') && !roundsCard.contains(e.target) && !e.target.closest('#sb-view')) roundsCard.classList.remove('on'); }, true);
 
   // ?: help, and the plain file
@@ -551,6 +564,7 @@
     body.innerHTML = `<div class="sb-sec"><p class="sb-title">${esc(title(id))}</p><div class="sb-meta">Slide ${n} of ${all.length} · ${esc(id)}</div>${o ? `<div class="sb-meta sb-pmeta">${optionsOf(o).length > 1 ? `Option ${optionsOf(o).indexOf(id) + 1} of ${optionsOf(o).length} · ` : ''}${{ accept: `Proposed · accepted in place of ${esc(o)}`, keep: `Proposed · you kept the original, ${esc(o)}` }[(decisionOf(id) || {}).d] || `Proposed · would replace ${on ? `slide ${on}` : `${esc(o)}, which isn’t in this version`}`}</div>` : ''}</div>
       <div class="sb-sec" id="sb-change-slot">${changeBlock(id, i)}</div>
       ${historyBlock(id) ? `<div class="sb-sec">${historyBlock(id)}</div>` : ''}
+      ${changesBlock(id, i) ? `<div class="sb-sec">${changesBlock(id, i)}</div>` : ''}
       <div class="sb-sec"><h4>Notes and sources</h4>${notes ? `<div class="sb-notes">${esc(notes)}</div>` : '<div class="sb-hint">No notes on this slide.</div>'}</div>
       ${o ? `<div class="sb-sec"><h4>The original</h4><button class="sb-porig" data-flipo="${esc(o)}" title="Show it in place of the proposal (Space)"><span class="sb-pthumb" data-id="${esc(o)}"></span></button><div class="sb-hint">${esc(title(o))}</div></div>` : ''}
       ${sibs.length ? `<div class="sb-sec"><h4>The other options</h4><div class="sb-psibs">${sibs.map((y) => `<button class="sb-porig" data-flipo="${esc(y)}" title="Show it here (Space)"><span class="sb-pthumb" data-id="${esc(y)}"></span><span class="sb-hint">Option ${optionsOf(o).indexOf(y) + 1}</span></button>`).join('')}</div></div>` : ''}
@@ -568,6 +582,10 @@
       ${x.reply.forText ? `<div class="sb-h-you"><b>You</b>${esc(x.reply.forText)}</div>` : ''}
       <div class="sb-h-claude"><b>Claude · ${said[x.reply.status] || ''}</b>${esc(x.reply.text)}</div>
       <div class="sb-h-end">${end(x)} · ${day(x.resolved || x.reopened || x.replaced)}</div></li>`).join('')}</ol>`;
+  };
+  const changesBlock = (id, i) => {
+    const rows = (review.rounds || []).slice().reverse().filter((r) => !(i.ch && i.ch.round === r.number)).map((r) => ({ r, note: notesOf2(r)[id] })).filter((x) => x.note !== undefined);
+    return rows.length ? `<h4>Changes to this slide</h4><ol class="sb-hist sb-chist">${rows.map(({ r, note }) => `<li><b>Round ${esc(r.number)}${r.at ? ` · ${esc(dayOf(r.at))}` : ''}</b>${note ? esc(note) : 'Changed in this round.'}</li>`).join('')}</ol>` : '';
   };
   const changeBlock = (id, i) => i.ch ? `<h4>Changed in round ${esc(i.ch.round || '')}<button class="sb-btn" data-act="seen" style="padding:2px 8px;font-size:11.5px;text-transform:none;letter-spacing:0">Mark as seen</button></h4><div class="sb-change">${esc(i.ch.note || 'Updated this round.')}</div>` : '<div class="sb-hint">No changes on this slide in the last round.</div>';
 

@@ -49,7 +49,7 @@ The user reviews a deck in the browser. They type a comment under a slide (or ed
    - `./sb comments <deck>` should show nothing new and unhandled.
 7. Finish:
    - `./sb export <deck>` writes the next numbered PDF from the deck file and moves older ones to `_archive/`. If the browser still holds edits that aren't baked in, it says so: bake them first. `--with-edits` exports exactly what the browser shows instead.
-   - `./sb round <deck> --summary "…" --changed id="what changed" … --export vN`. It records the proposal decisions you baked since the last round; `sb commit` adds the commit to the same record.
+   - `./sb round <deck> --summary "…" --changed id="what changed" … --export vN`. It records the proposal decisions you baked since the last round, and keeps each `--changed` note with the round, so View › What changed shows what changed on each slide in every round (and the slide's right bar lists its changes over time): write each note as one plain sentence on what changed. `sb commit` adds the commit to the same record.
    - `./sb commit <deck> "Round N: …"`.
    - `./sb idle <deck>`.
    - Tell the user where the PDF is.
