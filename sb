@@ -4,6 +4,12 @@
   sb decks                                  every deck, with open comments
   sb comments <deck> [--all]                comments to act on (numbered like the deck); --all adds drafts
   sb edits <deck> [--version v]             the reviewer's inline text edits and slide moves (read-only)
+  sb import <deck> <file.html> [--keep-mine] [--dry-run]
+                                            a reviewer sent the deck file back (a Review copy, or an Editable copy):
+                                            bring its comments and edits in,
+                                            then process changes as usual. Comments merge slide by slide; the
+                                            file's text and slide order win where it changed them (--keep-mine
+                                            keeps yours on slides edited here too). Prints what came in.
   sb working <deck> <slide> [note]          show "Claude working" on a slide
   sb reply <deck> <slide> <done|question|skipped> <text>
   sb status <deck> <text> [--done N --total M]   the live line in the reviewer's top bar
@@ -98,6 +104,331 @@ def next_round(slug):
     return (r.get('rounds') or [{'number': 0}])[-1]['number'] + 1
 
 
+# ---------- sb import: a reviewer's saved copy, back into the round ----------
+
+SAVED_EDITS = re.compile(r'<script id="saved-edits" type="application/json">([\s\S]*?)</script>')
+SENT_EDITS = re.compile(r'<script id="saved-edits-base" type="application/json">([\s\S]*?)</script>')   # the edits as the file was sent (server.py adds it)
+KEY_DEF = re.compile(r"const KEY = \(\) => '([^']+)' \+ current")
+REVIEW_COPY = re.compile(r'<script id="review-copy" type="application/json">([\s\S]*?)</script>')   # the deck page's Review copy
+ASSETS = re.compile(r'window\.__SB_ASSETS=(\{[\s\S]*?\});')                                      # the pictures server.py embeds in a copy
+DATA_URI = re.compile(r'data:[\w.+-]+/[\w.+-]+;base64,[A-Za-z0-9+/=]+')
+ORDER_KEYS = ('__order', '__added', '__removed', '__orig')
+
+
+def fingerprint(bits):
+    """The engine's defHash of a slide's text: djb2 over UTF-16 code units, as a signed 32-bit number."""
+    b, h = '\u0001'.join(bits).encode('utf-16-le'), 5381
+    for i in range(0, len(b), 2):
+        h = ((h << 5) + h + (b[i] | b[i + 1] << 8)) & 0xFFFFFFFF
+    return str(h - (1 << 32) if h & 0x80000000 else h)
+
+
+def merge_version(S, F, B, known, defs, handled, keep_mine):
+    """One version's saved data (S, here) with the returned file's (F). B is what the file was sent with,
+    when it says (None when it doesn't): with it, only what the reviewer changed counts.
+      comments: merged slide by slide; one already here stays, and a different one is added under it
+      text:     the file wins on each slide it changed, unless --keep-mine and the slide was edited here too
+      order:    the same rule, for the running order as a whole"""
+    out = json.loads(json.dumps(S))
+    rep = {'new': [], 'added': [], 'handled': [], 'text': [], 'replaced': [], 'kept': [], 'stale': [], 'order': ''}
+    fdefs = F.get('__def') if isinstance(F.get('__def'), dict) else {}
+    sdefs = S.get('__def') if isinstance(S.get('__def'), dict) else {}
+
+    def live(x):   # text saved here that the deck shows: edited, and typed over the slide as the deck has it now
+        bits, d = S.get(x), sdefs.get(x)
+        return isinstance(bits, list) and d is not None and fingerprint(bits) != d and defs.get(x, d) == d
+
+    for x, bits in F.items():
+        if x.startswith('__') or x not in known or not isinstance(bits, list) or bits == S.get(x):
+            continue
+        fdef = fdefs.get(x)
+        if fdef is None:
+            continue   # the deck only shows saved text with its fingerprint
+        if B is not None and isinstance(B.get(x), list):
+            changed = bits != B[x]                 # changed since the file was sent
+        else:
+            changed = fingerprint(bits) != fdef    # differs from the deck's own text
+        if not changed:
+            continue
+        if defs.get(x, fdef) != fdef:              # the deck has rewritten this slide since; the deck drops such edits
+            rep['stale'].append(x)
+            continue
+        newer = live(x) and (B is None or S.get(x) != B.get(x))   # edited here too, and not just what the file was sent with
+        if newer and keep_mine:
+            rep['kept'].append(x)
+            continue
+        out[x] = bits
+        if not isinstance(out.get('__def'), dict):
+            out['__def'] = {}
+        out['__def'][x] = fdef
+        rep['replaced' if newer else 'text'].append(x)
+
+    fo = F.get('__order')
+    if isinstance(fo, list):
+        def arrangement(D):
+            return D.get('__order'), sorted(i for i in (D.get('__orig') or []) if isinstance(i, str))
+        sent = B is not None and isinstance(B.get('__order'), list)
+        f_moved = arrangement(F) != arrangement(B) if sent else (fo != F.get('__defOrder') or bool(F.get('__orig')))
+        s_moved = isinstance(S.get('__order'), list) and (arrangement(S) != arrangement(B) if sent else (S['__order'] != S.get('__defOrder') or bool(S.get('__orig'))))
+        if f_moved and arrangement(F) != arrangement(S):
+            if s_moved and keep_mine:
+                rep['order'] = 'kept'
+            else:
+                for k in ORDER_KEYS:
+                    if isinstance(F.get(k), list):
+                        out[k] = [i for i in F[k] if isinstance(i, str) and i in known]
+                if isinstance(F.get('__defOrder'), list):
+                    out['__defOrder'] = F['__defOrder']
+                rep['order'] = 'replaced' if s_moved else 'taken'
+
+    ffb = F.get('__fb') if isinstance(F.get('__fb'), dict) else {}
+    sfb = S.get('__fb') if isinstance(S.get('__fb'), dict) else {}
+    bfb = (B.get('__fb') if isinstance(B.get('__fb'), dict) else {}) if B is not None else None
+    ofb = dict(sfb)
+    for x, t in ffb.items():
+        if x not in known or not isinstance(t, str) or not t.strip():
+            continue
+        t, s = t.strip(), (sfb.get(x) or '').strip() if isinstance(sfb.get(x), str) else ''
+        if t == s or (s and t in s):
+            continue
+        if bfb is not None and t == str(bfb.get(x) or '').strip():
+            continue   # it was in the file when it was sent: not the reviewer's
+        if handled(x, t):
+            rep['handled'].append(x)
+            continue
+        if not s:
+            ofb[x] = t
+            rep['new'].append(x)
+        else:   # the reviewer added to a comment that is here, or wrote a different one: keep both
+            ofb[x] = t if s in t else s + '\n\n' + t
+            rep['added'].append(x)
+    if ofb != sfb:
+        out['__fb'] = ofb
+    return out, rep
+
+
+def from_review(D, S, rc, info, v):
+    """A review copy's saved data for its version (what came back, or what it was sent with), in the
+    deck's own terms, so merge_version can treat it like an Editable copy's. The copy holds only the
+    slides it was made with (no facilitator slides), and each slide's saved text ends with a blank
+    facilitator note instead of the real one. rc (its review-copy block) says, per slide, where the
+    note sits and a fingerprint of the slide's default text without it.
+      text:  the blank note becomes the one here (the saved one where it's live, else the deck's);
+             the fingerprint becomes the deck's, unless the deck has rewritten the slide since
+      order: the copy's order for its slides, with the slides it left out back where they were"""
+    if not isinstance(D, dict):
+        return D
+    D = json.loads(json.dumps(D))
+    marks, fnotes, defs, vdefs = rc['slides'], info.get('fnotes') or {}, info.get('defs') or {}, info.get('vdefs') or {}
+    sdefs = S.get('__def') if isinstance(S.get('__def'), dict) else {}
+    if not isinstance(D.get('__def'), dict):
+        D['__def'] = {}
+    for x, mark in marks.items():
+        bits = D.get(x)
+        if not isinstance(bits, list) or not isinstance(mark, list) or len(mark) != 2:
+            continue
+        at, vdef = mark
+        if isinstance(at, int) and 0 <= at < len(bits):
+            mine = S.get(x)
+            if isinstance(mine, list) and len(mine) == len(bits) and x in defs and sdefs.get(x) == defs[x]:
+                bits[at] = mine[at]                      # the note as saved here
+            elif x in fnotes and fnotes[x][0] == at:
+                bits[at] = fnotes[x][1]                  # the deck's own note
+        D['__def'][x] = defs[x] if x in defs and vdefs.get(x) == vdef else 'rewritten since the copy was made'
+    order = D.get('__order')
+    if isinstance(order, list):
+        blocks = [i for i in (info.get('blocks') or {}).get(v) or [] if isinstance(i, str)]
+        here = S.get('__order') if isinstance(S.get('__order'), list) else blocks
+        theirs = [i for i in order if isinstance(i, str)]
+        lead, after, prev, keep = [], {}, None, set(theirs)
+        for i in here:                                   # each slide the copy left out stays after the copy's slide before it
+            if i in marks:
+                if i in keep:
+                    prev = i
+            elif prev:
+                after.setdefault(prev, []).append(i)
+            else:
+                lead.append(i)
+        out = list(lead)
+        for i in theirs:
+            out += [i, *after.pop(i, [])]
+        D['__order'] = out + [i for rest in after.values() for i in rest]
+        D['__removed'] = [i for i in blocks if i not in set(D['__order'])]
+        D['__defOrder'] = S['__defOrder'] if isinstance(S.get('__defOrder'), list) else blocks
+        D['__added'] = list(dict.fromkeys(i for i in [*(S.get('__added') or []), *(D.get('__added') or [])] if isinstance(i, str)))
+        D['__orig'] = [i for i in S.get('__orig') or [] if isinstance(i, str) and i not in marks] + [i for i in D.get('__orig') or [] if isinstance(i, str) and i in marks]
+    return D
+
+
+def import_copy(slug, path, keep_mine=False, dry=False):
+    d, deck_dir = folder(slug)
+    f = Path(os.path.expanduser(path))
+    if not f.is_file():
+        sys.exit(f'no file at {path}')
+    src = f.read_text(encoding='utf-8', errors='replace')
+    try:
+        deck_src = (deck_dir / d['entry']).read_text(encoding='utf-8')
+    except OSError as e:
+        sys.exit(f"can't read {slug}'s deck file: {e}")
+
+    m = SAVED_EDITS.search(src)
+    if not m:
+        if 'id="saved-edits"' not in deck_src:
+            hint = ' Ask for "Copy Edits for Claude" instead: it copies the comments as text to paste into the chat.' if 'id="copy-edits"' in deck_src else ''
+            sys.exit(f"{slug} runs on an older builder without \"Save a copy with my edits\", so a file sent back can't carry its edits or comments.{hint}")
+        sys.exit(f'{f.name} has no saved edits in it: it is not a copy saved with "Save a copy with my edits" (a Client copy never carries any).')
+    try:
+        edits = json.loads(m.group(1))
+    except json.JSONDecodeError:
+        sys.exit(f"{f.name}: its saved edits are damaged (not JSON), so there is nothing safe to import.")
+    if not edits:
+        sys.exit(f'{f.name} carries no edits: nobody clicked "Save a copy with my edits" in it, or it was saved before anything changed.')
+    if not isinstance(edits, dict) or not all(isinstance(v, dict) for v in edits.values()):
+        sys.exit(f"{f.name}: its saved edits aren't in the shape a deck saves, so there is nothing safe to import.")
+    # A copy embeds its pictures and swaps them in as it runs, so a picture slide saves the picture itself
+    # where the deck has its path. The path goes back, or every picture slide would look edited.
+    ma = ASSETS.search(src)
+    try:
+        back = {uri: rel for rel, uri in json.loads(ma.group(1)).items()} if ma else {}
+    except (json.JSONDecodeError, AttributeError):
+        back = {}
+    if back:
+        for v in edits.values():
+            for k, bits in v.items():
+                if not k.startswith('__') and isinstance(bits, list):
+                    v[k] = [DATA_URI.sub(lambda m: back.get(m.group(0), m.group(0)), b) if isinstance(b, str) and 'data:' in b else b for b in bits]
+
+    ours, theirs = KEY_DEF.search(deck_src), KEY_DEF.search(src)
+    if ours and theirs and ours.group(1) != theirs.group(1):
+        other = next((x['slug'] for x in registry().values() if any(theirs.group(1).startswith(p) for p in x.get('prefixes', []))), None)
+        sys.exit(f"{f.name} is not {slug}: it saves under {theirs.group(1)}…, and {slug} under {ours.group(1)}…."
+                 + (f' It looks like {other}: sb import {other} "{path}"' if other else ''))
+
+    rc = None
+    if mr := REVIEW_COPY.search(src):
+        try:
+            rc = json.loads(mr.group(1))
+        except json.JSONDecodeError:
+            rc = None
+        if not (isinstance(rc, dict) and isinstance(rc.get('version'), str) and isinstance(rc.get('slides'), dict)):
+            sys.exit(f"{f.name}: its review-copy block is damaged, so sb import can't tell its notes from the deck's. Nothing imported.")
+        if set(edits) - {rc['version']}:
+            sys.exit(f"{f.name}: a review copy of {rc['version']} carries edits for {', '.join(sorted(set(edits) - {rc['version']}))} too, which a review copy never does. Nothing imported.")
+
+    info = json.loads(node('deckinfo', slug, *(('--version', rc['version']) if rc else ())))
+    if rc and info.get('version') != rc['version']:
+        sys.exit(f"{f.name} is a review copy of the version {rc['version']}, which {slug} no longer has.")
+    versions, known, defs = info.get('versions') or {}, set(info.get('slides') or []), info.get('defs') or {}
+    prefix = info.get('key') or (ours.group(1) if ours else None)
+    if not prefix:
+        sys.exit(f"can't tell where {slug} saves its edits (no KEY in {d['entry']}), so sb import can't bring them in.")
+    if not any(prefix.startswith(p) for p in d.get('prefixes', [])):
+        sys.exit(f"{slug} saves under {prefix}…, which isn't one of its prefixes in decks.json ({', '.join(d.get('prefixes', []))}). Fix decks.json first.")
+
+    use = [v for v in edits if v in versions]
+    if not use:
+        sys.exit(f"{f.name} is not {slug}: its versions ({', '.join(edits)}) aren't {slug}'s ({', '.join(versions)}).")
+    ids = set()
+    for v in edits.values():
+        ids |= {k for k in v if not k.startswith('__')}
+        ids |= {i for i in (v.get('__order') or []) if isinstance(i, str)} | (set(v['__fb']) if isinstance(v.get('__fb'), dict) else set())
+    hit = ids & known
+    if not hit or len(hit) * 2 < len(ids):
+        sys.exit(f"{f.name} is not {slug}: only {len(hit)} of the {len(ids)} slides in it are in {slug}.")
+
+    base = None
+    mb = SENT_EDITS.search(src)
+    if mb:
+        try:
+            base = json.loads(mb.group(1)) or {}
+        except json.JSONDecodeError:
+            base = None
+        base = base if isinstance(base, dict) else None
+
+    state = call('GET', f'/api/decks/{slug}/state').get('keys') or {}
+    review = call('GET', f'/api/decks/{slug}/review')
+    dm = re.search(r'^const DONE_FB = (\[.*\]);\s*$', deck_src, re.M)
+    try:
+        done = set(json.loads(dm.group(1))) if dm else set()
+    except json.JSONDecodeError:
+        done = set()
+    resolved = {(h.get('slide'), (h.get('reply') or {}).get('forText')) for h in review.get('history') or [] if h.get('resolved') and h.get('reply')}
+
+    def handled(x, t):   # acted on already: in the deck's DONE_FB, or resolved with "Looks good"
+        return t in done or f'{x}::{t}' in done or (x, t) in resolved
+
+    writes, lines, totals, old_text = {}, [], {'comments': 0, 'slides': set()}, {}
+    skipped = {'handled': [], 'stale': []}
+    for v in use:
+        key = prefix + v
+        try:
+            S = json.loads(state[key]) if key in state else {}
+        except (TypeError, json.JSONDecodeError):
+            S = {}
+        if not isinstance(S, dict) or S.get('__reverted'):
+            S = {}
+        B = (base.get(v) if isinstance(base.get(v), dict) else {}) if base is not None else None
+        F = edits[v]
+        if rc:
+            F, B = from_review(F, S, rc, info, v), from_review(B, S, rc, info, v)
+        out, rep = merge_version(S, F, B, known, defs, handled, keep_mine)
+        skipped['handled'] += rep['handled']
+        skipped['stale'] += rep['stale']
+        name = versions[v].split(' — ')[0]
+        n_fb, text = len(rep['new']) + len(rep['added']), rep['text'] + rep['replaced']
+        if out == S:
+            lines.append(f'  {name} ({v}): nothing new' + (f" (kept your text on {', '.join(rep['kept'])})" if rep['kept'] else ''))
+            continue
+        writes[key] = json.dumps(out, ensure_ascii=False, separators=(',', ':'))
+        old_text[key] = state.get(key)
+        totals['comments'] += n_fb
+        totals['slides'] |= set(text)
+        bits = [f"{n_fb} comment{'s' * (n_fb != 1)}" + (f" ({len(rep['new'])} new, {len(rep['added'])} added to one already here)" if rep['added'] else '') if n_fb else '',
+                f"text edits on {len(text)} slide{'s' * (len(text) != 1)}" if text else '',
+                {'taken': "the reviewer's slide order", 'replaced': "the reviewer's slide order, in place of yours", 'kept': 'your slide order (kept)'}.get(rep['order'], '')]
+        lines.append(f'  {name} ({v}): ' + ', '.join(b for b in bits if b))
+        if rep['new'] or rep['added']:
+            lines.append('    comments on: ' + ', '.join([*rep['new'], *(f'{x} (added to yours)' for x in rep['added'])]))
+        if text:
+            lines.append('    text on: ' + ', '.join([*rep['text'], *(f'{x} (replaced your newer text)' for x in rep['replaced'])]))
+        if rep['kept']:
+            lines.append(f"    kept your text on: {', '.join(rep['kept'])}")
+    if extra := [v for v in edits if v not in versions]:
+        lines.append(f"  left out: version{'s' * (len(extra) != 1)} {', '.join(extra)}, which {slug} doesn't have")
+    if gone := sorted(ids - known):
+        lines.append(f"  left out: {len(gone)} slide{'s' * (len(gone) != 1)} {slug} no longer has ({', '.join(gone[:6])}{'…' if len(gone) > 6 else ''})")
+    if skipped['handled']:
+        lines.append(f"  not brought back: {len(skipped['handled'])} comment{'s' * (len(skipped['handled']) != 1)} already handled ({', '.join(skipped['handled'])})")
+    if skipped['stale']:
+        lines.append(f"  not brought back: text typed over slides the deck has rewritten since ({', '.join(skipped['stale'])})")
+    how = ('compared with what it was sent with' if base is not None else
+           "it doesn't say what it was sent with, so every comment and edit in it that isn't here yet counts as the reviewer's")
+    if rc:
+        how = f"a review copy of {versions.get(rc['version'], rc['version']).split(' — ')[0]}, " + how
+    if not writes:
+        print(f'Nothing new in {f.name} for {slug} ({how}).\n' + '\n'.join(lines))
+        return
+    if dry:
+        print(f'Would import {f.name} into {slug} ({how}):\n' + '\n'.join(lines) + '\nNothing written (--dry-run).')
+        return
+
+    record = deck_dir / '.slidebuilder' / 'imports' / (time.strftime('%Y%m%d-%H%M%S') + '.json')
+    record.parent.mkdir(parents=True, exist_ok=True)
+    record.write_text(json.dumps({'file': str(f), 'at': time.strftime('%Y-%m-%d %H:%M:%S'), 'before': old_text, 'after': writes, 'copy': edits},
+                                 ensure_ascii=False, indent=1), encoding='utf-8')
+    r = call('PUT', f'/api/decks/{slug}/state', {'set': writes, 'base': old_text, 'tab': 'sb-import'})
+    now = call('GET', f'/api/decks/{slug}/state').get('keys') or {}
+    if missing := [k for k in writes if k not in now]:
+        sys.exit(f"The server didn't keep {', '.join(missing)}. Nothing else changed; the state before is in {record}.")
+    n, k = totals['comments'], len(totals['slides'])
+    print(f'Imported {f.name} into {slug} ({how}): '
+          + (', '.join(x for x in (f"{n} comment{'s' * (n != 1)}" if n else '', f"text edits on {k} slide{'s' * (k != 1)}" if k else '') if x) or 'a new slide order')
+          + '.\n' + '\n'.join(lines))
+    if r.get('merged'):
+        print(f"  (an open tab saved {', '.join(r['merged'])} at the same time: both sets of changes are kept)")
+    print(f"The state before the import: {record.relative_to(deck_dir)}\nNext: process changes as usual (./sb comments {slug}, ./sb edits {slug}).")
+
+
 def main(argv):
     if not argv or argv[0] in ('-h', '--help', 'help'):
         print(__doc__)
@@ -141,7 +472,7 @@ def main(argv):
         print(f"{d['slug']}  {BASE}{d['path']}\n{d['folder']}\n\n{d['prompt']}")
         return
 
-    known = ('url', 'watch', 'comments', 'edits', 'working', 'reply', 'status', 'idle', 'round', 'shot', 'audit', 'export', 'thumb', 'commit', 'hide', 'show', 'delete')
+    known = ('url', 'watch', 'comments', 'edits', 'import', 'working', 'reply', 'status', 'idle', 'round', 'shot', 'audit', 'export', 'thumb', 'commit', 'hide', 'show', 'delete')
     if cmd not in known:
         sys.exit(f'unknown command {cmd!r}\n' + __doc__)
     slug = rest.pop(0) if rest else sys.exit('which deck? try: sb decks')
@@ -189,6 +520,12 @@ def main(argv):
     elif cmd == 'edits':
         version = opt(rest, '--version')
         print(node('edits', slug, *(['--version', version] if version else [])), end='')
+    elif cmd == 'import':
+        keep, dry = '--keep-mine' in rest, '--dry-run' in rest
+        files = [a for a in rest if a not in ('--keep-mine', '--dry-run')]
+        if len(files) != 1:
+            sys.exit('usage: sb import <deck> <file.html> [--keep-mine] [--dry-run]')
+        import_copy(slug, files[0], keep, dry)
     elif cmd in ('reply', 'working'):
         slide = rest.pop(0)
         status = 'working' if cmd == 'working' else rest.pop(0)

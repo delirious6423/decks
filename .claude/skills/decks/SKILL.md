@@ -57,6 +57,14 @@ New comments can arrive while you work. Run `./sb comments` again before finishi
 
 The reviewer clears handled comments with "Looks good". Don't add them to `DONE_FB`; that list is only for copies opened outside Decks, such as a file sent to someone else.
 
+**A reviewer sent the file back.** Someone opened a Review copy (or an Editable copy), commented and edited, clicked "Save a copy with my edits", and returned the file. Run `./sb import <deck> <file.html>`, then process changes as usual: their comments show up in `sb comments` and their text edits in `sb edits`.
+- It prints what came in: each version, its comments, and the slides whose text changed. Run it with `--dry-run` first to see that without changing anything.
+- Comments merge slide by slide. A comment already on the slide stays and the reviewer's goes under it; comments already handled don't come back.
+- Text and slide order: the file wins where it changed them, and the summary names every slide where that replaced newer text of the user's. `--keep-mine` keeps theirs on those slides.
+- A Review copy holds one version and no notes. `sb import` puts the user's notes back and keeps the facilitator slides it left out where they were. A slide the deck file rewrote since the copy was made is "not brought back" and named: tell the user, and redo that edit by hand if they want it.
+- It refuses a file that isn't this deck and says why.
+- Reply to the reviewer's comments on the slides like the user's. Their edits bake in like the user's, but name them in the chat summary so the user sees what the reviewer changed.
+
 ## Watch mode ("watch my deck")
 
 When the user asks you to watch a deck, they want to start each round from the deck instead of typing to you:

@@ -156,7 +156,7 @@ copy `config.example.json` to `config.json`, or set environment variables (they 
 
 1. **You comment.** Write what should change in the box under a slide, or click any text
    on the slide and fix it yourself. It saves to disk next to the deck as you type.
-2. **You hand it to the agent.** Click **Ask Claude** in the top bar. It copies a prompt
+2. **You hand it to the agent.** Click **Ask Claude** in the top bar (or press A). It copies a prompt
    with the deck file and the steps; paste it into Claude Code or Codex. With the `decks`
    skill installed, you can just say "process changes".
 3. **The agent edits and replies.** It reads your comments and edits with `sb comments`
@@ -231,8 +231,8 @@ Four views, each with the slides on the left and the notes on the right:
   slides back.
 - **Checks** (C): above.
 
-**Titles only** (H) hides everything but the titles, in any view. `?` lists every
-shortcut. The version menu switches between a deck's versions (say, the full deck, a
+**Titles only** (H) hides everything but the titles, in any view. A is Ask Claude (or
+Process now in watch mode). `?` lists every shortcut. The version menu switches between a deck's versions (say, the full deck, a
 short cut, and a facilitator pack), which share slides.
 
 ### Add a slide
@@ -249,15 +249,26 @@ your own in. It's saved next to the deck.
 
 ![Add a slide: what are you trying to show, then the layouts that do it](docs/add-slide.png)
 
-### Send a client only the slides
+### Sending a deck out, and getting feedback back
 
-The ⋯ menu in the top bar has two copies:
+The ⋯ menu in the top bar has three copies, each one file with its pictures inside:
 
-- **Client copy**: the version on screen, slides only, as they look now. Notes, comments,
-  facilitator slides, other versions, and editing are left out, so they aren't in the
-  file's source either. It's one file with its pictures inside. It scrolls, prints one
-  slide per page, and presents full screen (P).
-- **Editable copy**: the whole deck with its notes and comments, for you.
+- **Client copy**: for people who read or present it. The version on screen, slides only,
+  as they look now. Notes, comments, facilitator slides, other versions, and editing are
+  left out, so they aren't in the file's source either. It scrolls, prints one slide per
+  page, and presents full screen (P).
+- **Review copy**: for someone outside, a client say, who should comment and edit and send
+  it back. The version on screen with editable text, a comment box under each slide, and
+  "Save a copy with my edits". Your notes, your comments, facilitator slides, and the
+  other versions are left out of its source.
+- **Editable copy**: the whole deck with its notes and comments, for you. Never send it to
+  a client.
+
+When the reviewer sends their saved file back, run `sb import <deck> <file.html>` (add
+`--dry-run` first to see what would come in). Their comments merge in slide by slide,
+under any comment already there; their text and slide order win where they changed them
+(`--keep-mine` keeps yours instead). Then process changes as usual. The state before each
+import is kept in `.slidebuilder/imports/`.
 
 `sb export` prints the deck file to PDF. If the browser holds edits that aren't in the
 file yet, it says so; `--with-edits` prints what the browser shows instead.
@@ -342,6 +353,7 @@ Run it from this folder (or by its full path). It talks to the running server.
 | `sb export <deck> [--version v] [--with-edits]` | The next numbered PDF; older ones move to `_archive/` |
 | `sb round <deck> --summary S [--changed slide="what changed" ...] [--export vN]` | Record a round |
 | `sb commit <deck> "<message>"` | Commit the deck folder |
+| `sb import <deck> <file.html> [--dry-run] [--keep-mine]` | Bring a reviewer's returned file (a Review copy) into the deck |
 | `sb watch <deck>` | Wait until you click Process now in the deck, then exit saying so (watch mode) |
 | `sb thumb <deck>` / `sb url <deck>` | Refresh the dashboard thumbnail / print the deck's address |
 | `sb templates` / `sb new "<name>" [--template id] ...` | Templates, and a new deck |

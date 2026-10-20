@@ -4,6 +4,17 @@ What changed in each version of Decks. To update, run `git pull` in your Decks f
 restart the server. To hear about new versions, watch this repository on GitHub
 (Watch › Custom › Releases).
 
+## 0.5.0 (October 20, 2026)
+
+- **Review copy** in the ⋯ menu: a file for someone outside to comment on and edit, then send
+  back. It holds the version on screen, without your notes, your comments, facilitator
+  slides, or other versions.
+- **`sb import <deck> <file.html>`** brings the returned file into the deck: their comments
+  merge in slide by slide, and their edits come in where they made them. `--dry-run` shows
+  what would change first.
+- The Editable copy keeps the deck's file name instead of always saving as `workshop.html`.
+- **A** is the shortcut for Ask Claude (and for Process now in watch mode).
+
 ## 0.4.0 (October 20, 2026)
 
 - **Watch mode.** Say "watch my deck" once in Claude Code. In the deck, Ask Claude turns into

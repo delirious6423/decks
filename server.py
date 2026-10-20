@@ -34,7 +34,7 @@ APP = Path(__file__).resolve().parent
 STATIC = APP / 'static'
 LOCK = threading.Lock()
 STARTED = time.time()
-VERSION = '0.4.0'   # see CHANGELOG.md
+VERSION = '0.5.0'   # see CHANGELOG.md
 UPDATE_REPO = 'paulmil11/decks'   # where new versions are released (a fork points this at its own)
 LATEST = {}   # the newest release, from GitHub once a day (sbconfig.CHECK_UPDATES)
 
@@ -402,9 +402,11 @@ new MutationObserver(function(ms){ms.forEach(function(m){if(m.type==='attributes
 document.addEventListener('DOMContentLoaded',function(){scan(document.documentElement)});})();"""
 
 
-def bundle_copy(deck, html):
+def bundle_copy(deck, html, code_paths=True):
     """The deck's own "Save a copy" output, made self-contained: its local scripts inlined and
-    every picture it refers to embedded (paths built in code, like img/ct-${n}.jpg, included)."""
+    every picture it refers to embedded (paths built in code, like img/ct-${n}.jpg, included).
+    A review copy names each of its pictures in full, so code_paths=False leaves out the pictures a
+    pattern like that would match: they belong to slides the copy doesn't carry."""
     import base64
     root = deck['path'].resolve()
 
@@ -427,7 +429,7 @@ def bundle_copy(deck, html):
     for rel in re.findall(r'(?<=["\'(\s=`])(?:\./)?([\w%-][\w%./-]*\.' + IMG_EXT + r')(?=["\')\s?#`])', html):
         if inside(rel):
             found.add(rel)
-    for pre, post in re.findall(r'`((?:[\w-]+/)*[\w.-]*)\$\{[^}`]*\}([\w.-]*\.' + IMG_EXT + r')`', html):
+    for pre, post in re.findall(r'`((?:[\w-]+/)*[\w.-]*)\$\{[^}`]*\}([\w.-]*\.' + IMG_EXT + r')`', html) if code_paths else ():
         folder = root / os.path.dirname(pre)
         if pre and folder.is_dir() and (folder.resolve() == root or root in folder.resolve().parents):
             for f in folder.glob(os.path.basename(pre) + '*' + post):
@@ -440,7 +442,30 @@ def bundle_copy(deck, html):
     head = '<script>window.__SB_ASSETS=' + json.dumps(assets).replace('</', '<\\/') + ';' + ASSET_JS + '</script>'
     m = re.search(r'<head[^>]*>', html, re.I)
     html = html[:m.end()] + head + html[m.end():] if m else head + html
-    return html, len(assets)
+    return for_reviewers(html), len(assets)
+
+
+SAVED_EDITS = re.compile(r'<script id="saved-edits" type="application/json">([\s\S]*?)</script>')
+SENT_EDITS = re.compile(r'\n?<script id="saved-edits-base" type="application/json">[\s\S]*?</script>')
+OWN_NAME = "(decodeURIComponent(location.pathname.split('/').pop() || '') || 'workshop.html')"
+OLD_SAVE_NAME = (("a.download = 'workshop.html';", f'a.download = {OWN_NAME};'),   # decks made before the engine kept the file's name
+                 ("'✓ Saved a copy — replace workshop.html with the download'", f"'✓ Saved a copy — replace ' + {OWN_NAME} + ' with the download'"))
+
+
+def for_reviewers(html):
+    """An editable copy, ready to be sent back:
+    1. a second copy of its edits block, as it was sent. A reviewer's "Save a copy" rewrites only the
+       first, so when the file comes back, sb import can tell their changes from what was already in it.
+    2. its own "Save a copy" keeps the file's name, even in decks made before the engine did."""
+    m = SAVED_EDITS.search(html)
+    if not m:
+        return html   # a client copy: no edits, nothing to send back
+    html = SENT_EDITS.sub('', html)
+    m = SAVED_EDITS.search(html)
+    html = html[:m.end()] + '\n<script id="saved-edits-base" type="application/json">' + m.group(1) + '</script>' + html[m.end():]
+    for old, new in OLD_SAVE_NAME:
+        html = html.replace(old, new, 1)
+    return html
 
 
 # ---------- HTTP ----------
@@ -450,7 +475,8 @@ SHELL_TAG = ('<script id="sb-shell" src="/_sb/shell.js?v={v}" defer></script>'  
              '<script id="sb-guides" src="/_sb/guides.js?v={v}" defer></script>'
              '<script id="sb-addslide" src="/_sb/addslide.js?v={v}" defer></script>'
              '<script id="sb-pictures" src="/_sb/pictures.js?v={v}" defer></script>'
-             '<script id="sb-clientcopy" src="/_sb/clientcopy.js?v={v}" defer></script>')
+             '<script id="sb-clientcopy" src="/_sb/clientcopy.js?v={v}" defer></script>'
+             '<script id="sb-reviewcopy" src="/_sb/reviewcopy.js?v={v}" defer></script>')
 
 
 def static_version():
@@ -671,7 +697,7 @@ class Handler(BaseHTTPRequestHandler):
             html = body.get('html')
             if not isinstance(html, str) or not html.strip():
                 return self.json(400, {'error': 'no html'})
-            out, n = bundle_copy(deck, html)
+            out, n = bundle_copy(deck, html, code_paths=not body.get('review'))
             return self.send(200, out, 'text/html; charset=utf-8', extra={'X-SB-Pictures': str(n)})
         if what == 'upload':
             # a picture dropped onto a slide: saved in the deck's folder, so the deck and its PDF keep it

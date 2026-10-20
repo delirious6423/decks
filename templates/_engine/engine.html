@@ -3181,6 +3181,8 @@ function currentData() {
   data.__def = def;
   return data;
 }
+// the copy keeps this file's own name (a reviewer's "Deck (editable).html" comes back as that, not as workshop.html)
+const FILE_NAME = () => { let n = ''; try { n = decodeURIComponent(location.pathname.split('/').pop() || ''); } catch (e) {} return /\.html?$/i.test(n) ? n : 'deck.html'; };
 /* "Save a copy": every version's edits (this one fresh, the others from this
    browser or from the file itself) written into the saved-edits block of a
    byte-identical copy of this file, then downloaded. */
@@ -3191,11 +3193,12 @@ document.getElementById('save-copy').addEventListener('click', () => {
   const html = ORIGINAL_HTML.replace(/(<script id="saved-edits" type="application\/json">)[\s\S]*?(<\/script>)/, (m, a, b) => a + json + b);
   const blob = new Blob([html], { type: 'text/html' });
   const url = URL.createObjectURL(blob);
-  const a = document.createElement('a'); a.href = url; a.download = 'workshop.html'; document.body.appendChild(a); a.click(); a.remove();
+  const name = FILE_NAME();
+  const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 4000);
   dirty = false;
   const bn = document.getElementById('nosave-banner'); if (bn) bn.remove();
-  const f = document.getElementById('save-flag'); f.textContent = '✓ Saved a copy — replace workshop.html with the download'; f.className = 'save-flag on'; setTimeout(flagSaved, 8000);
+  const f = document.getElementById('save-flag'); f.textContent = '✓ Saved a copy — replace ' + name + ' with the download'; f.className = 'save-flag on'; setTimeout(flagSaved, 8000);
 });
 function nosaveBanner() {
   if (document.getElementById('nosave-banner')) return;

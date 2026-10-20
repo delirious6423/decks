@@ -3,6 +3,7 @@
 //
 //   node browser.mjs titles <slug> [--version v]
 //   node browser.mjs edits  <slug> [--version v]   (the reviewer's inline edits and order, read-only)
+//   node browser.mjs deckinfo <slug> [--version v] (versions, slide ids, storage key, fingerprints: what sb import checks against)
 //   node browser.mjs shot   <slug> <outdir> [--version v] <slide-id> ...
 //   node browser.mjs audit  <slug> [--version v]
 //   node browser.mjs export <slug> <out.pdf> [--version v]
@@ -75,6 +76,29 @@ async function main() {
   if (cmd === 'titles') {
     const { browser, page } = await open(slug);
     console.log(JSON.stringify(await order(page)));
+    await browser.close(); return;
+  }
+  if (cmd === 'deckinfo') {   // what sb import checks a returned file against: versions, slide ids, storage key, each slide's text fingerprint
+    // --version v: fingerprints as that version builds its slides (a review copy says which); a version the deck lacks is reported, not fatal
+    const want = version; version = null;
+    const { browser, page } = await open(slug);
+    const res = await page.evaluate((want) => {
+      const out = { key: null, versions: {}, slides: [], defs: {}, version: null, vdefs: {}, fnotes: {}, blocks: {} };
+      try { Object.keys(PITCHES).forEach((k) => { out.versions[k] = String(PITCHES[k].name || k); out.blocks[k] = PITCHES[k].blocks.slice(); }); } catch (e) {}   // eslint-disable-line no-undef
+      try { const s = document.querySelector('.sidebar select'); if (want && s && [...s.options].some((o) => o.value === want)) { s.value = want; s.dispatchEvent(new Event('change', { bubbles: true })); } } catch (e) {}
+      try { out.version = String(current); } catch (e) {}                                                              // eslint-disable-line no-undef
+      try { out.slides = Object.keys(LIBRARY); } catch (e) {}                                                          // eslint-disable-line no-undef
+      try { const k = KEY(), c = String(current); if (k.endsWith(c)) out.key = k.slice(0, k.length - c.length); } catch (e) {}   // eslint-disable-line no-undef
+      try { out.slides.forEach((id) => { out.defs[id] = defHash(id); }); } catch (e) { out.defs = {}; }               // eslint-disable-line no-undef
+      // for a review copy: where each slide's facilitator note sits in its saved text, the note itself, and a
+      // fingerprint of the rest (a review copy carries a blank note, so sb import puts this one back)
+      const dj = (t) => { let h = 5381; for (let i = 0; i < t.length; i++) h = ((h << 5) + h + t.charCodeAt(i)) | 0; return String(h); };
+      try { out.slides.forEach((id) => { const ns = [...build(id).querySelectorAll('[contenteditable]')], at = ns.findIndex((n) => n.classList.contains('fnote'));   // eslint-disable-line no-undef
+        out.vdefs[id] = dj(ns.filter((n, i) => i !== at).map((n) => n.innerHTML).join('\u0001'));
+        if (at >= 0) out.fnotes[id] = [at, ns[at].innerHTML]; }); } catch (e) { out.vdefs = {}; out.fnotes = {}; }
+      return out;
+    }, want);
+    console.log(JSON.stringify(res));
     await browser.close(); return;
   }
   if (cmd === 'edits') {   // the reviewer's inline edits and reordering, from the state saved on disk

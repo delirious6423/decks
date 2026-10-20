@@ -80,7 +80,7 @@
     <button class="sb-btn" id="sb-hide" title="Titles only: hide everything but the titles, to test that each one says the point (H). Space reveals one slide.">Titles<span class="sb-long"> only</span></button>
     <button class="sb-btn icon" id="sb-left" title="Show or hide the left side bar ( [ )">◧</button>
     <button class="sb-btn icon" id="sb-right" title="Show or hide notes ( ] )">◨</button>
-    <button class="sb-btn" id="sb-ask" title="Copy a prompt that asks Claude (or Codex) to work through your comments"><span class="sb-ask-l">Ask Claude</span><span class="sb-n" id="sb-ask-n"></span></button>
+    <button class="sb-btn" id="sb-ask" title="Copy a prompt that asks Claude (or Codex) to work through your comments (A)"><span class="sb-ask-l">Ask Claude</span><span class="sb-n" id="sb-ask-n"></span></button>
     ${$('#present-btn') ? '<button class="sb-btn red" id="sb-present" title="Present from this slide">▶<span class="sb-long"> Present</span></button>' : ''}
     <div class="sb-menu" id="sb-more"><button class="sb-btn icon" aria-label="More">⋯</button><div></div></div>`;
   document.body.prepend(top);
@@ -97,10 +97,10 @@
   }
 
   const more = $('#sb-more'), moreBox = more.querySelector('div');
-  const proxy = (sel, label) => { const t = $(sel); if (!t) return; const b = h('button', null, esc(label)); b.addEventListener('click', () => { more.classList.remove('open'); t.click(); }); moreBox.appendChild(b); };
+  const proxy = (sel, label, id) => { const t = $(sel); if (!t) return; const b = h('button', null, esc(label)); if (id) b.id = id; b.addEventListener('click', () => { more.classList.remove('open'); t.click(); }); moreBox.appendChild(b); };
   proxy('#presenter-btn', 'Presenter view');
   proxy('#export-btn', 'Export PDF (print)');
-  proxy('#save-copy', 'Editable copy: with notes and comments');
+  proxy('#save-copy', 'Editable copy: yours, with notes and comments', 'sb-editable-copy');
   proxy('#copy-edits', 'Copy edits');
   proxy('#notes-toggle', 'Show facilitator notes (scroll view)');
   { const b = h('button', null, 'Made by StrategyU ↗'); b.title = 'Decks is made by Paul Millerd at StrategyU, where he teaches the consulting method it is built on';
@@ -115,11 +115,13 @@
     <li>Write a comment for a slide, then say <b>process changes</b> to Claude. Tick “Still drafting” to hold one back.</li>
     <li>Claude replies under your comment. <b>Looks good</b> clears it; <b>Reopen</b> sends it back.</li>
     <li>In the left bar, × leaves a slide out of this version; add slides back from “Not in this version”.</li>
-    <li>Presenting and PDF export are in this ⋯ menu and the top bar, when the deck has them. <b>Client copy</b> is the file to send a client: this version’s slides and nothing else.</li></ul>
+    <li>Presenting and PDF export are in this ⋯ menu and the top bar, when the deck has them.</li>
+    <li>Sending the deck out: <b>Client copy</b> is this version’s slides to read or present, and nothing else. <b>Review copy</b> is for someone who should comment and edit: this version only, no notes or comments of yours, and they send it back for Claude to bring in. <b>Editable copy</b> carries your notes, comments, and every version: keep it for yourself.</li></ul>
     <h4 style="margin-top:14px">Keyboard shortcuts</h4>
     <table class="sb-keys">
       <tr><td><kbd>F</kbd> <kbd>S</kbd> <kbd>G</kbd> <kbd>C</kbd></td><td>Focus, Scroll, Sorter, Checks</td></tr>
       <tr><td><kbd>←</kbd> <kbd>→</kbd></td><td>Previous and next slide (<kbd>Home</kbd> <kbd>End</kbd>: first and last)</td></tr>
+      <tr><td><kbd>A</kbd></td><td>Ask Claude: copy the prompt, or start the round when Claude is watching the deck</td></tr>
       <tr><td><kbd>H</kbd></td><td>Titles only (hide the content)</td></tr>
       <tr><td><kbd>[</kbd> <kbd>]</kbd></td><td>Hide the slides bar or the notes bar</td></tr>
       <tr><td><kbd>1</kbd>–<kbd>5</kbd></td><td>Checks: 5-second test, 10-second test, horizontal flow, vertical flow, guides. From Focus or Scroll they run that check on the slide you’re on</td></tr>
@@ -158,7 +160,7 @@
     const queued = watched && p.asked;
     b.querySelector('.sb-ask-l').textContent = queued ? 'Queued…' : watched ? 'Process now' : 'Ask Claude';
     b.classList.toggle('red', watched);
-    b.title = queued ? 'Claude starts as soon as it finishes what it’s doing' : watched ? 'Claude is watching this deck in Claude Code. Click to start a round.' : 'Copy a prompt that asks Claude (or Codex) to work through your comments';
+    b.title = queued ? 'Claude starts as soon as it finishes what it’s doing (A)' : watched ? 'Claude is watching this deck in Claude Code. Click to start a round (A).' : 'Copy a prompt that asks Claude (or Codex) to work through your comments (A)';
   }
   $('#sb-ask').addEventListener('click', async () => {
     if (watched) {
@@ -798,6 +800,7 @@
     if (isTimed() && tenState === 'asked' && (e.key === 'a' || e.key === 'A')) { tenStart(); return; }
     const k = e.key.toLowerCase();
     if (e.key === '?') { help.classList.toggle('on'); return; }
+    if (k === 'a') { $('#sb-ask').click(); return; }   // Ask Claude, or Process now while Claude watches
     if (e.key === 'Escape') { help.classList.remove('on'); more.classList.remove('open'); return; }
     const views = { f: 'focus', s: 'scroll', g: 'sorter', c: 'checks' }, tests = { 1: 'five', 2: 'ten', 3: 'horizontal', 4: 'vertical', 5: 'guides' };
     if (views[k]) { setView(views[k]); return; }
@@ -854,7 +857,7 @@
     if (p.file !== base.file || p.shell !== base.shell) { pending = true; banner.firstChild.textContent = 'Claude updated this deck.'; }
     const other = p.saved && p.saved.by && p.saved.by !== SB.tab && !(base.saved && base.saved.at === p.saved.at);
     base.saved = p.saved;
-    if (other && !SB.readonly && !pending) { pending = true; banner.firstChild.textContent = 'You saved changes in another tab.'; }   // reload to see them; nothing here is lost
+    if (other && !SB.readonly && !pending) { pending = true; banner.firstChild.textContent = p.saved.by === 'sb-import' ? 'Claude brought in a reviewer’s comments and edits.' : 'You saved changes in another tab.'; }   // reload to see them; nothing here is lost
     if (pending) { if (idle()) reload(); else banner.classList.add('on'); }
   }
   setInterval(pulse, 2500);
