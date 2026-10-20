@@ -585,7 +585,8 @@ class Handler(BaseHTTPRequestHandler):
         if path == '/api/settings':
             return self.json(200, settings())
         if path == '/api/templates':
-            return self.json(200, {'templates': [{k: t.get(k) for k in ('id', 'name', 'description', 'kind', 'folderPrefix')} for t in newdeck.list_templates()]})
+            return self.json(200, {'templates': [{k: t.get(k) for k in ('id', 'name', 'description', 'kind', 'folderPrefix')} for t in newdeck.list_templates()],
+                                   'themes': newdeck.theme_previews()})
         m = re.match(r'^/api/decks/([a-z0-9-]+)(?:/([a-z-]+))?$', path)
         if m:
             deck = visible_deck(m.group(1))

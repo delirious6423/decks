@@ -92,6 +92,17 @@ def theme_key(style):
     return next((k for k, t in THEMES.items() if s in (k, t['name'].lower())), None)
 
 
+def theme_previews():
+    """The colors the New deck form draws each theme's sample slide with."""
+    out = []
+    for key, t in THEMES.items():
+        v, sl = t['vars'], t.get('slide', {})
+        out.append({'key': key, 'name': t['name'], 'dark': bool(t.get('dark')), 'bg': sl.get('--light', '#FFFFFF'),
+                    'title': sl.get('--title-red') or v.get('--title-red', '#272323'), 'text': sl.get('--text-light') or v.get('--text-light', '#5A5656'),
+                    'accent': t['accent'], 'block': v.get('--maroon', '#842F2F'), 'line': sl.get('--line') or v.get('--line', '#E4E1E1')})
+    return out
+
+
 def theme_css(key, serif=False):
     t = THEMES.get(key)
     css = ['.ctrls .cbtn.orig { display: none; }   /* the PowerPoint picture behind a converted slide: not useful in a new deck */']

@@ -117,7 +117,33 @@
   .nd-foot { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 22px; }
   .nd-where { font-size: 12px; color: var(--faint); }
   .nd-err { color: var(--red); font-size: 12.5px; margin-top: 6px; }
-  .nd[data-step="1"] .nd-p2, .nd[data-step="2"] .nd-p1 { display: none; }
+  .nd[data-step="1"] .nd-p2, .nd[data-step="1"] .nd-p3, .nd[data-step="2"] .nd-p1, .nd[data-step="2"] .nd-p3, .nd[data-step="3"] .nd-p1, .nd[data-step="3"] .nd-p2 { display: none; }
+  /* step 3: a sample slide in each color set, with the title font and logo you pick */
+  .nd-sws { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+  .nd-sw { font: inherit; text-align: left; color: var(--ink); border: 1px solid var(--line); border-radius: 10px; padding: 6px 6px 8px; background: #fff; cursor: pointer; }
+  .nd-sw:hover { border-color: #BDB6B1; }
+  .nd-sw.on { border: 2px solid var(--red); padding: 5px 5px 7px; }
+  .nd-sw-slide { position: relative; display: block; aspect-ratio: 16 / 9; box-sizing: border-box; padding: 9px 10px; border-radius: 5px; overflow: hidden; background: var(--bg); box-shadow: inset 0 0 0 1px rgba(0,0,0,.08); }
+  .nd-sw-slide b { width: 70%; font-size: 9px; line-height: 1.2; font-weight: 700; color: var(--t); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
+  .nd.serif .nd-sw-slide b { font-family: Georgia, 'Times New Roman', serif; }
+  .nd-sw-slide .tx { display: block; width: 48%; height: 3px; margin-top: 7px; border-radius: 2px; background: var(--x); opacity: .5; }
+  .nd-sw-slide .tx + .tx { width: 36%; margin-top: 4px; }
+  .nd-sw-slide .bars { position: absolute; right: 10px; bottom: 9px; display: flex; align-items: flex-end; gap: 4px; height: 56%; }
+  .nd-sw-slide .bars i { width: 9px; border-radius: 2px 2px 0 0; }
+  .nd-sw-slide .bars i:nth-child(1) { height: 42%; background: var(--l); }
+  .nd-sw-slide .bars i:nth-child(2) { height: 66%; background: var(--b); }
+  .nd-sw-slide .bars i:nth-child(3) { height: 100%; background: var(--a); }
+  .nd-sw-slide img { position: absolute; left: 10px; bottom: 8px; max-width: 34px; max-height: 10px; object-fit: contain; }
+  .nd-sw.dark .nd-sw-slide img { filter: brightness(0) invert(1); opacity: .8; }   /* as the Dark theme shows a logo */
+  .nd-sw-name { display: block; margin-top: 6px; padding-left: 2px; font-size: 13px; }
+  .nd-fonts { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
+  .nd-font { display: flex; align-items: center; gap: 12px; font: inherit; color: var(--ink); text-align: left; border: 1px solid var(--line); border-radius: 8px; padding: 9px 12px; background: #fff; cursor: pointer; }
+  .nd-font:hover { border-color: #BDB6B1; }
+  .nd-font.on { border: 2px solid var(--red); padding: 8px 11px; }
+  .nd-font b { font-size: 22px; line-height: 1; font-weight: 700; }
+  .nd-font span { font-size: 13.5px; }
+  .nd-file { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--mute); }
+  .nd-file span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .nd-done { display: none; }
   .nd.ok .nd-form { display: none; }
   .nd.ok .nd-done { display: block; }
@@ -178,21 +204,28 @@
         <input type="text" id="nd-knows" placeholder="They use ChatGPT a little; they care about headcount">
         <label for="nd-point">The one point they should leave with</label>
         <input type="text" id="nd-point" placeholder="AI takes the crunching, so the job moves to judgment.">
-        <details class="nd-more" id="nd-more"><summary>Length, structure, colors, logo, and notes</summary>
+        <details class="nd-more" id="nd-more"><summary>Length, structure, and notes</summary>
           <div class="nd-grid">
             <div><label for="nd-length">Length</label><select id="nd-length" data-k="length"></select></div>
             <div><label for="nd-atype">Kind of audience</label><select id="nd-atype" data-k="audienceType"><option value="">Claude picks</option><option>Executives</option><option>A client</option><option>My team</option><option>Workshop participants</option><option>A conference</option></select></div>
             <div><label for="nd-structure">Structure</label><select id="nd-structure" data-k="structure"><option value="">Claude picks</option><option>Answer first</option><option>Situation, complication, resolution</option><option>A story in a few parts</option><option>Teach, practice, reflect</option></select></div>
             <div><label for="nd-density">Density</label><select id="nd-density" data-k="density"><option value="">Claude picks</option><option>Sparse</option><option>Balanced</option><option>Detailed</option></select></div>
-            <div><label for="nd-style">Colors</label><select id="nd-style" data-k="style"><option>Navy</option><option>Dark</option><option>Minimal</option><option>Forest</option><option>Teal</option><option>Plum</option></select></div>
-            <div><label for="nd-titles">Title font</label><select id="nd-titles" data-k="titles"><option>Sans serif</option><option>Serif</option></select></div>
           </div>
-          <label for="nd-logo">Your logo <span>(optional: PNG, SVG, or JPG; it goes in the corner of every slide)</span></label>
-          <input type="file" id="nd-logo" accept="image/png,image/svg+xml,image/jpeg,image/webp">
           <label for="nd-notes">Notes or source material</label>
           <textarea id="nd-notes" placeholder="Paste notes, or a folder path"></textarea>
         </details>
-        <div class="nd-foot"><button class="btn" id="nd-backbtn">Back</button><span><button class="btn" id="nd-copy" title="Copy a prompt that asks Claude to set the deck up and build it">Copy prompt</button> <button class="btn red" id="nd-go">Create deck</button></span></div>
+        <div class="nd-foot"><button class="btn" id="nd-backbtn">Back</button><button class="btn red" id="nd-next2">Next</button></div>
+      </div>
+      <div class="nd-p3">
+        <label>Colors</label>
+        <div class="nd-sws" id="nd-sws" role="radiogroup" aria-label="Colors"></div>
+        <label>Title font</label>
+        <div class="nd-fonts" id="nd-fonts" role="radiogroup" aria-label="Title font"><button type="button" class="nd-font" role="radio" data-font="Sans serif"><b>Aa</b><span>Sans serif</span></button><button type="button" class="nd-font" role="radio" data-font="Serif"><b style="font-family: Georgia, 'Times New Roman', serif">Aa</b><span>Serif</span></button></div>
+        <label>Your logo <span>(optional: it goes in the corner of every slide)</span></label>
+        <div class="nd-file"><button type="button" class="btn" id="nd-logo-btn">Choose a logo</button><span id="nd-logo-name">PNG, SVG, or JPG</span><button type="button" class="nd-link" id="nd-logo-x" hidden>Remove</button></div>
+        <input type="file" id="nd-logo" accept="image/png,image/svg+xml,image/jpeg,image/webp" hidden>
+        <div hidden><select id="nd-style" data-k="style"><option>Navy</option><option>Dark</option><option>Minimal</option><option>Forest</option><option>Teal</option><option>Plum</option></select><select id="nd-titles" data-k="titles"><option>Sans serif</option><option>Serif</option></select></div>
+        <div class="nd-foot"><button class="btn" id="nd-back3">Back</button><span><button class="btn" id="nd-copy" title="Copy a prompt that asks Claude to set the deck up and build it">Copy prompt</button> <button class="btn red" id="nd-go">Create deck</button></span></div>
       </div>
     </div>
     <div class="nd-done" id="nd-done"></div>
@@ -259,7 +292,7 @@ const KINDS = {
              { id: 'short', name: 'Short version', desc: 'A few slides for the decision maker' }] },
   blank: { name: 'A blank deck', template: 'blank', lengths: ['About 5 slides', 'About 10 slides', 'About 20 slides', '30 min', '60 min'], pieces: [{ id: 'deck', name: 'The deck', on: true }] },
 };
-const nd = { kind: 'presentation', picked: {}, touched: new Set(), tpls: [] };
+const nd = { kind: 'presentation', picked: {}, touched: new Set(), tpls: [], themes: [], logoUrl: '' };
 const SELECTS = { length: 'nd-length', audienceType: 'nd-atype', structure: 'nd-structure', density: 'nd-density', style: 'nd-style', titles: 'nd-titles' };
 const readLogo = () => new Promise((ok) => { const f = $('nd-logo').files[0]; if (!f) return ok(null); const r = new FileReader(); r.onload = () => ok({ name: f.name, data: r.result }); r.onerror = () => ok(null); r.readAsDataURL(f); });
 const slugify = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 48).replace(/-+$/, '') || 'deck';
@@ -286,8 +319,17 @@ function preset() {   // defaults for the kind; anything picked by hand stays
   renderKinds();
 }
 function stepTo(n) {
-  $('nd').dataset.step = n; $('nd-step').textContent = `Step ${n} of 2`; $('nd-title').textContent = n === 1 ? 'What are you making?' : 'Who is it for?';
-  setTimeout(() => $(n === 1 ? 'nd-name' : 'nd-aud').focus(), 30);
+  $('nd').dataset.step = n; $('nd-step').textContent = `Step ${n} of 3`; $('nd-title').textContent = ['What are you making?', 'Who is it for?', 'How should it look?'][n - 1];
+  if (n === 3) renderLook();
+  setTimeout(() => (n === 3 ? $('nd-sws').querySelector('.on') || $('nd-sws').firstElementChild : $(n === 1 ? 'nd-name' : 'nd-aud'))?.focus(), 30);
+}
+function renderLook() {   // a sample slide per color set, titled with the deck's name, in the title font and with the logo you picked
+  const style = $('nd-style').value, font = $('nd-titles').value, title = esc(val('nd-name') || 'Each title says the point');
+  $('nd').classList.toggle('serif', font === 'Serif');
+  $('nd-sws').innerHTML = nd.themes.map((t) => `<button type="button" class="nd-sw${t.name === style ? ' on' : ''}${t.dark ? ' dark' : ''}" role="radio" aria-checked="${t.name === style}" data-style="${esc(t.name)}">`
+    + `<span class="nd-sw-slide" style="--bg:${t.bg};--t:${t.title};--x:${t.text};--a:${t.accent};--b:${t.block};--l:${t.line}"><b>${title}</b><i class="tx"></i><i class="tx"></i><span class="bars"><i></i><i></i><i></i></span>${nd.logoUrl ? `<img src="${nd.logoUrl}" alt="">` : ''}</span>`
+    + `<span class="nd-sw-name">${esc(t.name)}</span></button>`).join('');
+  $('nd-fonts').querySelectorAll('[data-font]').forEach((b) => { const on = b.dataset.font === font; b.classList.toggle('on', on); b.setAttribute('aria-checked', String(on)); });
 }
 function askPrompt() {   // for when Claude should set it up as well
   const b = brief(), t = tplOf(), n = val('nd-name'), ps = pieces();
@@ -305,7 +347,7 @@ async function copy(text) { try { await navigator.clipboard.writeText(text); ret
 function openNew() {
   $('nd').classList.remove('ok'); $('nd-err').textContent = ''; $('nd-back').classList.add('on'); stepTo(1);
   fetch('/api/templates').then((r) => r.json()).then((d) => {
-    nd.tpls = d.templates || []; preset();
+    nd.tpls = d.templates || []; nd.themes = d.themes || []; preset(); renderLook();
   });
 }
 const closeNew = () => $('nd-back').classList.remove('on');
@@ -324,6 +366,14 @@ const next = () => { if (!val('nd-name')) { $('nd-err').textContent = 'Enter a n
 $('nd-next').addEventListener('click', next);
 $('nd-name').addEventListener('keydown', (e) => { if (e.key === 'Enter') next(); });
 $('nd-backbtn').addEventListener('click', () => stepTo(1));
+$('nd-next2').addEventListener('click', () => stepTo(3));
+$('nd-back3').addEventListener('click', () => stepTo(2));
+$('nd-sws').addEventListener('click', (e) => { const b = e.target.closest('[data-style]'); if (!b) return; $('nd-style').value = b.dataset.style; nd.touched.add('style'); renderLook(); $('nd-sws').querySelector('.on').focus(); });
+$('nd-fonts').addEventListener('click', (e) => { const b = e.target.closest('[data-font]'); if (!b) return; $('nd-titles').value = b.dataset.font; nd.touched.add('titles'); renderLook(); });
+$('nd-logo-btn').addEventListener('click', () => $('nd-logo').click());
+$('nd-logo').addEventListener('change', () => { const f = $('nd-logo').files[0]; if (nd.logoUrl) URL.revokeObjectURL(nd.logoUrl); nd.logoUrl = f ? URL.createObjectURL(f) : '';
+  $('nd-logo-name').textContent = f ? f.name : 'PNG, SVG, or JPG'; $('nd-logo-x').hidden = !f; renderLook(); });
+$('nd-logo-x').addEventListener('click', () => { $('nd-logo').value = ''; $('nd-logo').dispatchEvent(new Event('change')); });
 $('nd-copy').addEventListener('click', async () => { const ok = await copy(askPrompt()); $('nd-copy').textContent = ok ? 'Copied' : 'Copy failed'; setTimeout(() => { $('nd-copy').textContent = 'Copy prompt'; }, 1600); });
 $('nd-go').addEventListener('click', async () => {
   const name = val('nd-name'); if (!name) { stepTo(1); $('nd-err').textContent = 'Enter a name first.'; return; }
