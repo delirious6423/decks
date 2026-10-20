@@ -44,8 +44,16 @@ from pathlib import Path
 
 APP = Path(__file__).resolve().parent.parent
 sys.path[:0] = [str(APP), str(APP / 'tools')]
-import sbconfig   # noqa: E402
 from newdeck import js_str, slugify   # noqa: E402
+try:
+    import sbconfig   # noqa: E402
+    REGISTRY, tilde = sbconfig.REGISTRY, sbconfig.tilde
+except ImportError:   # an app without sbconfig.py keeps decks.json next to it
+    REGISTRY = APP / 'decks.json'
+
+    def tilde(path):
+        path = Path(path).resolve()
+        return '~/' + str(path.relative_to(Path.home())) if Path.home() in path.parents else str(path)
 
 PREFIX = 'imp'   # img/imp-001.jpg is slide 1 as it looked; img/imp-pic-*.png are the pictures on it
 START = '// ---- IMPORTED SLIDES'
@@ -74,7 +82,7 @@ def soffice():
 
 
 def find_deck(arg):
-    reg = json.loads(sbconfig.REGISTRY.read_text(encoding='utf-8')) if sbconfig.REGISTRY.exists() else {'decks': []}
+    reg = json.loads(REGISTRY.read_text(encoding='utf-8')) if REGISTRY.exists() else {'decks': []}
     p = Path(os.path.expanduser(arg))
     for d in reg['decks']:
         folder = Path(os.path.expanduser(d['folder'])).resolve()
@@ -123,9 +131,9 @@ def pdf_for(src, args, say, required=True):
         if src.with_suffix('.pdf').is_file():
             return src.with_suffix('.pdf')
     if not required:   # the outline still has every word; only the pictures of the slides need a PDF
-        say(f'No PDF of the deck in {sbconfig.tilde(src.parent)} (and no LibreOffice to make one), so the outline has no pictures of the slides.')
+        say(f'No PDF of the deck in {tilde(src.parent)} (and no LibreOffice to make one), so the outline has no pictures of the slides.')
         return None
-    sys.exit(NO_PDF.format(src=sbconfig.tilde(src.parent)))
+    sys.exit(NO_PDF.format(src=tilde(src.parent)))
 
 
 def page_map(slides, hidden, pages, wanted):
@@ -572,7 +580,7 @@ def main():
     deck, folder = find_deck(a.deck)
     src = source_of(deck, folder)
     if not src:
-        sys.exit(f'No PowerPoint or PDF in {sbconfig.tilde(folder / "source")}. Put the file there, or start the import with ./sb new "<name>" --from <file>.')
+        sys.exit(f'No PowerPoint or PDF in {tilde(folder / "source")}. Put the file there, or start the import with ./sb new "<name>" --from <file>.')
     import pptx2native as P
     wanted = P.parse_slides(a.slides)
     if wanted and not (a.no_wire or a.outline):   # a few slides again: the deck file's other slides would be dropped
@@ -584,8 +592,8 @@ def main():
 
     if a.outline:
         out, n, pics = outline(src, folder, pdf, wanted, say)
-        print(f'Wrote {sbconfig.tilde(out)}: {n} slides' + (', with a picture of each in source/pages/' if pics else ', without pictures (no PDF)') + '.')
-        print('Rebuild each slide in the deck file in Decks\' own layouts, keeping its words and its notes (Importing a deck, in the Decks skill).')
+        print(f'Wrote {tilde(out)}: {n} slides' + (', with a picture of each in source/pages/' if pics else ', without pictures (no PDF)') + '.')
+        print('Rebuild each slide in the deck file with the layouts it carries, keeping its words and its notes. The skill\'s Importing a deck section has the steps.')
         return
 
     if src.suffix.lower() == '.pdf':
