@@ -4,7 +4,7 @@ What changed in each version of Decks. To update, run `git pull` in your Decks f
 restart the server. To hear about new versions, watch this repository on GitHub
 (Watch › Custom › Releases).
 
-## Unreleased
+## 0.8.0 (October 20, 2026)
 
 - **Import a deck**, in New deck, brings in a deck you already have: a PowerPoint file (.pptx)
   or a PDF. From Keynote or Google Slides, export to PowerPoint first. Choose the file or paste
@@ -25,6 +25,8 @@ restart the server. To hear about new versions, watch this repository on GitHub
 - `sb new "<name>" --from <file>` imports from the command line (`--rebuild` for a rebuild).
   It's separate from `sb import`, which brings a reviewer's returned file back in.
 - `sb audit` no longer reports a cropped picture as running off the slide or cutting off text.
+- New deck shows its three steps at the top (what you're making, who it's for, how it looks),
+  and each Next button names the next step. A step you've been to is a link back to it.
 
 ## 0.7.4 (October 20, 2026)
 
