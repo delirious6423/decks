@@ -17,7 +17,7 @@ body.sb-on #deck > [data-id] { scroll-margin-top: calc(var(--sb-top) + 16px); }
 #sb-top > .sb-claude, #sb-top > #sb-resolve { flex-shrink: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 #sb-top > .sb-claude span { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 #sb-top > .sb-saved { flex-shrink: 4; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-#sb-top .sb-logo { height: 22px; width: 22px; display: block; }
+#sb-top .sb-logo { height: 23.6px; display: block; }   /* StrategyU Decks: letters 14 px tall; the turned slides take it to 23.6 */
 #sb-top .sb-sep { width: 1px; height: 22px; background: var(--sb-line); }
 /* the deck and its version: one control; a version picker sits invisibly over it when there is more than one */
 #sb-top .sb-deck { position: relative; display: inline-flex; align-items: center; max-width: 340px; padding: 5px 10px; border: 1px solid transparent; border-radius: 8px; white-space: nowrap; }

@@ -186,7 +186,7 @@
   const dd = (id, label, title, chev = true) => `<div class="sb-dd" id="${id}"><button class="sb-btn sb-ddb" aria-haspopup="menu" aria-expanded="false" title="${title}">${label}${chev ? '<span class="sb-chev" aria-hidden="true">▾</span>' : ''}</button><div class="sb-pop" role="menu" aria-label="${title}"></div></div>`;
   const presentLabel = '▶<span class="sb-long"> Present</span>';
   const top = h('div'); top.id = 'sb-top';
-  top.innerHTML = `<a href="/" title="All decks"><img class="sb-logo" src="/_sb/logo.svg" alt="Decks"></a>
+  top.innerHTML = `<a href="/" title="All decks"><img class="sb-logo" src="/_sb/logo-decks.svg" alt="StrategyU Decks"></a>
     <a href="/" class="sb-btn sb-back" title="Back to the dashboard of all decks">← <span class="sb-lbl">All decks</span></a><span class="sb-sep"></span>
     <label class="sb-deck" title="${esc(SB.name)}"><span class="sb-deck-t"><b>${esc(SB.name)}</b><span class="sb-vname"></span></span>${sideSelect ? '<span class="sb-chev" aria-hidden="true">▾</span><select id="sb-version" aria-label="Version"></select>' : ''}</label>
     <div class="sb-chips" id="sb-chips" role="group" aria-label="Filter slides"></div>

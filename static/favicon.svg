@@ -1,6 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Decks">
-  <rect x="1.5" y="4.5" width="25" height="17" rx="2.5" fill="#272322"/>
-  <rect x="5.5" y="8.5" width="12" height="2.6" rx="1.3" fill="#FFFFFF"/>
-  <rect x="5.5" y="13.5" width="8" height="2" rx="1" fill="#FFFFFF" opacity=".55"/>
-  <path d="M19 15.5h10.5a1.5 1.5 0 0 1 1.5 1.5v6a1.5 1.5 0 0 1-1.5 1.5H25l-3.5 3.5v-3.5H19a1.5 1.5 0 0 1-1.5-1.5v-6a1.5 1.5 0 0 1 1.5-1.5z" fill="#A22731"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="StrategyU Decks">
+<!-- StrategyU Decks favicon: the red slide with a block D, dealt onto a dark one -->
+<g transform="rotate(8 17.50 14.50)">
+<rect x="5.50" y="5.00" width="24" height="19" rx="3" fill="#272322"/>
+</g>
+<g transform="rotate(-6 15.00 17.50)">
+<rect x="3.00" y="8.00" width="24" height="19" rx="3" fill="#842F2F"/>
+<path fill="#FFFFFF" fill-rule="evenodd" d="M0,0 71.5,0 84,12.5 84,103.5 71.5,116 0,116 0,91.5 7,91.5 7,24.5 0,24.5ZM35,24.5 51.5,24.5 56,28.5 56,88 51.5,91.5 35,91.5Z" transform="translate(10.29,11.00) scale(0.11207)"/>
+</g>
 </svg>
