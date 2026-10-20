@@ -173,6 +173,9 @@ label.sb-check { display: inline-flex; align-items: center; gap: 6px; font-size:
 .sb-hold.empty { display: none; }
 body.sb-focus .sb-hold.empty { display: inline-flex; visibility: hidden; }   /* keeps its room, so the slide doesn't jump on the first keystroke */
 body.sb-focus #deck > [data-id] .fb { font-size: 13px; min-height: 3.2em; }
+/* the comment box under a slide keeps the editor's own colors, whatever text color a deck's theme sets for the page */
+body.sb-on #deck > [data-id] .fb { color: #272322; }
+body.sb-on #deck > [data-id] .fb::placeholder { color: #948C88; }
 .sb-keyhint { font: inherit; border: 0; background: none; padding: 0; color: var(--sb-mute); cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; }
 .sb-keyhint:hover { color: var(--sb-ink); }
 

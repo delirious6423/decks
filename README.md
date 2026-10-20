@@ -245,7 +245,8 @@ The top bar keeps the rest in a few places:
   deck, a short cut, and a facilitator pack), which share slides.
 - **View**: Titles only (H) hides everything but the titles, in any view. Switches for the
   slide list ([), the notes panel (]), and facilitator notes under each slide in Scroll.
-- **Share**: Save as PDF, and the three copies below.
+- **Share**: Download PDF (the slides as they look now, one landscape 16:9 page each, made by the
+  server so the print window's paper settings can't turn it sideways), Print, and the three copies below.
 - **Present**: full screen from the slide you're on (⌘↵), or presenter view.
 - **Ask Claude** (⌘⇧↵, Ctrl+Shift+Enter): the one red button. It's Process now in watch mode,
   and the shortcut works while you type a comment.

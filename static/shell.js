@@ -156,7 +156,29 @@
   $('#sb-view').addEventListener('sb:open', () => { setTog(vTitles, ui.hide); if (vFac) setTog(vFac, notesBox.checked); });
 
   // Share: the PDF, then the three copies (Client and Review copy add themselves, before Editable copy)
-  if ($('#export-btn')) { item('sb-share', { t: 'Save as PDF', sub: 'One slide per page, from the Print window', act: () => $('#export-btn').click() }); sep('sb-share'); }
+  if ($('#export-btn')) {
+    item('sb-share', { t: 'Download PDF', sub: 'The slides as they look now, one per page, landscape', id: 'sb-pdf', act: () => downloadPdf() });
+    item('sb-share', { t: 'Print', sub: 'Opens the print window, for paper', act: () => $('#export-btn').click() });
+    sep('sb-share');
+  }
+  // the server makes the PDF in headless Chrome (as sb export does), so it comes out 16:9 whatever the
+  // print window's paper and orientation are set to; if it can't, the print window is the fallback
+  async function downloadPdf() {
+    const vs = $('#sb-version'), vlabel = vs && vs.options.length > 1 && vs.selectedIndex >= 0 ? vs.options[vs.selectedIndex].text.trim() : '';
+    const name = [SB.name, vlabel].filter(Boolean).join(' · ').replace(/[\\/:*?"<>|]+/g, '-').trim() + '.pdf';
+    say('<b>Making the PDF…</b> It takes a few seconds.');
+    try { if (typeof snapshot === 'function') snapshot(); } catch (e) {}   // eslint-disable-line no-undef
+    try { await SB.flush(); } catch (e) {}   // your latest edits reach the server first
+    let r = null; try { r = await fetch(api('pdf'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ version: sideSelect ? sideSelect.value : '' }) }); } catch (e) {}
+    if (r && r.ok) {
+      const u = URL.createObjectURL(await r.blob()), a = h('a'); a.href = u; a.download = name;
+      document.body.appendChild(a); HTMLAnchorElement.prototype.click.call(a); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 4000);
+      say(`<b>Saved ${esc(name)}.</b> One slide per page, landscape, as the deck looks now.`); return;
+    }
+    let why = ''; try { why = (await r.json()).error || ''; } catch (e) {}
+    say(`Couldn’t make the PDF here${why ? ` (${esc(why)})` : ''}. Opening the print window instead: choose Landscape there.`);
+    setTimeout(() => $('#export-btn').click(), 1500);
+  }
   const editableCopy = $('#save-copy') ? item('sb-share', { t: 'Editable copy', sub: 'The whole deck with notes and comments, for you', id: 'sb-editable-copy',
     title: 'Every version, your notes and comments, and editing: keep it for yourself', act: () => $('#save-copy').click() }) : null;
   const shareItem = (o) => item('sb-share', Object.assign({ before: editableCopy }, o));

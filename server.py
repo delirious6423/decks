@@ -554,6 +554,30 @@ class Handler(BaseHTTPRequestHandler):
     def json(self, code, data, extra=None):
         self.send(code, json.dumps(data, ensure_ascii=False), 'application/json; charset=utf-8', extra=extra)
 
+    def pdf(self, slug):
+        """Download PDF: the deck as it looks now (saved edits and slide order), one landscape slide per
+        page, made by headless Chrome the way sb export makes it. A browser's print window can't promise
+        that: its paper size and orientation win over the deck's own page size."""
+        deck = visible_deck(slug)
+        if not deck:
+            return self.json(404, {'error': 'no such deck'})
+        version = str((self.body() or {}).get('version') or '')
+        if not re.fullmatch(r'[A-Za-z0-9_-]{0,80}', version):
+            version = ''
+        import tempfile
+        with tempfile.TemporaryDirectory() as td:
+            out = Path(td) / 'deck.pdf'
+            env = dict(os.environ, SB_URL=f'http://localhost:{self.server.server_address[1]}')
+            cmd = ['node', str(APP / 'tools' / 'browser.mjs'), 'export', slug, str(out), '--with-edits'] + (['--version', version] if version else [])
+            try:
+                r = subprocess.run(cmd, capture_output=True, text=True, timeout=300, env=env, cwd=str(APP))
+            except (OSError, subprocess.TimeoutExpired) as e:
+                return self.json(500, {'error': f'the PDF maker didn’t run ({e.__class__.__name__})'})
+            if r.returncode or not out.exists():
+                return self.json(500, {'error': 'the PDF maker stopped', 'detail': (r.stderr or r.stdout or '')[-600:]})
+            data = out.read_bytes()
+        self.send(200, data, 'application/pdf')
+
     def body(self):
         n = int(self.headers.get('Content-Length') or 0)
         return json.loads(self.rfile.read(n) or b'{}') if n else {}
@@ -700,6 +724,9 @@ class Handler(BaseHTTPRequestHandler):
             return self.json(403, {'error': 'Changes are accepted only from Decks’ own pages.'})
         if urlparse(self.path).path == '/api/watch':   # sb watch, no deck named: a Process now click on any deck
             return self.json(200, {'request': wait_for_click()})
+        m = re.match(r'^/api/decks/([a-z0-9-]+)/pdf$', urlparse(self.path).path)
+        if m:   # Download PDF
+            return self.pdf(m.group(1))
         if urlparse(self.path).path == '/api/check-updates':   # the Check for updates button: ask GitHub now
             ok = check_latest()
             return self.json(200, {'ok': ok, 'version': VERSION, 'update': update_info()})
