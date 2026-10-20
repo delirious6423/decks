@@ -15,6 +15,8 @@
   header { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 12px; height: 56px; padding: 0 22px; background: #fff; border-bottom: 1px solid var(--line); }
   header img { height: 24px; width: 24px; display: block; }
   header .app { font-weight: 700; font-size: 15px; }
+  header .ver { font-size: 12.5px; color: var(--faint); text-decoration: none; margin-left: -4px; }
+  header a.ver:hover { color: var(--red); text-decoration: underline; text-underline-offset: 2px; }
   header .grow { flex: 1; }
   header .addr { font-size: 12.5px; color: var(--faint); }
   .btn { font: inherit; font-size: 13px; border: 1px solid var(--line); border-radius: 8px; padding: 6px 12px; background: #fff; color: var(--ink); cursor: pointer; white-space: nowrap; display: inline-block; }
@@ -149,6 +151,7 @@
 <header>
   <img src="/_sb/logo.svg" alt="">
   <span class="app">Decks</span>
+  <a class="ver" id="hver" href="https://github.com/paulmil11/decks/blob/main/CHANGELOG.md" target="_blank" rel="noopener" title="The version you're running. Click for what changed in each one."></a>
   <span class="grow"></span>
   <span class="addr" id="addr"></span>
   <button class="btn" id="feedback" title="Email Paul at paul@strategyu.co: what works, what doesn't, what you'd want next">Send feedback</button>
@@ -371,6 +374,7 @@ async function load() {
     box.hidden = !u || gone === u.version;   // a newer release on GitHub, until you hide it
     if (u) box.querySelector('.t').innerHTML = `<b>Decks ${esc(u.version)} is out</b> (<a href="${esc(u.url)}" target="_blank" rel="noopener">what's new</a>). To update, run <code>git pull</code> in your Decks folder, then restart the server.`; }
   version = data.version || version;
+  document.getElementById('hver').textContent = version;
   if (data.version) document.getElementById('ver').innerHTML = `Decks ${esc(data.version)} (<a href="https://github.com/paulmil11/decks/blob/main/CHANGELOG.md" target="_blank" rel="noopener">what's new</a>)`;
   const cb = document.getElementById('clients'); cb.classList.toggle('on', hideClients); cb.textContent = hideClients ? 'Client work hidden' : 'Hide client work';
   decks = data.decks;
