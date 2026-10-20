@@ -113,11 +113,12 @@ def theme_previews():
 
 
 def theme_css(key, serif=False, originals=False):
+    """originals: an imported deck. Its converted slides keep the "original" button (a picture of each slide as it
+    was) and their own logos, so the deck's logo stays off them."""
     t = THEMES.get(key)
-    css = [] if originals else ['.ctrls .cbtn.orig { display: none; }   /* the PowerPoint picture behind a converted slide: not useful in a new deck */']
+    css = (['.slide.l-pptx > .logo, .slide.l-image > .logo { display: none; }   /* imported slides carry their own logos */'] if originals
+           else ['.ctrls .cbtn.orig { display: none; }   /* the PowerPoint picture behind a converted slide: not useful in a new deck */'])
     if not t and not serif:
-        if not css:
-            return '<style id="deck-theme">\n</style>'
         return '<style id="deck-theme">\n' + css[0] + '\n</style>'
     css += [f'/* Deck theme: {t["name"] if t else "engine colors"}{", serif titles" if serif else ""}. Change these to restyle the whole deck. */']
     if t:
