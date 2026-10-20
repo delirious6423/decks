@@ -1109,6 +1109,7 @@
   const idle = () => { const a = document.activeElement; const typing = a && (a.isContentEditable || /^(INPUT|TEXTAREA)$/.test(a.tagName)); return !typing && Date.now() - lastKey > 8000; };
   function reload() { try { SB.flush(); } catch (e) {} setTimeout(() => location.reload(), 450); }
   async function pulse() {
+    if (document.hidden) return;   // a tab in the background checks again when you come back to it
     let p; try { p = await (await fetch(api('pulse'), { cache: 'no-store' })).json(); } catch (e) { return; }
     askButton(p); updateNote(p.update);
     if (!base) { base = p; return; }
@@ -1120,6 +1121,7 @@
     if (pending) { if (idle()) reload(); else banner.classList.add('on'); }
   }
   setInterval(pulse, 2500);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) pulse(); });
 
   // ---------- agent-friendly handle (Claude can drive the page with this) ----------
   window.SlideBuilder = {

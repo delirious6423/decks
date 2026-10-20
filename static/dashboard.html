@@ -332,7 +332,6 @@ const KINDS = {
 const nd = { kind: 'presentation', picked: {}, touched: new Set(), tpls: [], themes: [], logoUrl: '', importing: false, imode: 'keep', file: null, upload: null, byPath: false };
 const SELECTS = { length: 'nd-length', audienceType: 'nd-atype', structure: 'nd-structure', density: 'nd-density', style: 'nd-style', titles: 'nd-titles' };
 const readLogo = () => new Promise((ok) => { const f = $('nd-logo').files[0]; if (!f) return ok(null); const r = new FileReader(); r.onload = () => ok({ name: f.name, data: r.result }); r.onerror = () => ok(null); r.readAsDataURL(f); });
-const slugify = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 48).replace(/-+$/, '') || 'deck';
 const val = (id) => $(id).value.trim();
 const kindOf = () => KINDS[nd.kind];
 const tplId = () => { const t = kindOf().template; return nd.tpls.some((x) => x.id === t) ? t : 'blank'; };
@@ -340,7 +339,6 @@ const tplOf = () => nd.tpls.find((t) => t.id === tplId()) || { id: 'blank', name
 const pieces = () => kindOf().pieces.filter((pc) => nd.picked[nd.kind + ':' + pc.id] ?? pc.on).map(({ id, name, desc }) => ({ id, name, desc }));
 const brief = () => Object.assign({ audience: val('nd-aud'), knows: val('nd-knows'), point: val('nd-point'), notes: val('nd-notes') },
   Object.fromEntries(Object.entries(SELECTS).map(([k, id]) => [k, $(id).value])));
-function where() { const n = val('nd-name'); }
 function renderKinds() {
   $('nd-kinds').innerHTML = ['presentation', 'training', 'talk', 'proposal'].map((k) => `<button class="nd-use${k === nd.kind ? ' on' : ''}" data-kind="${k}"><i></i><span><b>${KINDS[k].name}</b><small>${KINDS[k].desc}</small></span></button>`).join('')
     + (nd.kind === 'blank' ? `<button class="nd-use on" data-kind="blank"><i></i><span><b>A blank deck</b><small>A title, one part, two slides, and a close</small></span></button>` : '');
@@ -518,7 +516,7 @@ function card(d) {
     d.questions ? `<span class="pill red">${d.questions} question${d.questions === 1 ? '' : 's'}</span>` : '',
     d.changed ? `<span class="pill">${d.changed} changed</span>` : ''].join('');
   const live = d.claude && Date.now() / 1000 - (d.claude.at || 0) < 1800 ? `<div class="live"><i></i>Claude${d.claude.total ? `: ${d.claude.done || 0} of ${d.claude.total}` : ''}${d.claude.text ? ' · ' + esc(d.claude.text) : ''}</div>` : '';
-  const thumb = d.thumb ? `<img src="${d.thumb}?t=${Math.round(d.fileAt)}" alt="">` : `<div class="ph">${esc(d.name)}</div>`;
+  const thumb = d.thumb ? `<img src="${d.thumb}" alt="">` : `<div class="ph">${esc(d.name)}</div>`;
   return `<div class="deck"><a class="thumb" href="${d.url}">${thumb}</a><div>
     <a href="${d.url}"><h3>${esc(d.name)}</h3></a>
     <div class="meta">${esc(decksDir && d.folder.startsWith(decksDir + '/') ? d.folder.slice(decksDir.length + 1) : d.folder)}${d.slides ? ` · ${d.slides} slides` : ''}${r ? ` · round ${r.number}` : ''} · edited ${ago(d.fileAt)}</div>
@@ -535,9 +533,11 @@ document.getElementById('clients').addEventListener('click', async () => {
   if (r.ok) load();
 });
 let decks = [];
+let lastData = '';
 async function load() {
   if (document.querySelector('.dmenu.open') || document.getElementById('del-back').classList.contains('on')) return;   // not under an open menu
-  let data; try { data = await (await fetch('/api/decks', { cache: 'no-store' })).json(); } catch (e) { document.getElementById('active').innerHTML = '<div class="empty">The server is not responding.</div>'; return; }
+  let data; try { data = await (await fetch('/api/decks', { cache: 'no-store' })).json(); } catch (e) { lastData = ''; document.getElementById('active').innerHTML = '<div class="empty">The server is not responding.</div>'; return; }
+  { const sig = JSON.stringify(data); if (sig === lastData) return; lastData = sig; }   // nothing changed: leave the page (and its pictures) alone
   hideClients = !!(data.settings && data.settings.hideClients); decksDir = data.decksDir || '';
   { const u = data.update, box = document.getElementById('upd'); let gone = ''; try { gone = localStorage.getItem('__decks_upd_hidden') || ''; } catch (e) {}
     box.hidden = !u || gone === u.version;   // a newer release on GitHub, until you hide it
@@ -608,7 +608,7 @@ document.getElementById('chk').addEventListener('click', async () => {
   if (!d.update) { out.textContent = `You’re up to date: ${d.version} is the newest.`; return; }
   try { localStorage.removeItem('__decks_upd_hidden'); } catch (e) {}   // show the note at the top again, even if you hid it
   out.innerHTML = `<b>Decks ${esc(d.update.version)} is out</b> (<a href="${esc(d.update.url)}" target="_blank" rel="noopener">what's new</a>). The note at the top has a prompt that updates it.`;
-  load();
+  lastData = ''; load();   // the same data, but the note at the top should show again
 });
 // feedback goes to Paul by email; in-app browsers don't always open a mail app, so the address is copied too
 let version = '';
@@ -618,7 +618,8 @@ document.getElementById('feedback').addEventListener('click', async () => {
   const b = document.getElementById('feedback'); b.textContent = ok ? 'Address copied: paul@strategyu.co' : 'Email paul@strategyu.co';
   setTimeout(() => { b.textContent = 'Send feedback'; }, 4000);
 });
-load(); setInterval(load, 5000);
+load(); setInterval(() => { if (!document.hidden) load(); }, 5000);   // no polling while the tab is in the background
+document.addEventListener('visibilitychange', () => { if (!document.hidden) load(); });
 </script>
 </body>
 </html>

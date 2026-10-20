@@ -25,6 +25,7 @@ import shutil
 import subprocess
 import threading
 import time
+from concurrent.futures import ThreadPoolExecutor
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlparse
@@ -276,8 +277,25 @@ def latest_export(deck):
 
 
 def git_info(deck):
-    """Last commit and whether the folder has changes; asked of git at most every 15 seconds."""
-    return memo('git', deck, (entry_time(deck), int(time.time() // 15)), lambda: _git_info(deck))
+    """Last commit and whether the folder has changes. git is slow enough (about 40 ms a deck) to stall
+    the dashboard, so it's asked again only when the deck file, the repo's commits, or its index move,
+    and every two minutes regardless."""
+    g = _git_dir(deck['path'])
+    sig = (entry_time(deck), mtime(g / 'HEAD'), mtime(g / 'logs' / 'HEAD'), mtime(g / 'index'), int(time.time() // 120)) if g else int(time.time() // 120)
+    return memo('git', deck, sig, lambda: _git_info(deck))
+
+
+_git_dirs = {}
+
+
+def _git_dir(path):
+    """The .git folder that holds a deck's folder: its own, or a parent's (pitch decks live in the website repo)."""
+    if path not in _git_dirs:
+        p = path
+        while p != p.parent and not (p / '.git').is_dir():
+            p = p.parent
+        _git_dirs[path] = (p / '.git') if (p / '.git').is_dir() else None
+    return _git_dirs[path]
 
 
 def _git_info(deck):
@@ -365,7 +383,7 @@ def deck_summary(deck):
         'git': git_info(deck),
         'fileAt': mtime(deck['path'] / deck['entry']),
         'versions': vers,
-        'thumb': f"/api/decks/{deck['slug']}/thumb" if (sb_dir(deck) / 'thumb.png').exists() else None,
+        'thumb': (lambda t: f"/api/decks/{deck['slug']}/thumb?t={int(t)}" if t else None)(mtime(sb_dir(deck) / 'thumb.png')),   # the picture's own time: a new one is a new address
     }
 
 
@@ -655,7 +673,9 @@ class Handler(BaseHTTPRequestHandler):
         if path == '/api/decks':
             reg, st = load_registry(), settings()
             decks = [d for d in reg['decks'] if not (st.get('hideClients') and d.get('client'))]
-            return self.json(200, {'decks': [deck_summary(d) for d in decks], 'started': STARTED, 'port': sbconfig.PORT,
+            with ThreadPoolExecutor(max_workers=8) as pool:   # git for every deck at once, not one after another
+                summaries = list(pool.map(deck_summary, decks))
+            return self.json(200, {'decks': summaries, 'started': STARTED, 'port': sbconfig.PORT,
                                    'decksDir': sbconfig.tilde(sbconfig.DECKS), 'settings': st, 'version': VERSION, 'update': update_info()})
         if path == '/api/settings':
             return self.json(200, settings())
@@ -676,8 +696,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self.json(200, read_json(sb_dir(deck) / 'review.json', empty_review()))
             if what == 'comments':
                 return self.json(200, {'comments': open_comments(deck)})
-            if what == 'thumb':
-                return self.serve_file(sb_dir(deck) / 'thumb.png')
+            if what == 'thumb':   # the address carries the picture's time, so the browser can keep it
+                return self.serve_file(sb_dir(deck) / 'thumb.png', cache=True)
             if what == 'pulse':
                 return self.json(200, pulse_of(deck))
             return self.json(404, {'error': 'unknown'})
