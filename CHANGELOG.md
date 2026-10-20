@@ -4,6 +4,26 @@ What changed in each version of Decks. To update, run `git pull` in your Decks f
 restart the server. To hear about new versions, watch this repository on GitHub
 (Watch › Custom › Releases).
 
+## 0.9.0 (October 20, 2026)
+
+- **Proposed slides you can accept or keep.** When Claude suggests a new version of one of
+  your slides, **Proposed** in the slide list takes you through them one at a time. Space flips
+  between the proposal and your original; A accepts it, K keeps your original, and U undoes.
+  A slide can have several options: Space flips through them, and accepting one drops the rest.
+  Your choices apply at once, and `sb proposals <deck> --bake` writes them into the deck file at
+  the next round.
+- **What changed, round by round.** View › What changed lists each round's slides and what
+  changed on each, and a slide's notes panel lists every round that changed it.
+- **Download PDF** in Share makes the PDF on your machine: one landscape 16:9 page per slide,
+  as the deck looks now. The print window could turn every slide sideways onto portrait paper.
+  Print is still there, for paper.
+- **A new logo**, StrategyU Decks, in the top bar, on the dashboard, and as the tab icon.
+- **A faster dashboard.** It no longer downloads its thumbnails again every few seconds or waits
+  on git, and tabs in the background stop checking in until you come back to them.
+- **Dark decks:** the comment box, a slide's ↑ ↓ × buttons, and the slide number keep readable
+  colors, whatever text color the deck's theme sets.
+- **Imported slides** keep their titles' alignment and their tables' text size.
+
 ## 0.8.0 (October 20, 2026)
 
 - **Import a deck**, in New deck, brings in a deck you already have: a PowerPoint file (.pptx)
