@@ -4,6 +4,11 @@ What changed in each version of Decks. To update, run `git pull` in your Decks f
 restart the server. To hear about new versions, watch this repository on GitHub
 (Watch › Custom › Releases).
 
+## 0.6.2 (October 20, 2026)
+
+- The Ask Claude shortcut is ⌘⇧↵ (Ctrl+Shift+Enter). ⌘↵ is the deck's own Present shortcut,
+  so it stays that.
+
 ## 0.6.1 (October 20, 2026)
 
 - The Ask Claude shortcut is now ⌘↵ (Ctrl+Enter on Windows and Linux) instead of A. It works

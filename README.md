@@ -156,7 +156,7 @@ copy `config.example.json` to `config.json`, or set environment variables (they 
 
 1. **You comment.** Write what should change in the box under a slide, or click any text
    on the slide and fix it yourself. It saves to disk next to the deck as you type.
-2. **You hand it to the agent.** Click **Ask Claude** in the top bar (or press ⌘↵). It copies a prompt
+2. **You hand it to the agent.** Click **Ask Claude** in the top bar (or press ⌘⇧↵). It copies a prompt
    with the deck file and the steps; paste it into Claude Code or Codex. With the `decks`
    skill installed, you can just say "process changes".
 3. **The agent edits and replies.** It reads your comments and edits with `sb comments`
@@ -183,7 +183,7 @@ Watch my decks.
 
 Claude starts `sb watch` in the background and waits on every deck (name one to watch only
 that deck). In each deck, **Ask Claude** turns into **Process now**. When your comments are
-ready, click it or press ⌘↵: the round starts in that Claude Code chat, and you follow it in
+ready, click it or press ⌘⇧↵: the round starts in that Claude Code chat, and you follow it in
 the deck as usual. When the round is done, Claude goes back to watching. Say "stop watching"
 to end it.
 
@@ -232,8 +232,8 @@ Four views, each with the slides on the left and the notes on the right:
   slides back.
 - **Checks** (C): above.
 
-**Titles only** (H) hides everything but the titles, in any view. ⌘↵ (Ctrl+Enter) is Ask
-Claude, or Process now in watch mode, and works while you type a comment. `?` lists every shortcut. The version menu switches between a deck's versions (say, the full deck, a
+**Titles only** (H) hides everything but the titles, in any view. ⌘⇧↵ (Ctrl+Shift+Enter) is
+Ask Claude, or Process now in watch mode, and works while you type a comment. `?` lists every shortcut. The version menu switches between a deck's versions (say, the full deck, a
 short cut, and a facilitator pack), which share slides.
 
 ### Add a slide

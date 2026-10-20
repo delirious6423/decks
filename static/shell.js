@@ -9,7 +9,14 @@
    slide's .fb box and are saved by the deck itself. */
 (function () {
   const SB = window.__SB;
-  const SEND = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent) ? '⌘↵' : 'Ctrl+↵';   // the Ask Claude key
+  const SEND = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent) ? '⌘⇧↵' : 'Ctrl+Shift+↵';   // the Ask Claude key (⌘↵ is the deck's own Present)
+  // Ask Claude (Process now while Claude watches), even mid-comment. Caught before the deck's own keys see it,
+  // because the deck presents on ⌘↵ and would take ⌘⇧↵ for the same.
+  window.addEventListener('keydown', (e) => {
+    if (!(e.metaKey || e.ctrlKey) || !e.shiftKey || e.key !== 'Enter') return;
+    let showing = false; try { showing = presenting(); } catch (x) {}
+    e.preventDefault(); e.stopImmediatePropagation(); const b = document.getElementById('sb-ask'); if (b && !showing) b.click();
+  }, true);
   const deck = document.getElementById('deck');
   if (!SB || !deck) return;
 
@@ -794,7 +801,6 @@
   let lastKey = 0;
   document.addEventListener('keydown', (e) => {
     lastKey = Date.now();
-    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter' && !presenting()) { e.preventDefault(); $('#sb-ask').click(); return; }   // Ask Claude (Process now while Claude watches), even mid-comment
     const t = e.target, typing = t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName));
     if (typing) { if (e.key === 'Escape') t.blur(); return; }
     if (e.metaKey || e.ctrlKey || e.altKey || presenting()) return;
