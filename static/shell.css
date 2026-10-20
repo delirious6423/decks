@@ -447,7 +447,15 @@ body.sb-checks .sb-pbar, body.sb-checks .sb-flip, body.sb-sorter .sb-pbar { disp
 .sb-rwait { background: #F2F8F2; border: 1px solid #CFE3CF; border-radius: 9px; padding: 9px 11px !important; margin-bottom: 10px; }
 @media print { .sb-pbar, .sb-flip, .sb-flipov, #sb-rounds { display: none !important; } }
 body.sb-focus .sb-under > span:last-child { flex: none; white-space: nowrap; }   /* Previous and Next stay side by side when the hint wraps */
-body.sb-noprop #deck > .sb-pend { display: none !important; }   /* View › Proposed slides off: the deck as it is now */
 .sb-pbar .sb-acc:disabled { background: #2F6B34; border-color: #2F6B34; color: #fff; opacity: .4; }
 .sb-psibs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .sb-psibs .sb-hint { display: block; margin-top: 3px; }
+/* Space, shown as a key: next to the switch above a proposed slide, and in the line under it */
+.sb-spacekey { font: 12px 'DM Sans', sans-serif; border: 0; background: none; padding: 2px 4px; color: var(--sb-mute); cursor: pointer; white-space: nowrap; }
+.sb-spacekey:hover { color: var(--sb-ink); }
+.sb-spacekey kbd, .sb-pbar .sb-pb-t kbd { font: 600 10.5px 'DM Sans', sans-serif; border: 1px solid currentColor; border-radius: 4px; padding: 0 5px; margin: 0 2px; opacity: .8; color: var(--sb-ink); background: #fff; }
+/* the row above a proposed slide: when the switch doesn't fit, it moves under the slide number whole */
+body.sb-on #deck > .sb-isprop > .slide-no { flex-wrap: wrap; row-gap: 6px; }
+body.sb-on #deck > .sb-isprop > .slide-no > * { white-space: nowrap; }
+.sb-flip { flex-wrap: nowrap; white-space: nowrap; }
+.sb-seg2 button { white-space: nowrap; }

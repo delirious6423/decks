@@ -241,8 +241,7 @@ or several options for one slide when the choice is real.
   notes panel shows the original next to the agent's note on what's different. With several
   options it reads **Original | Option 1 | 2 | 3**: Space flips through them (Shift+Space goes
   back), Accept takes the option on screen, and the others go.
-- The **Proposed** filter on the left goes through the slides you haven't decided yet, and **O**
-  (View › Proposed slides) hides them, so the deck reads as it is now.
+- The **Proposed** filter on the left goes through the slides you haven't decided yet.
 - To ask for a change instead, write it in the proposal's comment box.
 
 At the next round the agent writes your decisions into the deck file with
