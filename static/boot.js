@@ -51,7 +51,7 @@
   Object.entries(keys).forEach(([k, v]) => { try { set.call(ls, k, v); } catch (e) {} });
 
   // 4. mirror saves back, debounced; anything unsent is kept under DIRTY until it lands
-  let queue = {}, timer = null, inflight = false, retry = 0;
+  let queue = {}, timer = null, inflight = false, retry = 0, flight = Promise.resolve();
   // Object leaves (a slide's text array, one comment, an order) are the units of a save.
   // Keep full snapshots in localStorage for offline copies and recovery, but only send
   // changed leaves. Old deck engines benefit too; the server still accepts legacy sets.
@@ -89,18 +89,27 @@
   const flush = (keepalive) => {
     // A later keepalive must not race an earlier PUT and overwrite newer changes.
     // Unsent work is already durable under DIRTY and replays on the next open.
-    if (inflight) { if (!keepalive) { clearTimeout(timer); timer = setTimeout(() => flush(), 300); } return; }
-    const batch = queue; queue = {}; if (!Object.keys(batch).length) return;
+    if (inflight) { if (!keepalive) { clearTimeout(timer); timer = setTimeout(() => flush(), 300); } return Promise.resolve(); }
+    const batch = queue; queue = {}; if (!Object.keys(batch).length) return Promise.resolve();
     const body = requestFor(batch);
     inflight = true;
-    fetch(api, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), keepalive: !!keepalive })
+    flight = fetch(api, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), keepalive: !!keepalive })
       .then((r) => { if (!r.ok) throw new Error(r.status);
         Object.entries(batch).forEach(([k, v]) => { if (v === null) delete synced[k]; else synced[k] = v; });
         retry = 0; try { del.call(ls, DIRTY); del.call(ls, DBASE); } catch (e) {} if (Object.keys(queue).length) keep();
-        window.dispatchEvent(new CustomEvent('sb:saved')); })
+        window.dispatchEvent(new CustomEvent('sb:saved')); return true; })
       .catch(() => { queue = Object.assign(batch, queue); keep(); window.dispatchEvent(new CustomEvent('sb:offline'));
-        retry = Math.min((retry || 1) * 2, 16); clearTimeout(timer); timer = setTimeout(() => flush(), retry * 1000); })   // keep trying: 2, 4, 8, 16 s
+        retry = Math.min((retry || 1) * 2, 16); clearTimeout(timer); timer = setTimeout(() => flush(), retry * 1000); return false; })   // keep trying: 2, 4, 8, 16 s
       .finally(() => { inflight = false; });
+    return flight;
+  };
+  const drain = async () => {
+    if (inflight && await flight === false) return false;
+    while (Object.keys(queue).length || inflight) {
+      clearTimeout(timer);
+      if (await (inflight ? flight : flush()) === false) return false;
+    }
+    return true;
   };
   const note = (k, v) => { queue[k] = v; keep(); clearTimeout(timer); timer = setTimeout(() => flush(), 350); };
   window.addEventListener('online', () => { if (Object.keys(queue).length) { clearTimeout(timer); flush(); } });
@@ -108,5 +117,5 @@
   Storage.prototype.setItem = function (k, v) { set.call(this, k, v); if (this === ls && ours(String(k))) note(String(k), String(v)); };
   Storage.prototype.removeItem = function (k) { del.call(this, k); if (this === ls && ours(String(k))) note(String(k), null); };
   window.addEventListener('pagehide', () => { if (window.__DECK_FLUSH) window.__DECK_FLUSH(); flush(true); });
-  window.__SB = { slug: B.slug, name: B.name, page: B.page, entry: B.entry, folder: B.folder, hideVersions: B.hideVersions || [], pulse: B.pulse, splitLibrary: B.splitLibrary, tab: TAB, flush: () => flush() };
+  window.__SB = { slug: B.slug, name: B.name, page: B.page, entry: B.entry, folder: B.folder, hideVersions: B.hideVersions || [], pulse: B.pulse, splitLibrary: B.splitLibrary, tab: TAB, flush: drain };
 })();

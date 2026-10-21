@@ -33,13 +33,23 @@ Options:
     --inpaint             baked words are painted over with the colour beneath them
                           (not cut out as see-through holes)
     --dashed-outlines     a dashed box or circle outline is drawn as a dashed path
+    --fonts               text keeps its typeface (Georgia, Calibri, the theme's fonts),
+                          with the deck's own font where the machine lacks it
 
 Always on: lines drawn as shapes (prst="line", as pptxgenjs writes them) become
 native lines; chevrons, pentagons (homePlate) and diamonds are drawn as polygons;
 vertical text (vert270) and side-turned text boxes keep their turn; a table's
 height comes from its rows, not the frame (pptxgenjs writes a nominal one-inch
 frame); a box's outline colour is keyed out of a crop only near the outline; a
-box's word colours only where its words are.
+box's word colours only where its words are. What the slide layout and master draw
+on every slide (a logo, a band of colour) comes in under the slide's own shapes, and
+a gradient fill is drawn as a gradient, transparency and all. A deck of any size (Google Slides
+exports 10in slides) is scaled onto the canvas, and one of another shape (4:3) is
+centred on it. A picture or gradient slide background becomes one picture under
+the native shapes, with the picture's crop and brightness and contrast corrections.
+
+tools/importdeck.py drives this for Import a deck: it also renders the PDF when
+hidden slides are left out of it, and writes each slide's title and notes.
 
 templates/consulting was made with it: each slide is ct(key, ...) in content.js,
 and its shapes are CT[key] in ct-slides.js.
@@ -70,6 +80,17 @@ P = '{%s}' % NS['p']
 SLIDE_W_PX = 1000.0
 EMU_PER_PX = 12192000 / SLIDE_W_PX          # 13.333in deck -> 1000px canvas
 PT_TO_PX = SLIDE_W_PX / 960.0                # 960pt wide -> 1000px
+# A deck of another size (Google Slides' 10in, Keynote's, an old 4:3 one) is scaled onto the
+# 13.333 x 7.5in canvas; a deck of another shape is centred on it. Converter() sets these.
+SCALE = 1.0                                  # deck EMU -> canvas EMU, for positions, text, and lines
+OFFSET = (0.0, 0.0)                          # canvas EMU left of and above a deck of another shape
+
+
+def fit_slide(width, height):
+    """(scale, (dx, dy)) that fits a width x height EMU slide onto the 16:9 canvas."""
+    width, height = width or 12192000, height or 6858000
+    s = min(12192000 / width, 6858000 / height)
+    return s, ((12192000 - width * s) / 2, (6858000 - height * s) / 2)
 
 
 def emu_px(v):
@@ -292,6 +313,7 @@ class TextResolver:
             take(lvl.find('a:defRPr', NS))
         if props['size'] is None:
             props['size'] = 18.0
+        props['size'] *= SCALE
         if props['b'] is None:
             props['b'] = False
         if props['i'] is None:
@@ -330,15 +352,15 @@ class TextResolver:
             if out['spcBef'] is None:
                 sb = ppr.find('a:spcBef/a:spcPts', NS)
                 if sb is not None:
-                    out['spcBef'] = int(sb.get('val')) / 100
+                    out['spcBef'] = int(sb.get('val')) / 100 * SCALE
             if out['spcAft'] is None:
                 sa = ppr.find('a:spcAft/a:spcPts', NS)
                 if sa is not None:
-                    out['spcAft'] = int(sa.get('val')) / 100
+                    out['spcAft'] = int(sa.get('val')) / 100 * SCALE
             if out['marL'] is None and ppr.get('marL'):
-                out['marL'] = int(ppr.get('marL'))
+                out['marL'] = round(int(ppr.get('marL')) * SCALE)
             if out['indent'] is None and ppr.get('indent'):
-                out['indent'] = int(ppr.get('indent'))
+                out['indent'] = round(int(ppr.get('indent')) * SCALE)
 
         take(p_el.find('a:pPr', NS) if p_el is not None else None)
         for lvl in self.chain(sp, level):
@@ -508,6 +530,10 @@ class Converter:
         self.png_dir = png_dir or render_dir
         self.prs = Presentation(pptx_path)
         self.zip = zipfile.ZipFile(pptx_path)
+        global SCALE, OFFSET
+        SCALE, OFFSET = fit_slide(self.prs.slide_width, self.prs.slide_height)
+        d = self.prs.part._element.find('p:defaultTextStyle/a:lvl1pPr/a:defRPr', NS)
+        self.default_size = int(d.get('sz')) / 100 if d is not None and d.get('sz') else 18.0   # text with no size set anywhere
         self.render_dir, self.prefix, self.img_dir = render_dir, prefix, img_dir
         self.themes = {}      # one theme per slide master: this deck has seven
         self.use_master(self.prs.slide_masters[0])
@@ -519,6 +545,15 @@ class Converter:
         if key not in self.themes:
             self.themes[key] = load_theme(master)
         scheme, cmap, fills = self.themes[key]
+        self.theme_fonts = {}
+        for rel in master.part.rels.values():   # the theme's heading (+mj-lt) and body (+mn-lt) fonts
+            if 'theme' in rel.reltype:
+                fs = etree.fromstring(rel.target_part.blob).find('.//a:fontScheme', NS)
+                for code, tag in (('+mj-lt', 'majorFont'), ('+mn-lt', 'minorFont')):
+                    lt = fs.find(f'a:{tag}/a:latin', NS) if fs is not None else None
+                    if lt is not None and lt.get('typeface'):
+                        self.theme_fonts[code] = lt.get('typeface')
+                break
         self.base_cmap = cmap
         self.colors = Colors(scheme, dict(cmap))
         self.theme_fills = fills
@@ -743,24 +778,132 @@ class Converter:
 
     # ---- background ----
     def background(self, slide):
-        for el in (slide._element, slide.slide_layout._element, slide.slide_layout.slide_master._element):
-            bg = el.find('.//p:bg', NS)
+        """(colour, is a picture or gradient, a picture shape that draws it or None)."""
+        for host in (slide, slide.slide_layout, slide.slide_layout.slide_master):
+            bg = host._element.find('.//p:bg', NS)
             if bg is None:
                 continue
             bgpr = bg.find('p:bgPr', NS)
             if bgpr is not None:
                 c = self.colors.solid_fill(bgpr)
                 if c and c != 'none':
-                    return c, False
+                    return c, False, None
                 if bgpr.find('a:blipFill', NS) is not None or bgpr.find('a:gradFill', NS) is not None:
-                    return None, True          # picture/gradient background: use the render
+                    node = self.bg_picture(host.part, bgpr)   # picture/gradient background: drawn as a picture
+                    return (node or {}).get('avg'), True, node
             bgref = bg.find('p:bgRef', NS)
             if bgref is not None:
                 for child in bgref:
                     c = self.colors.resolve(child)
                     if c:
-                        return c, False
-        return '#E3E2E0', False
+                        return c, False, None
+        return '#E3E2E0', False, None
+
+    def keep_font(self, run, face):
+        """With --fonts, a run keeps its typeface (the theme's heading or body font when it names one), with the
+        deck's own font after it for a machine that doesn't have it."""
+        if getattr(self, 'keep_fonts', False) and not run.get('f'):
+            face = self.theme_fonts.get(face, face) if face else self.theme_fonts.get('+mn-lt')
+            used = getattr(self, 'pdf_fonts', None)   # the fonts the PDF was drawn with: a typeface it doesn't use was swapped for another
+            key = re.sub(r'[^a-z0-9]', '', (face or '').lower())
+            if face and not face.startswith('+') and re.fullmatch(r"[\w .&-]{1,60}", face) and (used is None or any(u.startswith(key) for u in used)):
+                run['font'] = f"'{face}', var(--slide)"
+        return run
+
+    def grad_css(self, gf):
+        """A gradient fill as CSS (each stop's transparency kept), or None."""
+        stops = []
+        for gs in sorted(gf.findall('a:gsLst/a:gs', NS), key=lambda g: int(g.get('pos', 0))):
+            el = next(iter(gs), None)
+            c = self.colors.resolve(el) if el is not None else None
+            if not c:
+                continue
+            a = el.find('a:alpha', NS)
+            alpha = int(a.get('val')) / 100000 if a is not None else 1
+            r, g, b = (int(c[i:i + 2], 16) for i in (1, 3, 5))
+            stops.append(f'rgba({r},{g},{b},{alpha:.3g}) {int(gs.get("pos", 0)) / 1000:.4g}%')
+        if not stops:
+            return None
+        if gf.find('a:path', NS) is not None:
+            return f'radial-gradient(circle, {", ".join(stops)})'
+        lin = gf.find('a:lin', NS)
+        deg = (int(lin.get('ang', 0)) / 60000 if lin is not None else 0) + 90   # PowerPoint's 0 runs left to right; CSS's 90deg does
+        return f'linear-gradient({deg % 360:.4g}deg, {", ".join(stops)})'
+
+    def bg_picture(self, part, bgpr):
+        """A picture or gradient slide background as one picture shape under everything else, so the
+        words on it stay native. The picture is stretched to the slide, as PowerPoint does, with its
+        crop and its brightness and contrast corrections. None when it can't be made: the slide then
+        comes in as its rendered picture."""
+        from PIL import ImageEnhance, ImageOps
+        W = 1600
+        H = round(W * self.prs.slide_height / self.prs.slide_width)
+        try:
+            bf = bgpr.find('a:blipFill', NS)
+            if bf is not None:
+                blip = bf.find('a:blip', NS)
+                rid = blip.get('{%s}embed' % NS['r']) if blip is not None else None
+                if not rid:
+                    return None
+                im = Image.open(io.BytesIO(part.related_part(rid).blob)).convert('RGB')
+                sr = bf.find('a:srcRect', NS)
+                if sr is not None and any(sr.get(k) for k in 'ltrb'):
+                    l, t_, r, b = (int(sr.get(k, 0)) / 100000 for k in 'ltrb')
+                    box = (round(im.width * l), round(im.height * t_), round(im.width * (1 - r)), round(im.height * (1 - b)))
+                    if box[2] - box[0] > 4 and box[3] - box[1] > 4:
+                        im = im.crop(box)
+                im = im.resize((W, H), Image.LANCZOS)
+                # corrections written as a:lum, a:grayscl are applied when the slide is drawn. Office 2010's
+                # (in a:extLst) are already in the picture: that keeps the original only to undo them.
+                bright = contrast = 0.0
+                for e in blip:
+                    tag = etree.QName(e).localname
+                    if tag == 'lum':
+                        bright += int(e.get('bright', 0)) / 100000
+                        contrast += int(e.get('contrast', 0)) / 100000
+                    elif tag == 'grayscl':
+                        im = ImageOps.grayscale(im).convert('RGB')
+                if bright > 0:
+                    im = Image.blend(im, Image.new('RGB', im.size, (255, 255, 255)), min(bright, 1))
+                elif bright < 0:
+                    im = ImageEnhance.Brightness(im).enhance(max(0.0, 1 + bright))
+                if contrast:
+                    im = ImageEnhance.Contrast(im).enhance(max(0.0, 1 + contrast))
+                amt = blip.find('a:alphaModFix', NS)
+                if amt is not None and int(amt.get('amt', 100000)) < 100000:   # see-through: over white
+                    im = Image.blend(Image.new('RGB', im.size, (255, 255, 255)), im, int(amt.get('amt')) / 100000)
+            else:
+                gf = bgpr.find('a:gradFill', NS)
+                stops = []
+                for gs in gf.findall('a:gsLst/a:gs', NS):
+                    c = next((self.colors.resolve(ch) for ch in gs), None)
+                    if c:
+                        stops.append((int(gs.get('pos', 0)) / 100000, tuple(int(c[i:i + 2], 16) for i in (1, 3, 5))))
+                if not stops:
+                    return None
+                stops.sort()
+                import numpy as np
+                yy, xx = np.mgrid[0:H, 0:W].astype(float)
+                lin = gf.find('a:lin', NS)
+                if gf.find('a:path', NS) is not None:     # radial (circle, rect, shape): from the middle out
+                    tpos = np.hypot((xx - W / 2) / (W / 2), (yy - H / 2) / (H / 2)) / np.sqrt(2)
+                else:
+                    ang = math.radians(int(lin.get('ang', 0)) / 60000 if lin is not None else 0)
+                    dx, dy = math.cos(ang), math.sin(ang)
+                    proj = xx * dx + yy * dy
+                    tpos = (proj - proj.min()) / max(proj.max() - proj.min(), 1)
+                pos = [s[0] for s in stops]
+                rgb = np.stack([np.interp(tpos, pos, [s[1][k] for s in stops]) for k in range(3)], -1)
+                im = Image.fromarray(rgb.clip(0, 255).astype('uint8'), 'RGB')
+        except Exception:
+            return None
+        buf = io.BytesIO()
+        im.save(buf, 'JPEG', quality=85, optimize=True, progressive=True)
+        src = self.save_blob(buf.getvalue(), 'jpg')
+        avg = im.resize((1, 1), Image.BILINEAR).getpixel((0, 0))
+        x, y = emu_px(OFFSET[0]), emu_px(OFFSET[1])
+        return {'k': 'pic', 'src': src, 'x': x, 'y': y, 'w': round(SLIDE_W_PX - 2 * x, 2), 'h': round(562.5 - 2 * y, 2),
+                'crop': [0, 0, 0, 0], 'radius': None, 'rot': 0, 'avg': '#%02X%02X%02X' % avg}
 
     # ---- text ----
     def text_body(self, sp, txBody, is_ph, autofit_scale):
@@ -801,6 +944,7 @@ class Converter:
                         run['w'] = 600
                     elif 'light' in low or 'thin' in low:
                         run['w'] = 300
+                    self.keep_font(run, rp['font'])
                     runs.append(run)
                 elif tag == 'br':
                     runs.append({'t': '\n', 'sz': 0})
@@ -809,13 +953,13 @@ class Converter:
                     text = t.text if t is not None and t.text else ''
                     if text:
                         rp = self.tr.run_props(sp, p_el, child, level, is_ph)
-                        runs.append({'t': text, 'sz': round(rp['size'] * autofit_scale, 1), 'b': rp['b'], 'i': rp['i'], 'u': False, 'c': rp['color']})
+                        runs.append(self.keep_font({'t': text, 'sz': round(rp['size'] * autofit_scale, 1), 'b': rp['b'], 'i': rp['i'], 'u': False, 'c': rp['color']}, rp['font']))
             if not runs:
                 # empty paragraph: keep a spacer sized like the paragraph default
                 rp = self.tr.run_props(sp, p_el, None, level, is_ph)
                 epr = p_el.find('a:endParaRPr', NS)
                 if epr is not None and epr.get('sz'):
-                    rp['size'] = int(epr.get('sz')) / 100
+                    rp['size'] = int(epr.get('sz')) / 100 * SCALE
                 paras.append({'runs': [], 'sz': round(rp['size'] * autofit_scale, 1), 'align': pp['align'], 'bullet': pp['bullet'] or '',
                               'level': level, 'lnSpc': pp['lnSpc'], 'spcBef': pp['spcBef'], 'spcAft': pp['spcAft']})
                 continue
@@ -824,18 +968,19 @@ class Converter:
                           'marL': pp['marL'], 'indent': pp['indent'], 'buFont': pp['buFont'], 'buColor': pp['buColor']})
         return paras
 
-    def body_props(self, txBody):
-        bp = txBody.find('a:bodyPr', NS)
-        out = {'anchor': 't', 'wrap': True, 'ins': [91440, 45720, 91440, 45720], 'scale': 1.0}
-        if bp is None:
-            return out
-        out['anchor'] = bp.get('anchor', 't')
-        out['wrap'] = bp.get('wrap', 'square') != 'none'
-        out['ins'] = [int(bp.get('lIns', 91440)), int(bp.get('tIns', 45720)), int(bp.get('rIns', 91440)), int(bp.get('bIns', 45720))]
-        na = bp.find('a:normAutofit', NS)
-        out['autofit'] = na is not None
-        if na is not None and na.get('fontScale'):
-            out['scale'] = int(na.get('fontScale')) / 100000
+    def body_props(self, txBody, inherited=()):
+        """Anchor, wrap, insets, and autofit of a text body. A placeholder takes what its own bodyPr leaves
+        unset from the layout's placeholder, then the master's (a title is usually centred or
+        bottom-anchored there); the autofit's font scale is the slide's own."""
+        chain = [el for el in [txBody.find('a:bodyPr', NS)] + [i.find('p:txBody/a:bodyPr', NS) for i in inherited if i is not None] if el is not None]
+        first = lambda attr, default: next((el.get(attr) for el in chain if el.get(attr) is not None), default)
+        out = {'anchor': first('anchor', 't'), 'wrap': first('wrap', 'square') != 'none', 'scale': 1.0,
+               'ins': [int(first('lIns', 91440)), int(first('tIns', 45720)), int(first('rIns', 91440)), int(first('bIns', 45720))]}
+        fit = next(((tag, el) for el in chain for tag in ('normAutofit', 'spAutoFit', 'noAutofit') if el.find(f'a:{tag}', NS) is not None), None)
+        out['autofit'] = bool(fit) and fit[0] == 'normAutofit'
+        own = chain[0].find('a:normAutofit', NS) if chain and chain[0] is txBody.find('a:bodyPr', NS) else None
+        if own is not None and own.get('fontScale'):
+            out['scale'] = int(own.get('fontScale')) / 100000
         return out
 
     # ---- shapes ----
@@ -856,7 +1001,7 @@ class Converter:
                         break
         if not colour:
             return None
-        lw = int(ln.get('w', 9525)) / 12700 * PT_TO_PX if ln is not None else 0.75 * PT_TO_PX
+        lw = (int(ln.get('w', 9525)) / 12700 * PT_TO_PX if ln is not None else 0.75 * PT_TO_PX) * SCALE
         dash = None
         if ln is not None:
             pd = ln.find('a:prstDash', NS)
@@ -1048,7 +1193,7 @@ class Converter:
             if xf:
                 x, y, w, h = tf.apply(*xf[:4])
                 ln = el.find('p:spPr/a:ln', NS)
-                lw = int(ln.get('w', 9525)) / 12700 * PT_TO_PX if ln is not None else 1
+                lw = int(ln.get('w', 9525)) / 12700 * PT_TO_PX * SCALE if ln is not None else 1
                 pad = max(12.0, lw * 4)     # room for the arrowhead
                 out.append({'k': 'crop', 'x': emu_px(x) - pad, 'y': emu_px(y) - pad, 'w': max(emu_px(w), 2) + 2 * pad, 'h': max(emu_px(h), 2) + 2 * pad, 'cxn': True, 'keyed': True})
 
@@ -1098,7 +1243,8 @@ class Converter:
         prst = geom.get('prst') if geom is not None else ('custom' if (sppr is not None and sppr.find('a:custGeom', NS) is not None) else 'rect')
         fill = self.colors.solid_fill(sppr) if sppr is not None else None
         style = sp.find('p:style', NS)
-        if fill is None and style is not None:
+        own_fill = sppr is not None and any(sppr.find(f'a:{k}', NS) is not None for k in ('gradFill', 'blipFill', 'pattFill'))
+        if fill is None and style is not None and not own_fill:
             fr = style.find('a:fillRef', NS)
             if fr is not None and fr.get('idx', '0') not in ('0', '1000'):
                 base = None
@@ -1124,7 +1270,7 @@ class Converter:
         if ln is not None and ln.find('a:noFill', NS) is None:
             lc = self.colors.solid_fill(ln)
             if lc and lc != 'none':
-                line = {'c': lc, 'w': round(int(ln.get('w', 9525)) / 12700 * PT_TO_PX, 2)}
+                line = {'c': lc, 'w': round(int(ln.get('w', 9525)) / 12700 * PT_TO_PX * SCALE, 2)}
         if line is None and (ln is None or ln.find('a:noFill', NS) is None) and style is not None and fill is None:
             lr = style.find('a:lnRef', NS)
             if lr is not None and lr.get('idx', '0') != '0':
@@ -1183,15 +1329,16 @@ class Converter:
                 # the tail leaves through whichever edge the tip is furthest past
                 ox = max(-tipx, tipx - pw, 0.0)
                 oy = max(-tipy, tipy - ph_, 0.0)
+                oval = prst == 'wedgeEllipseCallout'   # its tail starts inside the oval, which covers the join
                 if ox <= 1 and oy <= 1:
                     tri = None                   # the tip sits inside the box: no tail
                 elif oy > ox:
-                    ey = ph_ if tipy > ph_ else 0
-                    bx = min(max(tipx, base), pw - base)
+                    ey = (ph_ * 0.8 if tipy > ph_ else ph_ * 0.2) if oval else (ph_ if tipy > ph_ else 0)
+                    bx = min(max(tipx, pw * 0.3), pw * 0.7) if oval else min(max(tipx, base), pw - base)
                     tri = [(bx - base / 2, ey), (bx + base / 2, ey), (tipx, tipy)]
                 else:
-                    ex = pw if tipx > pw else 0
-                    by = min(max(tipy, base), ph_ - base)
+                    ex = (pw * 0.8 if tipx > pw else pw * 0.2) if oval else (pw if tipx > pw else 0)
+                    by = min(max(tipy, ph_ * 0.3), ph_ * 0.7) if oval else min(max(tipy, base), ph_ - base)
                     tri = [(ex, by - base / 2), (ex, by + base / 2), (tipx, tipy)]
                 placed = place(tri, pw, ph_, rot, xf[5], xf[6]) if tri else None
                 if placed:
@@ -1211,7 +1358,7 @@ class Converter:
             if szs and max(szs) >= 28:
                 node['ph'] = 'title'
         if callout:
-            node['radius'] = 10
+            node['radius'] = '50%' if prst == 'wedgeEllipseCallout' else 10
         elif prst == 'roundRect':
             adj = geom.find('a:avLst/a:gd', NS) if geom is not None else None
             frac = int(adj.get('fmla').split()[-1]) / 100000 if adj is not None else 0.1667
@@ -1223,9 +1370,18 @@ class Converter:
             out.append({'k': 'crop', 'x': px, 'y': py, 'w': pw, 'h': ph_, 'under_text': True})
             node['fill'] = None
         if sppr is not None and sppr.find('a:gradFill', NS) is not None and not node['fill']:
-            out.append({'k': 'crop', 'x': px, 'y': py, 'w': pw, 'h': ph_, 'under_text': True})
+            css = self.grad_css(sppr.find('a:gradFill', NS))
+            if css:
+                node['fill'] = css
+            else:
+                out.append({'k': 'crop', 'x': px, 'y': py, 'w': pw, 'h': ph_, 'under_text': True})
         if has_text:
-            bp = self.body_props(txBody)
+            inherited = []
+            if phi:   # the same placeholder on the layout, then on the master (a centre title is the master's title)
+                lay = find_layout_ph(layout_el, phi)
+                mas = find_layout_ph(master_el, {'type': {'ctrTitle': 'title', 'subTitle': 'body'}.get(phi['type'], phi['type']), 'idx': None})
+                inherited = [lay, mas]
+            bp = self.body_props(txBody, inherited)
             node['text'] = self.text_body(sp, txBody, is_ph, bp['scale'])
             allruns = [r for para in node['text'] for r in (para.get('runs') or []) if r['t'] != '\n']
             if len(allruns) == 1 and allruns[0].get('f') and (allruns[0].get('sz') or 0) >= 72:
@@ -1239,7 +1395,7 @@ class Converter:
                 if fref is not None and len(fref):
                     default_c = self.colors.resolve(fref[0])
             fill_c = node.get('fill')
-            if default_c is None and fill_c:
+            if default_c is None and fill_c and fill_c.startswith('#'):
                 r, g, b_ = (int(fill_c[i:i + 2], 16) for i in (1, 3, 5))
                 if (r * 299 + g * 587 + b_ * 114) / 1000 < 128:
                     default_c = '#FFFFFF'
@@ -1248,10 +1404,13 @@ class Converter:
                     for r in para.get('runs') or []:
                         if r.get('c') is None and r['t'] != '\n':
                             r['c'] = default_c
+            for para in node['text']:   # a bullet or number takes its first word's colour, as in PowerPoint
+                if para.get('bullet') and not para.get('buColor'):
+                    para['buColor'] = next((r['c'] for r in para.get('runs') or [] if r.get('c') and r['t'].strip()), None)
             node['anchor'] = bp['anchor']
             node['autofit'] = bp['autofit']
             node['wrap'] = bp['wrap']
-            node['ins'] = [emu_px(v) for v in bp['ins']]
+            node['ins'] = [emu_px(v * SCALE) for v in bp['ins']]
             # the box may be shorter than the text it holds (PowerPoint lets text spill);
             # estimate the rendered height so masks cover the words that actually show
             est = 0.0
@@ -1272,6 +1431,8 @@ class Converter:
                 lines = max(1, int(tw_est / width + 0.999)) + sum(1 for r in runs if r['t'] == '\n')
                 est += lines * szpx * 1.25
                 align = align or para.get('align')
+            if node.get('autofit') and est > ph_ * 1.6:
+                node['autofit'] = False   # PowerPoint shrank this text as far as it would and let it run past the box: so does the deck
             # the mask covers where the words are, not the whole (often much wider) box
             mw = min(pw, tw_max + 10)
             if align == 'ctr':
@@ -1316,7 +1477,7 @@ class Converter:
         src = None
         if rid:
             try:
-                part = self.current_slide.part.related_part(rid)
+                part = (getattr(self, 'current_part', None) or self.current_slide.part).related_part(rid)
                 ext = part.partname.ext.lstrip('.').lower() or 'png'
                 if ext in ('emf', 'wmf', 'svg', 'tif', 'tiff'):
                     src = None
@@ -1380,8 +1541,10 @@ class Converter:
                     sz = None
                     for r in tc.iter(A + 'rPr'):
                         if r.get('sz'):
-                            sz = int(r.get('sz')) / 100
+                            sz = int(r.get('sz')) / 100 * SCALE
                             break
+                    if sz is None and txt.strip():   # no size of its own: the deck's default text size, as PowerPoint draws it
+                        sz = self.default_size * SCALE
                     cell = {'t': txt, 'fill': fill if fill and fill != 'none' else None, 'b': bold, 'i': italic, 'c': col, 'sz': sz}
                     if first_row and ri == 0 and not cell['fill']:
                         cell['fill'] = '#272323'
@@ -1412,15 +1575,30 @@ class Converter:
                 cmap.update(dict(ov.attrib))
         self.colors.cmap = cmap
         self.tr = TextResolver(self.colors, master_el, layout_el)
-        bg, bg_is_picture = self.background(slide)
+        bg, bg_is_picture, bg_node = self.background(slide)
         if not bg_is_picture:
             sampled = self.sample_bg(n)
             if sampled:
                 bg = sampled
         out, text_boxes = [], []
-        tf = Transform()
-        # shapes that live on the layout/master and are visible (logos, footers) are ignored:
-        # decks made by pptxgenjs and most templates draw everything on the slide itself.
+        if bg_node:
+            bg_node.pop('avg', None)
+            out.append(bg_node)
+        tf = Transform(SCALE, SCALE, *OFFSET)
+        # what the layout and master draw on every slide (a logo, a footer line, a band of colour) goes
+        # under the slide's own shapes, unless the slide or its layout hides background graphics.
+        # Their placeholders are only prompts: the slide has its own.
+        hosts = []
+        if slide._element.get('showMasterSp') != '0':
+            if layout_el.get('showMasterSp') != '0':
+                hosts.append((slide.slide_layout.slide_master.part, master_el))
+            hosts.append((slide.slide_layout.part, layout_el))
+        for part, host in hosts:
+            self.current_part = part
+            for el in host.find('.//p:cSld/p:spTree', NS):
+                if etree.QName(el).localname in ('sp', 'pic', 'grpSp', 'graphicFrame', 'cxnSp') and el.find('.//p:nvPr/p:ph', NS) is None:
+                    self.convert_shape(n, el, tf, out, text_boxes, layout_el, master_el)
+        self.current_part = slide.part
         spTree = slide._element.find('.//p:cSld/p:spTree', NS)
         for el in spTree:
             if etree.QName(el).localname in ('sp', 'pic', 'grpSp', 'graphicFrame', 'cxnSp'):
@@ -1466,7 +1644,7 @@ class Converter:
             regions = []
             padded = {'x': node['x'] - 3, 'y': node['y'] - 3, 'w': node['w'] + 6, 'h': node['h'] + 6}   # the crop carries 3px of padding
             for j, other in enumerate(out):
-                if other is node or other['k'] != 'box' or not other.get('fill') or id(other) in baked:
+                if other is node or other['k'] != 'box' or not str(other.get('fill') or '').startswith('#') or id(other) in baked:
                     continue
                 R = isect(padded, other)
                 if not R:
@@ -1521,8 +1699,10 @@ class Converter:
             self.stats['skipped'] += len(baked)
         for nd in final:
             nd.pop('_words', None)
+            if nd['k'] == 'pic' and not nd.get('rot'):
+                clip_to_slide(nd)
         self.stats['slides'] += 1
-        return {'bg': bg, 'bgpic': bg_is_picture, 'shapes': final}
+        return {'bg': bg, 'bgpic': bg_is_picture and not bg_node, 'shapes': final}
 
     def run(self):
         result = {}
@@ -1535,6 +1715,54 @@ class Converter:
             except Exception as e:      # keep going; the builder falls back to the image
                 result[i] = {'error': str(e)}
         return result
+
+
+def clip_to_slide(nd):
+    """A picture that runs off the slide (a full-bleed photo placed a little large) is cut at the slide's
+    edge, as PowerPoint shows it: its crop grows by the part outside."""
+    x, y, w, h = nd['x'], nd['y'], nd['w'], nd['h']
+    if w <= 0 or h <= 0 or (x >= 0 and y >= 0 and x + w <= SLIDE_W_PX and y + h <= 562.5):
+        return
+    cl, ct, cr, cb = nd.get('crop') or [0, 0, 0, 0]
+    sx, sy = (1 - cl - cr) / w, (1 - ct - cb) / h        # crop fraction per px shown
+    left, top = max(0, -x), max(0, -y)
+    right, bottom = max(0, x + w - SLIDE_W_PX), max(0, y + h - 562.5)
+    if left + right >= w or top + bottom >= h:
+        return
+    nd['crop'] = [round(cl + left * sx, 5), round(ct + top * sy, 5), round(cr + right * sx, 5), round(cb + bottom * sy, 5)]
+    nd['x'], nd['y'] = round(x + left, 2), round(y + top, 2)
+    nd['w'], nd['h'] = round(w - left - right, 2), round(h - top - bottom, 2)
+
+
+def render_pdf(pdf, render_dir, png_dir, prefix, pages, size=None, picture_width=1280, crop_width=2000, quality=80):
+    """Render PDF pages as the slides they show: pages maps slide number -> page index. Writes
+    <prefix>-NNN.jpg pictures (picture_width) into render_dir and <prefix>-NNN.png renders to crop
+    from (crop_width) into png_dir. size is the deck's (width, height) in EMU: a deck of another
+    shape than 16:9 is centred on a 16:9 picture, where the converter puts its shapes."""
+    import fitz
+    s, (dx, dy) = fit_slide(*(size or (0, 0)))
+    os.makedirs(render_dir, exist_ok=True)
+    doc = fitz.open(pdf)
+    for n, i in sorted(pages.items()):
+        if i >= doc.page_count:
+            continue
+        page = doc[i]
+        for width, path in ((crop_width, os.path.join(png_dir, f'{prefix}-{n:03d}.png')),
+                            (picture_width, os.path.join(render_dir, f'{prefix}-{n:03d}.jpg'))):
+            k = width / SLIDE_W_PX                          # canvas px -> picture px
+            inner = (width - 2 * emu_px(dx) * k) / page.rect.width
+            pix = page.get_pixmap(matrix=fitz.Matrix(inner, inner), alpha=False)
+            im = Image.frombytes('RGB', (pix.width, pix.height), pix.samples)
+            if size and (dx or dy):
+                corner = im.getpixel((2, 2))
+                full = Image.new('RGB', (width, round(width * 0.5625)), corner)
+                full.paste(im, (round(emu_px(dx) * k), round(emu_px(dy) * k)))
+                im = full
+            if path.endswith('.png'):
+                im.save(path)
+            else:
+                im.save(path, quality=quality, optimize=True, progressive=True)
+    return doc.page_count
 
 
 def parse_slides(spec):
@@ -1572,6 +1800,8 @@ if __name__ == '__main__':
     ap.add_argument('--inpaint', action='store_true',
                     help='take the words of native text boxes out of a crop by painting them over with the '
                          'colour beneath them, instead of cutting a see-through hole')
+    ap.add_argument('--fonts', action='store_true',
+                    help="keep each run's typeface (the deck's own font follows it, for a machine without it)")
     ap.add_argument('--dashed-outlines', action='store_true',
                     help='draw a dashed outline of a box or circle as a dashed path (a box border is always solid)')
     ap.add_argument('--pdf', help='the deck exported to PDF by PowerPoint. With it the converter renders the slides '
@@ -1582,33 +1812,21 @@ if __name__ == '__main__':
     ap.add_argument('--quality', type=int, default=80, help='JPEG quality of the slide pictures (with --pdf)')
     args = ap.parse_args()
     png_dir, tmp = args.png_dir, None
+    conv = Converter(args.pptx, args.render_dir, args.prefix, args.render_dir, png_dir)
     if args.pdf:
         import shutil
         import tempfile
         import fitz
-        tmp = png_dir = tempfile.mkdtemp(prefix='pptx2native-')
-        doc = fitz.open(args.pdf)
-        wanted = parse_slides(args.slides) or set(range(1, doc.page_count + 1))
-        os.makedirs(args.render_dir, exist_ok=True)
-        for n in sorted(wanted):
-            if n > doc.page_count:
-                continue
-            page = doc[n - 1]
-            for width, path in ((args.crop_width, os.path.join(tmp, f'{args.prefix}-{n:03d}.png')),
-                                (args.picture_width, os.path.join(args.render_dir, f'{args.prefix}-{n:03d}.jpg'))):
-                z = width / page.rect.width
-                pix = page.get_pixmap(matrix=fitz.Matrix(z, z), alpha=False)
-                im = Image.frombytes('RGB', (pix.width, pix.height), pix.samples)
-                if path.endswith('.png'):
-                    im.save(path)
-                else:
-                    im.save(path, quality=args.quality, optimize=True, progressive=True)
-    conv = Converter(args.pptx, args.render_dir, args.prefix, args.render_dir, png_dir)
+        tmp = conv.png_dir = tempfile.mkdtemp(prefix='pptx2native-')
+        wanted = parse_slides(args.slides) or set(range(1, fitz.open(args.pdf).page_count + 1))
+        render_pdf(args.pdf, args.render_dir, tmp, args.prefix, {n: n - 1 for n in wanted},
+                   (conv.prs.slide_width, conv.prs.slide_height), args.picture_width, args.crop_width, args.quality)
     conv.only = parse_slides(args.slides)
     conv.jpeg_crops = args.jpeg_crops
     conv.keep_text = args.keep_text
     conv.inpaint = args.inpaint
     conv.dashed_outlines = args.dashed_outlines
+    conv.keep_fonts = args.fonts
     data = conv.run()
     if args.key:
         data = {f'{args.key}{k}': v for k, v in data.items()}

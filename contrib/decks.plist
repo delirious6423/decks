@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<!-- Optional (macOS): keep Decks Performance Fork running and start it at login.
+<!-- Optional (macOS): keep Decks Performance running and start it at login.
      Install: see "Run it at login" in README.md. __APP__ and __HOME__ are filled in then. -->
 <plist version="1.0">
 <dict>

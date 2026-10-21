@@ -76,7 +76,10 @@ test('editable download carries all definitions and edits and opens offline',asy
  assert.match(dl.suggestedFilename(),/editable/);const file=path.join(temp,'portable.html');await dl.saveAs(file);
  const html=fs.readFileSync(file,'utf8');assert.match(html,/Object.assign\(LIBRARY,/);assert.doesNotMatch(html,/JSON.parse\(".*__sbChunk/);
  const offline=await browser.newContext();contexts.push(offline);await offline.route('https://**',r=>r.abort());await offline.route('http://**',r=>r.abort());const page=await offline.newPage();page.on('pageerror',e=>errors.push(e.message));
- await page.goto('file://'+file);await page.evaluate(()=>__DECK_READY);assert.equal(await page.locator('#deck > [data-id] .slide').count(),500);assert.equal(await page.locator('#deck > [data-id="large-0"] .h-title').innerText(),'Offline editable title');
+ // Serve only the downloaded bytes; block every asset and API request.
+ const portable=base+'/standalone-test.html';
+ await offline.route('**/*',r=>r.request().url()===portable?r.fulfill({contentType:'text/html',body:html}):r.abort());
+ await page.goto(portable);await page.evaluate(()=>__DECK_READY);assert.equal(await page.locator('#deck > [data-id] .slide').count(),500);assert.equal(await page.locator('#deck > [data-id="large-0"] .h-title').innerText(),'Offline editable title');
  assert.match(await page.locator('#deck > [data-id="large-499"] .slide').innerText(),/Slide 500/);
 });
 

@@ -62,8 +62,16 @@ export async function runJob(argv, getBrowser) {
         let defaults = []; try { defaults = PITCHES[current].blocks; } catch (e) {}           // eslint-disable-line no-undef
         const order = wraps.map((w) => w.dataset.id);
         let version = ''; try { version = current; } catch (e) {}                              // eslint-disable-line no-undef
-        return { version, edits, removed: defaults.filter((id) => !order.includes(id)), added: order.filter((id) => !defaults.includes(id)),
-          reordered: JSON.stringify(order.filter((id) => defaults.includes(id))) !== JSON.stringify(defaults.filter((id) => order.includes(id))) };
+      const removed = defaults.filter((id) => !order.includes(id));
+      // a slide taken out because a proposal was decided: sb proposals --bake writes that, not a hand edit
+      const L = (() => { try { return LIBRARY; } catch (e) { return {}; } })(), proposals = {};   // eslint-disable-line no-undef
+      removed.forEach((id) => {
+        const b = L[id] || {}, by = Object.keys(L).find((x) => L[x].prop && L[x].replaces === id && order.includes(x));
+        if (b.prop && b.replaces && order.includes(b.replaces)) proposals[id] = `kept the original ${b.replaces}: bake with sb proposals --bake`;
+        else if (by) proposals[id] = `accepted the proposal ${by}: bake with sb proposals --bake`;
+      });
+      return { version, edits, removed, added: order.filter((id) => !defaults.includes(id)), proposals,
+        reordered: JSON.stringify(order.filter((id) => defaults.includes(id))) !== JSON.stringify(defaults.filter((id) => order.includes(id))) };
       });
   async function open(slug, width = 1600, withState = false) {
     const deck = await (await fetch(`${BASE}/api/decks/${slug}`)).json();
@@ -98,6 +106,60 @@ export async function runJob(argv, getBrowser) {
       log(JSON.stringify(await order(page)));
       await browser.close(); return;
     }
+  if (cmd === 'proposals') {   // proposed slides (prop:true, replaces:'id'), and which of each pair every version shows with the saved state
+    // extra ids after the slug: report their flags too (sb proposals --bake checks the file with them)
+    const { browser, page, errors } = await open(slug, 1600, true);
+    const res = await page.evaluate((extra) => {
+      const L = LIBRARY, out = { version: String(current), versions: {}, blocks: {}, pairs: [], shown: {}, saved: [], flags: {} };   // eslint-disable-line no-undef
+      const plain = (s) => String(s || '').replace(/<[^>]+>/g, '').replace(/\*\*/g, '');
+      const t = (id) => { try { return plain(titleOf(id)); } catch (e) { return plain((L[id] || {}).title || (L[id] || {}).q || id); } };   // eslint-disable-line no-undef
+      Object.keys(PITCHES).forEach((k) => { out.versions[k] = String(PITCHES[k].name || k); out.blocks[k] = PITCHES[k].blocks.slice(); });   // eslint-disable-line no-undef
+      // versions that carry the extras too ("Everything"): an accepted proposal's original stays in them
+      out.extras = Object.fromEntries(Object.entries(out.blocks).map(([k, b]) => [k, b.some((id) => L[id] && L[id].alt && !L[id].lib && !L[id].prop)]));
+      out.pairs = Object.keys(L).filter((id) => L[id].prop && L[id].replaces).map((id) => ({ p: id, o: L[id].replaces, title: t(id), otitle: L[L[id].replaces] ? t(L[id].replaces) : '',
+        missing: !L[L[id].replaces], palt: !!L[id].alt, oalt: !!(L[L[id].replaces] || {}).alt, notes: plain(L[id].notes).slice(0, 300) }));
+      const flag = (id) => ({ exists: !!L[id], prop: !!(L[id] || {}).prop, alt: !!(L[id] || {}).alt, replaces: (L[id] || {}).replaces || null });
+      [...out.pairs.flatMap((x) => [x.p, x.o]), ...extra].forEach((id) => { out.flags[id] = flag(id); });
+      const sel = document.querySelector('.sidebar select'), first = String(current);   // eslint-disable-line no-undef
+      const ids = () => [...document.getElementById('deck').children].filter((n) => n.dataset && n.dataset.id).map((n) => n.dataset.id);
+      const has = (v) => { try { const d = savedFor(v); return !!(d && Array.isArray(d.__order)); } catch (e) { return false; } };   // eslint-disable-line no-undef
+      Object.keys(PITCHES).forEach((v) => {   // eslint-disable-line no-undef
+        if (has(v)) out.saved.push(v);
+        if (v !== String(current) && sel && [...sel.options].some((o) => o.value === v)) { sel.value = v; sel.dispatchEvent(new Event('change', { bubbles: true })); }   // eslint-disable-line no-undef
+        if (String(current) !== v) return;   // eslint-disable-line no-undef
+        const on = new Set(ids()); out.shown[v] = {};
+        out.pairs.forEach((x) => { out.shown[v][x.p] = [on.has(x.o), on.has(x.p)]; });
+      });
+      if (sel && first !== String(current)) { sel.value = first; sel.dispatchEvent(new Event('change', { bubbles: true })); }   // eslint-disable-line no-undef
+      return out;
+    }, args);
+    res.errors = errors;
+    log(JSON.stringify(res));
+    await browser.close(); return;
+  }
+  if (cmd === 'deckinfo') {   // what sb import checks a returned file against: versions, slide ids, storage key, each slide's text fingerprint
+    // --version v: fingerprints as that version builds its slides (a review copy says which); a version the deck lacks is reported, not fatal
+    const want = version; version = null;
+    const { browser, page } = await open(slug);
+    const res = await page.evaluate((want) => {
+      const out = { key: null, versions: {}, slides: [], defs: {}, version: null, vdefs: {}, fnotes: {}, blocks: {} };
+      try { Object.keys(PITCHES).forEach((k) => { out.versions[k] = String(PITCHES[k].name || k); out.blocks[k] = PITCHES[k].blocks.slice(); }); } catch (e) {}   // eslint-disable-line no-undef
+      try { const s = document.querySelector('.sidebar select'); if (want && s && [...s.options].some((o) => o.value === want)) { s.value = want; s.dispatchEvent(new Event('change', { bubbles: true })); } } catch (e) {}
+      try { out.version = String(current); } catch (e) {}                                                              // eslint-disable-line no-undef
+      try { out.slides = Object.keys(LIBRARY); } catch (e) {}                                                          // eslint-disable-line no-undef
+      try { const k = KEY(), c = String(current); if (k.endsWith(c)) out.key = k.slice(0, k.length - c.length); } catch (e) {}   // eslint-disable-line no-undef
+      try { out.slides.forEach((id) => { out.defs[id] = defHash(id); }); } catch (e) { out.defs = {}; }               // eslint-disable-line no-undef
+      // for a review copy: where each slide's facilitator note sits in its saved text, the note itself, and a
+      // fingerprint of the rest (a review copy carries a blank note, so sb import puts this one back)
+      const dj = (t) => { let h = 5381; for (let i = 0; i < t.length; i++) h = ((h << 5) + h + t.charCodeAt(i)) | 0; return String(h); };
+      try { out.slides.forEach((id) => { const ns = [...build(id).querySelectorAll('[contenteditable]')], at = ns.findIndex((n) => n.classList.contains('fnote'));   // eslint-disable-line no-undef
+        out.vdefs[id] = dj(ns.filter((n, i) => i !== at).map((n) => n.innerHTML).join('\u0001'));
+        if (at >= 0) out.fnotes[id] = [at, ns[at].innerHTML]; }); } catch (e) { out.vdefs = {}; out.fnotes = {}; }
+      return out;
+    }, want);
+    log(JSON.stringify(res));
+    await browser.close(); return;
+  }
     if (cmd === 'edits') {   // the reviewer's inline edits and reordering, from the state saved on disk
       const { browser, page } = await open(slug, 1600, true);
       const res = await readEdits(page);
@@ -129,11 +191,12 @@ export async function runJob(argv, getBrowser) {
           const id = w.dataset.id, sl = w.querySelector('.slide'); if (!sl) return; const R = sl.getBoundingClientRect(), tag = `${k + 1} ${id}`;
           sl.querySelectorAll('*').forEach((n) => {
             if (n.closest('.ctrls, .slide-tag') || (n.closest('svg') && n.tagName.toLowerCase() !== 'svg')) return;
+            if (n.tagName === 'IMG' && n.parentElement.classList.contains('pp-pic')) return;
             const r = n.getBoundingClientRect(); if (!r.width || !r.height) return;
             const over = Math.max(R.left - r.left, r.right - R.right, R.top - r.top, r.bottom - R.bottom);
             if (over > 2) out.push(`${tag}: <${n.tagName.toLowerCase()}> runs ${Math.round(over)}px past the slide edge`);
             const cs = getComputedStyle(n);
-            if (cs.overflow !== 'visible' && n.clientHeight > 0 && n.scrollHeight > n.clientHeight + 3) out.push(`${tag}: <${n.tagName.toLowerCase()}> cuts off its text`);
+            if (cs.overflow !== 'visible' && !n.classList.contains('pp-pic') && n.clientHeight > 0 && n.scrollHeight > n.clientHeight + 3) out.push(`${tag}: <${n.tagName.toLowerCase()}> cuts off its text`);
           });
           sl.querySelectorAll('svg').forEach((svg) => {
             const S = svg.getBoundingClientRect();

@@ -1,4 +1,4 @@
-/* Decks: Client copy (⋯ menu).
+/* Decks: Client copy (Share menu).
    The file to send a client: the slides of the version on screen, as they look now (your edits and
    order included), and nothing else. No facilitator slides or notes, no comments, no other versions,
    no editing. It is a snapshot of the slides themselves, so none of that is even in its source.
@@ -7,8 +7,8 @@
 (async function () {
   if (window.__SB_ENGINE_READY) await window.__SB_ENGINE_READY;
   const SB = window.__SB, deck = document.getElementById('deck');
-  const menu = document.querySelector('#sb-more > div');
-  if (!SB || !deck || !menu) return;
+  const API = window.SlideBuilder;
+  if (!SB || !deck || !API || !API.shareItem) return;
   const lib = () => { try { return LIBRARY; } catch (e) { return {}; } };   // eslint-disable-line no-undef
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const api = (p) => '/api/decks/' + SB.slug + '/' + p;
@@ -91,7 +91,7 @@ fit();if(document.fonts&&document.fonts.ready)document.fonts.ready.then(fit);})(
     const body = frames.map((f, k) => `<section class="cc-slide" id="slide-${k + 1}">${clean(f).outerHTML}</section>`).join('\n');
     const result = { n: frames.length, html: `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<!-- Made with Decks Performance Fork (https://github.com/delirious6423/decks), an independent fork of Decks (https://github.com/paulmil11/decks). Deck engine: Copyright (c) 2026 Paul Millerd, MIT License, https://github.com/paulmil11/decks/blob/main/LICENSE. The slides are yours. -->
+<!-- Made with Decks Performance (https://github.com/delirious6423/decks), an independent fork of Decks (https://github.com/paulmil11/decks). Deck engine: Copyright (c) 2026 Paul Millerd, MIT License, https://github.com/paulmil11/decks/blob/main/LICENSE. The slides are yours. -->
 <title>${esc(title)}</title>
 ${links}
 <style>${css.replace(/<\/style/gi, '<\\/style')}</style>
@@ -120,9 +120,7 @@ ${body}
     say(`<b>Saved ${esc(fileName())}.</b> ${snap.n} slides${pics ? `, pictures inside` : ''}. Slides only: no notes, comments, or editing. It opens in any browser and has a Present button.`);
   }
 
-  const b = document.createElement('button'); b.id = 'sb-client-copy'; b.textContent = 'Client copy: slides only';
-  b.title = 'The file to send a client: this version’s slides as they look now. No notes, comments, other versions, or editing.';
-  b.addEventListener('click', () => { document.getElementById('sb-more').classList.remove('open'); save().catch(window.DeckData?.fail || console.error); });
-  menu.insertBefore(b, menu.firstChild);
+  API.shareItem({ t: 'Client copy', sub: 'To read or present. Slides only, one file', id: 'sb-client-copy',
+    title: 'The file to send a client: this version’s slides as they look now. No notes, comments, other versions, or editing.', act: () => save() });
   if (window.SlideBuilder) window.SlideBuilder.clientCopy = () => { const result = snapshot(); return result?.then ? result.then((s) => s.html) : result.html; };   // for the tools
 })();

@@ -1,6 +1,6 @@
 # Development and API
 
-Decks Performance Fork is maintained in [delirious6423/decks](https://github.com/delirious6423/decks).
+Decks Performance is maintained in [delirious6423/decks](https://github.com/delirious6423/decks).
 The original project is [paulmil11/decks](https://github.com/paulmil11/decks).
 
 Keep `server.py` and `sb` on the Python standard library. Headless jobs use the
@@ -117,7 +117,7 @@ In another terminal, from the same checkout:
 export SB_URL=http://127.0.0.1:8799
 export SB_DECKS_DIR=/tmp/decks-fork-test
 export SB_CHROME=/path/to/chrome
-node --test --test-concurrency=1 tests/browser.test.mjs tests/lazy.test.mjs tests/lists.test.mjs tests/wrappers.test.mjs tests/library.test.mjs
+node --test --test-concurrency=1 tests/browser.test.mjs tests/lazy.test.mjs tests/lists.test.mjs tests/wrappers.test.mjs tests/library.test.mjs tests/upstream.test.mjs
 for template in blank talk workshop proposal consulting; do
   ./sb audit "bench-$template"
   ./sb export "bench-$template"
@@ -135,3 +135,15 @@ Include a reproduction, expected behavior and relevant validation. Performance
 changes should include paired measurements with the same fixtures and environment.
 Keep upstream copyright notices and template attribution. Changes intended for the
 original project should follow its own contribution policy.
+
+## Upstream features
+
+`tools/importdeck.py` handles PowerPoint/PDF imports with optional Python packages;
+`tools/proposals.py` bakes accepted or rejected alternatives into deck files.
+The browser worker also runs `proposals` and `deckinfo` for these workflows.
+Review copies load complete definitions before extracting the current version.
+PDF downloads await pending saves before exporting the saved state.
+
+Optional login services keep their existing `decks` names. Replace `__APP__` in
+`contrib/decks.service` (Linux) or `contrib/decks.plist` (macOS) with the checkout
+path; the macOS file also needs `__HOME__` replaced with your home directory.

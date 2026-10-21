@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en">
 <head>
-<!-- Made with Decks Performance Fork (https://github.com/delirious6423/decks), an independent fork of Decks (https://github.com/paulmil11/decks). Deck engine: Copyright (c) 2026 Paul Millerd, MIT License, https://github.com/paulmil11/decks/blob/main/LICENSE. The slides are yours. -->
+<!-- Made with Decks Performance (https://github.com/delirious6423/decks), an independent fork of Decks (https://github.com/paulmil11/decks). Deck engine: Copyright (c) 2026 Paul Millerd, MIT License, https://github.com/paulmil11/decks/blob/main/LICENSE. The slides are yours. -->
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>{{TITLE}}</title>
@@ -1808,7 +1808,7 @@ function build(id) {
             const marL = para.marL ? para.marL / 12192 : 0;
             if (para.bullet && para.bullet !== 'num' && para.align === 'ctr') { let bu = para.bullet; if (para.buFont && /wingdings|webdings|symbol/i.test(para.buFont)) { const SYMB = { 'ü':'✓', 'û':'✗', 'q':'❑', 'l':'●', 'n':'■', 'u':'◆', 'Ø':'➢', 'v':'❖', 'w':'◆', 'p':'□', 'o':'○', '§':'▪' }; const cc = bu.charCodeAt(0); const c2 = (cc >= 0xF000 && cc <= 0xF0FF) ? String.fromCharCode(cc - 0xF000) : bu; bu = SYMB[c2] || '•'; } const bsp = document.createElement('span'); bsp.textContent = bu + ' '; if (para.buColor) bsp.style.color = para.buColor; p.appendChild(bsp); numCount = 0; }
             else if (para.bullet && para.bullet !== 'num' && !b.noBul) { p.classList.add('bul'); let bu = para.bullet; if (para.buFont && /wingdings|webdings|symbol/i.test(para.buFont)) { const SYMB = { 'ü':'✓', 'û':'✗', 'q':'❑', 'l':'●', 'n':'■', 'u':'◆', 'Ø':'➢', 'v':'❖', 'w':'◆', 'p':'□', 'o':'○', '§':'▪' }; const cc = bu.charCodeAt(0); const c2 = (cc >= 0xF000 && cc <= 0xF0FF) ? String.fromCharCode(cc - 0xF000) : bu; bu = SYMB[c2] || '•'; } p.dataset.bul = bu; if (para.buColor) p.style.setProperty('--bul', para.buColor); p.style.paddingLeft = Math.max(marL, base * PT * 1.1) + 'px'; numCount = 0; }
-            else if (para.bullet === 'num') { p.classList.add('bul'); p.dataset.bul = (++numCount) + '.'; p.style.paddingLeft = Math.max(marL, base * PT * 1.4) + 'px'; if (b.bulColor) p.style.setProperty('--bul', b.bulColor); }
+            else if (para.bullet === 'num') { p.classList.add('bul'); p.dataset.bul = (++numCount) + '.'; p.style.paddingLeft = Math.max(marL, base * PT * 1.4) + 'px'; if (para.buColor || b.bulColor) p.style.setProperty('--bul', para.buColor || b.bulColor); }
             else { numCount = 0; if (marL) p.style.paddingLeft = marL + 'px'; }
             if (!para.runs || !para.runs.length) { if (para.bullet === 'num') numCount--; p.classList.remove('bul'); p.style.paddingLeft = ''; p.innerHTML = '<br>'; d.appendChild(p); return; }
             para.runs.forEach((r) => {
@@ -3573,6 +3573,8 @@ function currentData() {
   data.__def = def;
   return data;
 }
+// the copy keeps this file's own name (a reviewer's "Deck (editable).html" comes back as that, not as workshop.html)
+const FILE_NAME = () => { let n = ''; try { n = decodeURIComponent(location.pathname.split('/').pop() || ''); } catch (e) {} return /\.html?$/i.test(n) ? n : 'deck.html'; };
 /* "Save a copy": every version's edits (this one fresh, the others from this
    browser or from the file itself) written into the saved-edits block of a
    byte-identical copy of this file, then downloaded. */
@@ -3585,17 +3587,18 @@ document.getElementById('save-copy').addEventListener('click', async () => {
   const all = {};
   Object.keys(PITCHES).forEach((k) => { const d = (k === current) ? currentData() : savedFor(k); if (d) all[k] = d; });
   const json = JSON.stringify(all).replace(/<\//g, '<\\/');
+  const name = FILE_NAME();
   const html = original.replace(/(<script id="saved-edits" type="application\/json">)[\s\S]*?(<\/script>)/, (m, a, b) => a + json + b);
   const handled = !window.dispatchEvent(new CustomEvent('sb:copy', { cancelable: true, detail: { html } }));
   if (!handled) {
     const blob = new Blob([html], { type: 'text/html' });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a'); a.href = url; a.download = 'workshop.html'; document.body.appendChild(a); a.click(); a.remove();
+    const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 4000);
   }
   dirty = false;
   const bn = document.getElementById('nosave-banner'); if (bn) bn.remove();
-  const f = document.getElementById('save-flag'); f.textContent = '✓ Saved a copy — replace workshop.html with the download'; f.className = 'save-flag on'; setTimeout(flagSaved, 8000);
+  const f = document.getElementById('save-flag'); f.textContent = '✓ Saved a copy — replace ' + name + ' with the download'; f.className = 'save-flag on'; setTimeout(flagSaved, 8000);
 });
 function nosaveBanner() {
   if (document.getElementById('nosave-banner')) return;

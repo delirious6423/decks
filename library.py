@@ -14,7 +14,7 @@ _LOCK = threading.Lock()
 LIMIT = 8
 CHUNK = 64
 MIN_SLIDES = 256
-METADATA = frozenset("cat layout title q panel short n mod alt fac only for in lib copyOf brk v2 prop ext".split())
+METADATA = frozenset("cat layout title q panel short n mod alt fac only for in lib copyOf brk v2 prop replaces ext".split())
 _TOKEN = re.compile(r'\s+|//[^\n]*|/\*[\s\S]*?\*/|(?P<string>"(?:\\[\s\S]|[^"\\])*"|\'(?:\\[\s\S]|[^\'\\])*\')|(?P<number>-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?)|(?P<word>[A-Za-z_$][\w$]*)|(?P<punct>[{}\[\]:,])')
 
 

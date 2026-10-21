@@ -2,6 +2,6 @@
   "name": "decks-tools",
   "private": true,
   "type": "module",
-  "description": "Headless tools for Decks Performance Fork: screenshots, overflow audit, PDF export, dashboard thumbnails",
+  "description": "Headless tools for Decks Performance: screenshots, overflow audit, PDF export, dashboard thumbnails",
   "dependencies": { "playwright-core": "1.56.1" }
 }

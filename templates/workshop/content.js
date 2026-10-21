@@ -42,7 +42,7 @@ const LIBRARY = {
   'm3-case': { cat:'m3', layout:'plain', title:'Introduce the case with only the facts the group needs to start',
     body:['Who the client is, and what they asked for.', 'What the group has to produce, and by when.'], notes: DRAFT },
   'm3-practice': { cat:'m3', layout:'breakout', lab:'Case', time:'45', setup:'<b>Teams of four</b>The same teams as before.',
-    title:'Each team works the case and presents its answer in three minutes',
+    title:'Each team presents its case answer in three minutes',
     steps:['Read the brief and agree on the question.', 'Work the case using both modules.', 'Present the answer first, then the support.'], notes: DRAFT },
 
   'reflect': { cat:'close', layout:'reflect', q:'What will you use first on Monday?', subq:'One thing, from your own work.', notes: DRAFT },

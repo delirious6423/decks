@@ -42,7 +42,15 @@ function claim() {
       try {
         const pid = Number(fs.readFileSync(path.join(lockPath, 'pid'), 'utf8'));
         if (!Number.isInteger(pid) || pid <= 0) return false;
-        try { process.kill(pid, 0); return false; } catch (e) { if (e.code !== 'ESRCH') return false; }
+        // A killed orphan can remain a zombie until its parent reaps it. kill(0)
+        // still succeeds for that PID, although it cannot serve the socket.
+        const zombie = process.platform === 'linux' && (() => {
+          try { return /^State:\s+Z\b/m.test(fs.readFileSync(`/proc/${pid}/status`, 'utf8')); }
+          catch (e) { return false; }
+        })();
+        if (!zombie) {
+          try { process.kill(pid, 0); return false; } catch (e) { if (e.code !== 'ESRCH') return false; }
+        }
       } catch (e) {
         if (e.code !== 'ENOENT') return false;
         try { if (Date.now() - fs.statSync(lockPath).mtimeMs < 10000) return false; } catch (e) {}

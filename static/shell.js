@@ -10,6 +10,15 @@
 (async function () {
   if (window.__SB_ENGINE_READY) await window.__SB_ENGINE_READY;
   const SB = window.__SB;
+  const MAC = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+  const SEND = MAC ? '⌘⇧↵' : 'Ctrl+Shift+↵', PKEY = MAC ? '⌘↵' : 'Ctrl+↵';   // Ask agent's key, and the deck's own Present
+  // Ask agent (Process now while Claude watches), even mid-comment. Caught before the deck's own keys see it,
+  // because the deck presents on ⌘↵ and would take ⌘⇧↵ for the same.
+  window.addEventListener('keydown', (e) => {
+    if (!(e.metaKey || e.ctrlKey) || !e.shiftKey || e.key !== 'Enter') return;
+    let showing = false; try { showing = presenting(); } catch (x) {}
+    e.preventDefault(); e.stopImmediatePropagation(); const b = document.getElementById('sb-ask'); if (b && !showing) b.click();
+  }, true);
   const deck = document.getElementById('deck');
   if (!SB || !deck) return;
 
@@ -68,65 +77,259 @@
     return { text, rep, fresh, st, ch, hold,
       open: !!text && !hold && st !== 'done' && st !== 'skipped', question: st === 'question', replied: fresh && st !== 'working', changed: !!ch };
   };
-  const FILTERS = [['all', 'All'], ['open', 'Open'], ['replied', 'Replied'], ['questions', 'Questions'], ['changed', 'Changed']];
-  const pass = (id, f = filter) => { if (f === 'all') return true; const i = info(id); return (f === 'open' && i.open) || (f === 'replied' && i.replied) || (f === 'questions' && i.question) || (f === 'changed' && i.changed); };
+  const FILTERS = [['all', 'All'], ['proposed', 'Proposed'], ['open', 'Open'], ['replied', 'Replied'], ['questions', 'Questions'], ['changed', 'Changed']];
+  const pass = (id, f = filter) => {
+    if (f === 'all') return true; if (f === 'proposed') return propLead(id);
+    const i = info(id); return (f === 'open' && i.open) || (f === 'replied' && i.replied) || (f === 'questions' && i.question) || (f === 'changed' && i.changed); };
   const visible = () => filter === 'all' ? slideIds() : slideIds().filter((id) => pass(id));
 
+  // ---------- proposed slides: Claude's alternatives to one of yours (prop:true, replaces:'id') ----------
+  // A slide can have one proposal or several (its options). Accept puts the option on screen in the original's
+  // place in this version and takes the original and the other options out; Keep original takes them all out.
+  // Both save at once (the version's order, and the decisions in review.json), and both undo. Your agent writes
+  // them into the deck file next round (sb proposals --bake).
+  const origOf = (id) => { const b = lib()[id]; return b && b.prop && b.replaces && lib()[b.replaces] ? b.replaces : null; };
+  const optionsOf = (o) => Object.keys(lib()).filter((x) => origOf(x) === o);   // in deck-file order: option 1, 2, 3
+  const inVersion = () => new Set(slideIds());
+  const defaults = () => { try { return new Set(PITCHES[sideSelect ? sideSelect.value : current].blocks); } catch (e) { return null; } };   // eslint-disable-line no-undef
+  // a slide's proposals as one decision: the clicks saved in review.json, or else what the version shows
+  // (the original or some options taken out by hand). out: this version doesn't carry them.
+  function groupOf(o, on = inVersion(), def = defaults()) {
+    const ps = optionsOf(o), rec = (x) => { const r = (review.proposals || {})[x]; return r && !r.baked ? r : null; };
+    const acc = ps.filter((x) => (rec(x) || {}).decision === 'accept');
+    if (acc.length) return { o, ps, d: 'accept', pick: acc[0], said: true, version: rec(acc[0]).version };
+    if (ps.every((x) => (rec(x) || {}).decision === 'keep')) return { o, ps, d: 'keep', said: true, version: rec(ps[0]).version };
+    const carried = (x) => !def || def.has(x) || on.has(x), opts = ps.filter(carried);
+    if (!opts.length || !carried(o)) return { o, ps, d: null, out: true };
+    const shown = opts.filter((x) => on.has(x) && (rec(x) || {}).decision !== 'keep');
+    if (on.has(o)) return shown.length ? { o, ps, d: null, shown } : { o, ps, d: 'keep' };
+    if (shown.length === 1) return { o, ps, d: 'accept', pick: shown[0] };
+    return shown.length ? { o, ps, d: null, shown } : { o, ps, d: null, out: true };
+  }
+  // one option's part in its group's decision
+  const decisionOf = (id, on, def) => {
+    const o = origOf(id); if (!o) return null; const g = groupOf(o, on, def);
+    return { g, d: g.d === 'accept' ? (g.pick === id ? 'accept' : 'keep') : g.d, said: g.said, version: g.version, out: g.out };
+  };
+  const pendingProp = (id) => { const x = decisionOf(id); return !!x && !x.d && !x.out; };
+  const propLead = (id, on = inVersion(), def = defaults()) => { const x = decisionOf(id, on, def); return !!x && !x.d && !x.out && x.g.shown[0] === id; };   // the Proposed filter steps through slides, not options
+  const propList = () => { const on = inVersion(), def = defaults(); return [...on].filter((id) => propLead(id, on, def)); };
+  const propDecided = () => { const on = inVersion(), def = defaults(); return [...new Set(Object.keys(lib()).map(origOf).filter(Boolean))].map((o) => groupOf(o, on, def)).filter((g) => g.d); };
+  const propUndo = [];   // originals whose proposals were decided in this tab, newest last: U reopens them one by one
+  function setInVersion(id, on) {
+    if (hasSlide(id) === on) return;
+    if (window.DeckLibrary) { window.DeckLibrary.toggle(id); return; }
+    const w = wrapOf(id);
+    if (!on && w) { const rm = w.querySelector('.ctrls [data-a="rm"]'); if (rm) rm.click(); }
+    if (on) { const inp = document.querySelector(`#block-list input[data-id="${CSS.escape(id)}"]`); if (inp && !inp.checked) inp.click(); }
+  }
+  // d: 'accept' (pick is the option to keep), 'keep' (the original), or null (undo: the original and every option back)
+  function decide(p, d, pick) {
+    const o = origOf(p); if (!o) return;
+    if (SB.readonly) { say('This is a read-only view of the deck.'); return; }
+    const ps = optionsOf(o), def = defaults(), had = inVersion(), applied = had.has(o) || ps.some((x) => had.has(x));
+    if (d === 'accept') pick = pick || p;
+    const before = visible(), lead = before.find((x) => origOf(x) === o), k = before.indexOf(lead);
+    if (applied) {   // the version on screen changes now; another version follows when Claude bakes it in
+      if (d === 'accept') { setInVersion(pick, true); setInVersion(o, false); ps.forEach((x) => { if (x !== pick) setInVersion(x, false); }); }
+      else if (d === 'keep') { setInVersion(o, true); ps.forEach((x) => setInVersion(x, false)); }
+      else { setInVersion(o, true); ps.forEach((x) => { if (!def || def.has(x) || had.has(x)) setInVersion(x, true); }); }
+    }
+    const ver = sideSelect ? sideSelect.value : '', said = {};
+    ps.forEach((x) => { said[x] = d === 'accept' ? (x === pick ? 'accept' : 'keep') : d; });
+    review.proposals = Object.assign({}, review.proposals);
+    Object.entries(said).forEach(([x, dx]) => { if (dx) review.proposals[x] = { decision: dx, replaces: o, version: ver, title: title(x) }; else delete review.proposals[x]; });
+    Object.entries(said).reduce((pr, [x, dx]) => pr.then(() => post({ op: 'decide', slide: x, replaces: o, decision: dx, version: ver, title: title(x), applied })), Promise.resolve()).then(setReview);
+    if (d) propUndo.push(o);
+    flip(null);
+    // where to go: on through the proposals while the filter is on; otherwise stay with the slide that's left
+    let next = d === 'accept' ? pick : d === 'keep' ? o : (ps.find((x) => hasSlide(x)) || p);
+    if (filter === 'proposed' && d) { const rest = before.filter((x) => origOf(x) !== o); next = rest[k] || rest[k - 1] || next; if (!rest.length) { filter = 'all'; next = d === 'accept' ? pick : o; } }
+    const left = propList().filter((x) => origOf(x) !== o).length, many = ps.length > 1;
+    const t = (x) => esc(title(x).slice(0, 70)), more = left ? `${left} left to decide.` : 'That was the last one.';
+    say(d === 'accept' ? `<b>Accepted${many ? ` option ${ps.indexOf(pick) + 1}` : ''}:</b> ${t(pick)}. ${more} <b>U</b> undoes.`
+      : d === 'keep' ? `<b>Kept the original:</b> ${t(o)}. ${more} <b>U</b> undoes.`
+      : `<b>Undone.</b> The original and its ${many ? 'options are' : 'proposal is'} back in this version, waiting for your call.`);
+    if (d && !left) setTimeout(() => say('<b>Every proposal is decided.</b> Your agent writes your decisions into the deck at the next round: click Ask agent.'), 2600);
+    setTimeout(() => { refresh(); go(hasSlide(next) ? next : (visible()[0] || cur), true); }, 60);
+  }
+  function undoDecision() {
+    while (propUndo.length) { const o = propUndo.pop(), ps = optionsOf(o); if (ps.length && groupOf(o).d) { decide(ps[0], null); return true; } }
+    const x = cur && decisionOf(cur); if (x && x.d) { decide(cur, null); return true; }
+    say('Nothing to undo.'); return false;
+  }
+  // Original | Proposed (or Original | Option 1 | 2 | 3): another member of the group drawn over the slide on
+  // screen, in the same frame, so they can be flipped through. flipped: { at: the slide on screen, show: the one drawn }
+  let flipped = null;
+  const flipList = (id) => { const o = origOf(id); return o ? [o, ...optionsOf(o)] : []; };
+  const flipShows = (id) => (flipped && flipped.at === id ? flipped.show : id);   // what the slide on screen shows now (not the deck's own showing, which is presenting)
+  function flip(show) {
+    const needed = flipList(cur);
+    if (show && window.DeckData && !DeckData.ready(needed)) { const at = cur; return DeckData.load(needed).then(() => { if (cur === at) flip(show); }).catch(DeckData.fail); }
+    const id = cur, w = id && wrapOf(id), L = flipList(id);
+    if (show === 'next' || show === 'prev') { const i = L.indexOf(flipShows(id)); show = L[(i + (show === 'next' ? 1 : L.length - 1)) % L.length]; }
+    document.querySelectorAll('.sb-flipov').forEach((x) => x.remove());
+    flipped = null;
+    if (show && show !== id && L.includes(show) && w) {
+      const preview = window.DeckRenderer ? window.DeckRenderer.preview(show) : wrapOf(show);
+      const sl = w.querySelector('.slide'), fr = sl && sl.parentElement, live = preview && preview.querySelector('.slide'); let b0 = null;
+      if (!live) { try { b0 = build(show); } catch (e) {} }   // eslint-disable-line no-undef
+      const s0 = live ? live.cloneNode(true) : b0 && (b0.classList.contains('slide') ? b0 : b0.querySelector('.slide'));   // as you last edited it, when it's in this version
+      if (s0 && fr) {
+        s0.querySelectorAll('.ctrls, .slide-tag, .sb-badge').forEach((x) => x.remove());
+        s0.querySelectorAll('[contenteditable]').forEach((x) => x.removeAttribute('contenteditable'));
+        s0.querySelectorAll('[id]').forEach((x) => x.removeAttribute('id'));
+        s0.classList.add('sb-flipov'); s0.style.transform = sl.style.transform;
+        const n = [...inVersion()].indexOf(show) + 1, j = L.indexOf(show);
+        s0.appendChild(h('span', 'sb-fliptag', j === 0 ? (n ? `Original · slide ${n}` : 'Original') : `Option ${j} of ${L.length - 1}`));
+        if (getComputedStyle(fr).position === 'static') fr.style.position = 'relative';
+        fr.appendChild(s0); flipped = { at: id, show };
+        try { if (typeof autofitText === 'function') autofitText(s0); if (typeof drawTrees === 'function') drawTrees(s0); } catch (e) {}   // eslint-disable-line no-undef
+      }
+    }
+    document.querySelectorAll('#deck > [data-id] .sb-flip [data-flip]').forEach((b) => b.classList.toggle('on', b.dataset.flip === flipShows(b.closest('#deck > [data-id]').dataset.id)));
+    if (cur && wrapOf(cur)) { const w2 = wrapOf(cur); propBar(w2, cur, w2.querySelector(':scope > .slide-no')); }
+  }
+
   // ---------- top bar ----------
+  // Left: the deck and its version, as one control, then the filters. Right: the views, New slide (addslide.js),
+  // then View, Share, and Present, each a small menu; Ask agent, the one red button; and ? for help.
+  const hasPresent = !!$('#present-btn'), hasPresenter = !!$('#presenter-btn');
+  const dd = (id, label, title, chev = true) => `<div class="sb-dd" id="${id}"><button class="sb-btn sb-ddb" aria-haspopup="menu" aria-expanded="false" title="${title}">${label}${chev ? '<span class="sb-chev" aria-hidden="true">▾</span>' : ''}</button><div class="sb-pop" role="menu" aria-label="${title}"></div></div>`;
+  const presentLabel = '▶<span class="sb-long"> Present</span>';
   const top = h('div'); top.id = 'sb-top';
-  top.innerHTML = `<a href="/" title="All decks"><img class="sb-logo" src="/_sb/logo.svg" alt="Decks Performance Fork" title="Decks Performance Fork"></a>
+  top.innerHTML = `<a href="/" title="All decks"><img class="sb-logo" src="/_sb/logo.svg" alt="Decks Performance" title="Decks Performance"></a>
     <a href="/" class="sb-btn sb-back" title="Back to the dashboard of all decks">← <span class="sb-lbl">All decks</span></a><span class="sb-sep"></span>
-    <span class="sb-deck" title="${esc(SB.name)}">${esc(SB.name)}</span>
-    ${sideSelect ? '<select id="sb-version" title="Version"></select>' : ''}
+    <label class="sb-deck" title="${esc(SB.name)}"><span class="sb-deck-t"><b>${esc(SB.name)}</b><span class="sb-vname"></span></span>${sideSelect ? '<span class="sb-chev" aria-hidden="true">▾</span><select id="sb-version" aria-label="Version"></select>' : ''}</label>
     <div class="sb-chips" id="sb-chips" role="group" aria-label="Filter slides"></div>
     <span class="sb-grow"></span>
     <span class="sb-claude" id="sb-claude" role="status"><i></i><span></span></span>
     <span class="sb-saved" id="sb-saved" title="Every edit and comment saves to disk, next to the deck">Saved</span>
     <button class="sb-btn" id="sb-resolve" hidden></button>
     <div class="sb-seg" role="group" aria-label="View"><button data-v="focus" title="Focus (F)">Focus</button><button data-v="scroll" title="Scroll (S)">Scroll</button><button data-v="sorter" title="Sorter (G)">Sorter</button><button data-v="checks" title="Checks (C)">Checks</button></div>
-    <button class="sb-btn" id="sb-hide" title="Titles only: hide everything but the titles, to test that each one says the point (H). Space reveals one slide.">Titles<span class="sb-long"> only</span></button>
-    <button class="sb-btn icon" id="sb-left" title="Show or hide the left side bar ( [ )">◧</button>
-    <button class="sb-btn icon" id="sb-right" title="Show or hide notes ( ] )">◨</button>
-    <button class="sb-btn" id="sb-ask" title="Copy a prompt that asks your coding agent to work through your comments">Ask agent<span class="sb-n" id="sb-ask-n"></span></button>
-    ${$('#present-btn') ? '<button class="sb-btn red" id="sb-present" title="Present from this slide">▶<span class="sb-long"> Present</span></button>' : ''}
-    <div class="sb-menu" id="sb-more"><button class="sb-btn icon" aria-label="More">⋯</button><div></div></div>`;
+    ${dd('sb-view', 'View', 'Titles only, side bars, facilitator notes')}
+    ${dd('sb-share', 'Share', 'A PDF, or a copy to send')}
+    ${hasPresent && hasPresenter ? dd('sb-present', presentLabel, 'Present, or presenter view') : hasPresent ? `<button class="sb-btn" id="sb-present" title="Present from this slide (${PKEY})">${presentLabel}</button>` : ''}
+    <button class="sb-btn red" id="sb-ask" title="Copy a prompt that asks your coding agent to work through your comments (${SEND})"><span class="sb-ask-l">Ask agent</span><span class="sb-n" id="sb-ask-n"></span><kbd class="sb-key" aria-hidden="true">${SEND}</kbd></button>
+    ${dd('sb-q', '?', 'Help', false)}`;
   document.body.prepend(top);
   document.body.classList.add('sb-on');
 
+  // the deck's name, with the version on screen after it; a click on either picks another version
+  const deckCtl = $('.sb-deck', top), vname = $('.sb-vname', top);
+  const verName = (t) => String(t || '').replace(/\s*\(.*$/, '').replace(/\s+—.*$/, '').trim();
   if (sideSelect) {
     const vs = $('#sb-version');
     const hidden = new Set(SB.hideVersions || []);
-    const syncVersions = () => { vs.innerHTML = [...sideSelect.options].filter((o) => !hidden.has(o.value)).map((o) => `<option value="${esc(o.value)}">${esc(o.textContent)}</option>`).join(''); vs.value = sideSelect.value; };
+    const label = () => { const o = vs.options[vs.selectedIndex], many = vs.options.length > 1;
+      vname.textContent = many && o ? ' · ' + verName(o.textContent) : ''; deckCtl.classList.toggle('sb-hasv', many);
+      deckCtl.title = many && o ? `${SB.name} · ${o.textContent.trim()}. Click to pick another version.` : SB.name; };
+    const syncVersions = () => { vs.innerHTML = [...sideSelect.options].filter((o) => !hidden.has(o.value)).map((o) => `<option value="${esc(o.value)}">${esc(o.textContent)}</option>`).join(''); vs.value = sideSelect.value; label(); };
     syncVersions();
-    if (hidden.has(sideSelect.value)) { const first = [...sideSelect.options].find((o) => !hidden.has(o.value)); if (first) { sideSelect.value = first.value; sideSelect.dispatchEvent(new Event('change', { bubbles: true })); vs.value = first.value; } }
-    vs.addEventListener('change', () => { sideSelect.value = vs.value; sideSelect.dispatchEvent(new Event('change', { bubbles: true })); });
-    sideSelect.addEventListener('change', () => { vs.value = sideSelect.value; });
+    if (hidden.has(sideSelect.value)) { const first = [...sideSelect.options].find((o) => !hidden.has(o.value)); if (first) { sideSelect.value = first.value; sideSelect.dispatchEvent(new Event('change', { bubbles: true })); vs.value = first.value; label(); } }
+    vs.addEventListener('change', () => { sideSelect.value = vs.value; sideSelect.dispatchEvent(new Event('change', { bubbles: true })); label(); });
+    sideSelect.addEventListener('change', () => { vs.value = sideSelect.value; label(); });
   }
 
-  const more = $('#sb-more'), moreBox = more.querySelector('div');
-  const proxy = (sel, label) => { const t = $(sel); if (!t) return; const b = h('button', null, esc(label)); b.addEventListener('click', () => { more.classList.remove('open'); t.click(); }); moreBox.appendChild(b); };
-  proxy('#presenter-btn', 'Presenter view');
-  proxy('#export-btn', 'Export PDF (print)');
-  proxy('#save-copy', 'Editable copy: with notes and comments');
-  proxy('#copy-edits', 'Copy edits');
-  proxy('#notes-toggle', 'Show facilitator notes (scroll view)');
-  { const b = h('button', null, 'Decks Performance Fork ↗'); b.title = 'Independent fork maintained by delirious6423';
-    b.addEventListener('click', () => { more.classList.remove('open'); window.open('https://github.com/delirious6423/decks', '_blank', 'noopener'); }); moreBox.appendChild(b); }
-  { const b = h('button', null, 'Upstream: Paul Millerd / StrategyU ↗'); b.title = 'Original Decks project and consulting method';
-    b.addEventListener('click', () => { more.classList.remove('open'); window.open('https://github.com/paulmil11/decks', '_blank', 'noopener'); }); moreBox.appendChild(b); }
+  // ---------- the menus: View, Share, Present, ? ----------
+  const menus = [...top.querySelectorAll('.sb-dd')];
+  const closeMenus = () => menus.forEach((m) => { m.classList.remove('open'); m.firstElementChild.setAttribute('aria-expanded', 'false'); });
+  const rows = (m) => [...m.querySelectorAll('.sb-it')].filter((b) => !b.disabled && b.offsetParent);
+  menus.forEach((m) => {
+    const b = m.firstElementChild, pop = m.lastElementChild;
+    b.addEventListener('click', (e) => {
+      e.stopPropagation(); const on = !m.classList.contains('open'); closeMenus(); if (!on) return;
+      m.dispatchEvent(new Event('sb:open')); m.classList.add('open'); b.setAttribute('aria-expanded', 'true');
+      if (!e.detail) { const r = rows(m)[0]; if (r) r.focus(); }   // opened from the keyboard: start on the first row
+    });
+    pop.addEventListener('click', (e) => e.stopPropagation());
+    pop.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') { e.stopPropagation(); closeMenus(); b.focus(); return; }
+      if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+      e.preventDefault(); e.stopPropagation(); const r = rows(m), i = r.indexOf(document.activeElement);
+      const n = r[(i + (e.key === 'ArrowDown' ? 1 : -1) + r.length) % r.length]; if (n) n.focus();
+    });
+  });
+  // a click anywhere else closes them (caught early, because the page's own handlers stop some clicks)
+  document.addEventListener('pointerdown', (e) => { if (!e.target.closest('.sb-dd')) closeMenus(); }, true);
+  // one row: what it is, a line on what it does, and its key or an on/off switch on the right
+  function item(menu, o) {
+    const b = h('button', 'sb-it', `<span class="sb-it-t"><b>${esc(o.t)}</b>${o.sub ? `<span>${esc(o.sub)}</span>` : ''}</span>${o.key ? `<kbd>${esc(o.key)}</kbd>` : ''}${o.tog ? '<i class="sb-tog" aria-hidden="true"></i>' : ''}`);
+    b.setAttribute('role', o.tog ? 'menuitemcheckbox' : 'menuitem'); if (o.id) b.id = o.id; if (o.title) b.title = o.title;
+    b.addEventListener('click', (e) => { if (!o.tog) closeMenus(); o.act(e); });
+    const pop = $('#' + menu + ' .sb-pop'); if (o.before && o.before.parentNode === pop) pop.insertBefore(b, o.before); else pop.appendChild(b);
+    return b;
+  }
+  const sep = (menu) => $('#' + menu + ' .sb-pop').appendChild(h('div', 'sb-msep'));
+  const setTog = (b, on) => { if (!b) return; b.classList.toggle('on', !!on); b.setAttribute('aria-checked', String(!!on)); };
+
+  // View: Titles only, the two side bars, facilitator notes
+  const vTitles = item('sb-view', { t: 'Titles only', sub: 'Hide everything but the titles', key: 'H', tog: true, act: () => setHide(!ui.hide) });
+  sep('sb-view');
+  const vLeft = item('sb-view', { t: 'Slide list', sub: 'The filmstrip on the left', key: '[', tog: true, act: () => toggleSide('left') });
+  const vRight = item('sb-view', { t: 'Notes panel', sub: 'Notes and changes on the right', key: ']', tog: true, act: () => toggleSide('right') });
+  const notesBox = $('#notes-toggle');
+  const vFac = notesBox ? item('sb-view', { t: 'Facilitator notes', sub: 'Under each slide in Scroll', tog: true, act: () => { notesBox.click(); setTog(vFac, notesBox.checked); } }) : null;
+  sep('sb-view');
+  item('sb-view', { t: 'What changed, round by round', sub: 'Each round’s changes, and the proposed slides you accepted or kept', act: () => openRounds() });
+  $('#sb-view').addEventListener('sb:open', () => { setTog(vTitles, ui.hide); if (vFac) setTog(vFac, notesBox.checked); });
+
+  // Share: the PDF, then the three copies (Client and Review copy add themselves, before Editable copy)
+  if ($('#export-btn')) {
+    item('sb-share', { t: 'Download PDF', sub: 'The slides as they look now, one per page, landscape', id: 'sb-pdf', act: () => downloadPdf() });
+    item('sb-share', { t: 'Print', sub: 'Opens the print window, for paper', act: () => $('#export-btn').click() });
+    sep('sb-share');
+  }
+  // the server makes the PDF in headless Chrome (as sb export does), so it comes out 16:9 whatever the
+  // print window's paper and orientation are set to; if it can't, the print window is the fallback
+  async function downloadPdf() {
+    const vs = $('#sb-version'), vlabel = vs && vs.options.length > 1 && vs.selectedIndex >= 0 ? vs.options[vs.selectedIndex].text.trim() : '';
+    const name = [SB.name, vlabel].filter(Boolean).join(' · ').replace(/[\\/:*?"<>|]+/g, '-').trim() + '.pdf';
+    say('<b>Making the PDF…</b> It takes a few seconds.');
+    try { if (typeof snapshot === 'function') snapshot(); } catch (e) {}   // eslint-disable-line no-undef
+    try { if (await SB.flush() === false) throw new Error('Save failed'); } catch (e) { say('Couldn’t save your latest edits. Try the PDF again when the server is available.'); return; }
+    let r = null; try { r = await fetch(api('pdf'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ version: sideSelect ? sideSelect.value : '' }) }); } catch (e) {}
+    if (r && r.ok) {
+      const u = URL.createObjectURL(await r.blob()), a = h('a'); a.href = u; a.download = name;
+      document.body.appendChild(a); HTMLAnchorElement.prototype.click.call(a); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 4000);
+      say(`<b>Saved ${esc(name)}.</b> One slide per page, landscape, as the deck looks now.`); return;
+    }
+    let why = ''; try { why = (await r.json()).error || ''; } catch (e) {}
+    say(`Couldn’t make the PDF here${why ? ` (${esc(why)})` : ''}. Opening the print window instead: choose Landscape there.`);
+    setTimeout(() => $('#export-btn').click(), 1500);
+  }
+  const editableCopy = $('#save-copy') ? item('sb-share', { t: 'Editable copy', sub: 'The whole deck with notes and comments, for you', id: 'sb-editable-copy',
+    title: 'Every version, your notes and comments, and editing: keep it for yourself', act: () => $('#save-copy').click() }) : null;
+  const shareItem = (o) => item('sb-share', Object.assign({ before: editableCopy }, o));
+
+  // Present: from this slide (in Focus the slide on screen is the one to start from)
+  const fromHere = () => { if (cur && ui.view === 'focus') { const w = wrapOf(cur); if (w) w.scrollIntoView({ block: 'center' }); } };
+  const presentNow = (e) => { fromHere(); $('#present-btn').dispatchEvent(new MouseEvent('click', { bubbles: true, shiftKey: !!(e && e.shiftKey) })); };
+  if (hasPresent && hasPresenter) {
+    item('sb-present', { t: 'Present', sub: 'Full screen from this slide', key: PKEY, act: presentNow });
+    item('sb-present', { t: 'Presenter view', sub: 'Your notes, the next slide, and a clock', act: (e) => { fromHere(); $('#presenter-btn').dispatchEvent(new MouseEvent('click', { bubbles: true, shiftKey: !!(e && e.shiftKey) })); } });
+  } else if (hasPresent) $('#sb-present').addEventListener('click', presentNow);
+
   const help = h('div'); help.id = 'sb-help';
-  help.innerHTML = `<h4>How this works</h4><p>Copy prompts to your coding agent, such as Claude Code or Codex. This app does not run a model.</p><ul>
+  help.innerHTML = `<button class="sb-help-x" data-helpx aria-label="Close" title="Close (Esc)">×</button><h4>How this works</h4><ul>
     <li>Click any text on a slide to edit it. It saves to disk as you type.</li>
-    <li>Write a comment for a slide, then say <b>process changes</b> to your agent. Tick “Still drafting” to hold one back.</li>
+    <li>Write a comment for a slide, then click <b>Ask agent</b> (or say <b>process changes</b> to your agent). Tick “Still drafting” to hold one back.</li>
     <li>Your agent replies under your comment. <b>Looks good</b> clears it; <b>Reopen</b> sends it back.</li>
     <li>In the left bar, × leaves a slide out of this version; add slides back from “Not in this version”.</li>
-    <li>Presenting and PDF export are in this ⋯ menu and the top bar, when the deck has them. <b>Client copy</b> is the file to send a client: this version’s slides and nothing else.</li></ul>
-    <h4 style="margin-top:14px">Keyboard shortcuts</h4>
+    <li>A <b>proposed</b> slide is your agent’s alternative to one of yours. <b>Proposed</b> in the left bar goes through them one by one: <b>Accept</b> puts it in place of your original, <b>Keep original</b> takes it out, and Space flips between the two (or through each option, when your agent offers several). Your agent writes your decisions into the deck at the next round.</li>
+    <li><b>View</b> holds Titles only, the side bars, and facilitator notes. <b>Present</b> starts the show or presenter view, when the deck has them.</li>
+    <li><b>Share</b> saves a PDF or a copy to send. <b>Client copy</b> is this version’s slides to read or present, and nothing else. <b>Review copy</b> is for someone who should comment and edit: this version only, no notes or comments of yours, and they send it back for your agent to bring in. <b>Editable copy</b> carries your notes, comments, and every version: keep it for yourself.</li></ul>
+    <h4 style="margin-top:14px" id="sb-keys-h">Keyboard shortcuts</h4>
     <table class="sb-keys">
       <tr><td><kbd>F</kbd> <kbd>S</kbd> <kbd>G</kbd> <kbd>C</kbd></td><td>Focus, Scroll, Sorter, Checks</td></tr>
       <tr><td><kbd>←</kbd> <kbd>→</kbd></td><td>Previous and next slide (<kbd>Home</kbd> <kbd>End</kbd>: first and last)</td></tr>
+      <tr><td><kbd>${SEND}</kbd></td><td>Ask agent: copy the prompt, or start the round when your agent is watching. Works while you type a comment, too.</td></tr>
+      ${hasPresent ? `<tr><td><kbd>${PKEY}</kbd></td><td>Present from this slide</td></tr>` : ''}
+      <tr><td><kbd>N</kbd></td><td>New slide after this one</td></tr>
+      <tr><td><kbd>A</kbd> <kbd>K</kbd> <kbd>U</kbd></td><td>On a proposed slide: accept it (or the option on screen), keep your original, undo</td></tr>
+      <tr><td><kbd>Space</kbd></td><td>On a proposed slide: flip to the original and back; with several options, through each (<kbd>Shift</kbd> <kbd>Space</kbd> goes back)</td></tr>
       <tr><td><kbd>H</kbd></td><td>Titles only (hide the content)</td></tr>
-      <tr><td><kbd>[</kbd> <kbd>]</kbd></td><td>Hide the slides bar or the notes bar</td></tr>
+      <tr><td><kbd>[</kbd> <kbd>]</kbd></td><td>Hide the slide list or the notes panel</td></tr>
       <tr><td><kbd>1</kbd>–<kbd>5</kbd></td><td>Checks: 5-second test, 10-second test, horizontal flow, vertical flow, guides. From Focus or Scroll they run that check on the slide you’re on</td></tr>
       <tr><td><kbd>Space</kbd></td><td>Start a timed test, or reveal the slide</td></tr>
       <tr><td><kbd>A</kbd> <kbd>M</kbd></td><td>After a timed test: show again, missed it</td></tr>
@@ -134,13 +337,75 @@
       <tr><td><kbd>?</kbd></td><td>Show this card</td></tr>
     </table>`;
   document.body.appendChild(help);
-  { const b = h('button', null, 'How this works and shortcuts (?)'); b.addEventListener('click', (e) => { e.stopPropagation(); more.classList.remove('open'); help.classList.toggle('on'); }); moreBox.prepend(b); }
-  document.addEventListener('click', (e) => { if (!help.contains(e.target)) help.classList.remove('on'); });
-  if (!(SB.hideVersions || []).length) { const b = h('button', null, 'Open the plain deck file'); b.addEventListener('click', () => { window.open(location.pathname + '?raw=1', '_blank'); }); moreBox.appendChild(b); }
-  more.firstElementChild.addEventListener('click', (e) => { e.stopPropagation(); more.classList.toggle('open'); });
-  document.addEventListener('click', () => more.classList.remove('open'));
-  const pres = $('#sb-present');
-  if (pres) pres.addEventListener('click', (e) => { if (cur && ui.view === 'focus') { const w = wrapOf(cur); if (w) w.scrollIntoView({ block: 'center' }); } $('#present-btn').dispatchEvent(new MouseEvent('click', { bubbles: true, shiftKey: e.shiftKey })); });
+  const openHelp = (keys) => { help.classList.add('on'); help.scrollTop = keys ? $('#sb-keys-h', help).offsetTop - 12 : 0; };
+  // close: the ×, Esc, or a click anywhere else (caught before the page's own handlers, which stop some clicks)
+  help.addEventListener('click', (e) => { if (e.target.closest('[data-helpx]')) help.classList.remove('on'); });
+  document.addEventListener('pointerdown', (e) => { if (help.classList.contains('on') && !help.contains(e.target) && !e.target.closest('#sb-q, [data-keys]')) help.classList.remove('on'); }, true);
+
+  // the deck's record: each round Claude ran (review.json), newest first, with the proposals decided in it
+  const roundsCard = h('div'); roundsCard.id = 'sb-rounds'; document.body.appendChild(roundsCard);
+  const dayOf = (t) => { if (!t) return ''; const d = new Date(t * 1000), n = new Date(), y = new Date(n - 864e5);
+    return d.toDateString() === n.toDateString() ? 'Today' : d.toDateString() === y.toDateString() ? 'Yesterday' : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }); };
+  // what changed on each slide in a round: kept with the round, or still on a slide's Changed badge
+  const notesOf2 = (r) => { const n = Object.assign({}, r.notes || {});
+    Object.entries(review.changed || {}).forEach(([s, c]) => { if (c && c.round === r.number && c.note && !(s in n)) n[s] = c.note; });
+    (r.changed || []).forEach((s) => { if (!(s in n)) n[s] = ''; }); return n; };
+  const slideName = (id) => (lib()[id] ? title(id) : id);
+  function openRounds() {
+    const P = (d, t) => `<li><b class="${d === 'accept' ? 'a' : 'k'}">${d === 'accept' ? 'Accepted' : 'Kept'}</b>${esc(t)}</li>`;
+    const wait = propDecided().map((g) => P(g.d, g.d === 'accept' ? title(g.pick) + (g.ps.length > 1 ? ` (option ${g.ps.indexOf(g.pick) + 1} of ${g.ps.length})` : '') : title(g.o)));
+    const rs = (review.rounds || []).slice().reverse();
+    roundsCard.innerHTML = `<button class="sb-help-x" data-roundx aria-label="Close" title="Close (Esc)">×</button><h4>What changed, round by round</h4>
+      ${wait.length ? `<div class="sb-r sb-rwait"><div class="sb-rh">Next round <span>waiting for your agent</span></div><p>Your decisions on proposed slides. Your agent writes them into the deck file at the next round.</p><ul>${wait.join('')}</ul></div>` : ''}
+      ${rs.map((r, i) => { const nt = notesOf2(r), ids = Object.keys(nt);
+        return `<div class="sb-r"><div class="sb-rh">Round ${esc(r.number)} <span>${[dayOf(r.at), r.export ? `${esc(r.export)} export` : ''].filter(Boolean).join(' · ')}</span></div>
+        ${r.summary ? `<p>${esc(r.summary)}</p>` : ''}${(r.proposals || []).length ? `<ul>${r.proposals.map((x) => P(x.decision, x.title || x.slide)).join('')}</ul>` : ''}
+        ${ids.length ? `<details class="sb-rnotes"${i === 0 ? ' open' : ''}><summary>${ids.length} slide${ids.length === 1 ? '' : 's'} changed</summary><ul>${ids.map((x) => `<li><button class="sb-rgo" data-rgo="${esc(x)}" title="Open this slide">${esc(slideName(x))}</button>${nt[x] ? `<span>${esc(nt[x])}</span>` : ''}</li>`).join('')}</ul></details>` : ''}
+        <div class="sb-rmeta">${r.commit ? `commit ${esc(r.commit)}` : ''}</div></div>`; }).join('')
+        || (wait.length ? '' : '<p class="sb-hint">No rounds yet. Each time your agent works through your comments, it shows up here.</p>')}`;
+    closeMenus(); help.classList.remove('on'); roundsCard.classList.add('on'); roundsCard.scrollTop = 0;
+  }
+  roundsCard.addEventListener('click', (e) => {
+    if (e.target.closest('[data-roundx]')) roundsCard.classList.remove('on');
+    const g = e.target.closest('[data-rgo]'); if (!g) return;
+    const id = g.dataset.rgo;
+    if (!hasSlide(id)) { say('That slide isn’t in this version.'); return; }
+    roundsCard.classList.remove('on'); if (ui.view !== 'focus' && ui.view !== 'scroll') setView('focus'); go(id);
+  });
+  document.addEventListener('pointerdown', (e) => { if (roundsCard.classList.contains('on') && !roundsCard.contains(e.target) && !e.target.closest('#sb-view')) roundsCard.classList.remove('on'); }, true);
+
+  // ?: help, and the plain file
+  item('sb-q', { t: 'How this works', sub: 'Comment, Ask agent, read the replies', act: () => openHelp(false) });
+  item('sb-q', { t: 'Keyboard shortcuts', sub: 'Every key in one list', key: '?', act: () => openHelp(true) });
+  if (!(SB.hideVersions || []).length) { sep('sb-q'); item('sb-q', { t: 'Open the plain deck file', sub: 'The file itself, without Decks around it', act: () => window.open(location.pathname + '?raw=1', '_blank') }); }
+  sep('sb-q');
+  item('sb-q', { t: 'Report an issue', sub: 'Bugs and feedback for Decks Performance', act: () => window.open('https://github.com/delirious6423/decks/issues', '_blank', 'noopener') });
+  item('sb-q', { t: 'Check for updates', sub: 'Ask GitHub now whether a newer Decks is out', act: async () => {
+    say('Checking for updates…'); let d = null;
+    try { const r = await fetch('/api/check-updates', { method: 'POST' }); if (r.ok) d = await r.json(); } catch (e) {}
+    if (d && d.ok) updateNote(d.update);
+    say(!d || !d.ok ? 'Couldn’t reach GitHub. Check your connection, then try again.'
+      : !d.update ? `<b>You’re up to date.</b> Decks Performance ${esc(d.version)} is the newest.`
+      : `<b>Decks Performance ${esc(d.update.version)} is out.</b> Open this menu again and click its first row to copy a prompt that updates it.`); } });
+  item('sb-q', { t: 'Upstream: Paul Millerd / StrategyU ↗', sub: 'Where Paul teaches the method behind Decks',
+    act: () => window.open('https://strategyu.co/?utm_source=decks&utm_medium=app&utm_campaign=deck-menu', '_blank', 'noopener') });
+  // a newer Decks (the server's check, in the pulse): a row at the top of ?, and a dot on ? until you open it
+  let updBox = null, updSeen = ''; try { updSeen = localStorage.getItem('__decks_upd_seen') || ''; } catch (e) {}
+  function updateNote(u) {
+    const qb = $('#sb-q > .sb-ddb');
+    if (!u) { if (updBox) { updBox.remove(); updBox = null; } qb.classList.remove('sb-newdot'); return; }
+    if (updBox && updBox.dataset.v === u.version) return;
+    if (updBox) updBox.remove();
+    const row = item('sb-q', { t: `Decks Performance ${u.version} is out`, sub: 'Click to copy a prompt that updates it, for Claude Code or Codex', act: async () => {
+      const ok = u.prompt && await copyText(u.prompt);
+      say(ok ? `<b>Update prompt copied.</b> Paste it into Claude Code or Codex, and it updates Decks to ${esc(u.version)} and restarts it. What’s new is linked on the dashboard.`
+        : 'Couldn’t copy. To update, run <code>git pull</code> in your Decks folder, then restart the server.'); } });
+    updBox = h('div', 'sb-updbox'); updBox.dataset.v = u.version; updBox.append(row, h('div', 'sb-msep'));
+    $('#sb-q .sb-pop').prepend(updBox);
+    qb.classList.toggle('sb-newdot', updSeen !== u.version);
+  }
+  $('#sb-q').addEventListener('sb:open', () => { if (!updBox) return; updSeen = updBox.dataset.v; try { localStorage.setItem('__decks_upd_seen', updSeen); } catch (e) {} $('#sb-q > .sb-ddb').classList.remove('sb-newdot'); });
+  updateNote(SB.pulse && SB.pulse.update);
 
   // ---------- getting help from the agent ----------
   const toast = h('div'); toast.id = 'sb-toast'; document.body.appendChild(toast);
@@ -148,17 +413,34 @@
   const copyText = async (t) => { try { await navigator.clipboard.writeText(t); return true; } catch (e) { return false; } };
   const deckFile = () => `${SB.folder}/${SB.entry}`;
   const askPrompt = () => [
-    `Work through the comments on my slide deck “${SB.name}” in Decks Performance Fork.`,
+    `Work through the comments on my slide deck “${SB.name}” in Decks Performance.`,
     `Deck file: ${deckFile()} (open at ${location.origin}${location.pathname}).`,
     `If you have the decks skill, this is “process changes”. Otherwise, from ${SB.app || 'the fork checkout'}:`,
     `1. ./sb comments ${SB.slug} lists my comments; ./sb edits ${SB.slug} shows text I edited on the slides.`,
     `2. For each comment, change the deck file, then reply on that slide: ./sb reply ${SB.slug} <slide-id> done "what changed" (question to ask me something, skipped to say why not).`,
+    `   If I accepted proposed slides or kept the originals, ./sb proposals ${SB.slug} --bake writes those decisions into the deck file.`,
     `3. Check your work: ./sb shot ${SB.slug} <slide-ids> and ./sb audit ${SB.slug}.`,
     `4. Finish: ./sb export ${SB.slug}, then ./sb round ${SB.slug} --summary "what changed", then ./sb commit ${SB.slug} "Round N".`,
     'Titles are plain sentences, two lines at most, and every slide passes Checks › Guides.'].join('\n');
+  // watch mode: while Claude waits on this deck (sb watch), the button starts the round itself
+  let watched = false;
+  function askButton(p) {
+    watched = !!(p && p.watching); const b = $('#sb-ask'); if (!b) return;
+    const queued = watched && p.asked;
+    b.querySelector('.sb-ask-l').textContent = queued ? 'Queued…' : watched ? 'Process now' : 'Ask agent';
+    b.title = queued ? 'Your agent starts as soon as it finishes what it’s doing (' + SEND + ')' : watched ? 'Your agent is watching this deck. Click to start a round (' + SEND + ').' : 'Copy a prompt that asks your coding agent to work through your comments (' + SEND + ')';
+  }
   $('#sb-ask').addEventListener('click', async () => {
+    if (watched) {
+      // your latest typing reaches the server first: the deck saves 400 ms after a keystroke, so save it now
+      try { if (typeof snapshot === 'function') snapshot(); else await new Promise((r) => setTimeout(r, 500)); } catch (e) {}   // eslint-disable-line no-undef
+      try { await SB.flush(); } catch (e) {}
+      const r = await fetch(api('process'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).catch(() => null);
+      say(r && r.ok ? '<b>Sent.</b> Your agent is starting the round. Its progress shows up here.' : 'Couldn’t reach the server. Try again in a moment.');
+      askButton({ watching: true, asked: true }); return;
+    }
     const ok = await copyText(askPrompt());
-    say(ok ? '<b>Prompt copied.</b> Paste it into your coding agent. You can also ask your agent to “process changes”.' : 'Couldn’t copy. Ask your coding agent to “process changes”.');
+    say(ok ? '<b>Prompt copied.</b> Paste it into Claude Code or Codex. Tip: say “watch this deck” in Claude Code, and this button starts each round for you.' : 'Couldn’t copy. In Claude Code, say “process changes”.');
   });
   fetch(api('')).then((r) => r.json()).then((d) => {   // a deck just made from the New deck form: say what's next
     const key = '__sb_next_' + SB.slug; let gone = false; try { gone = localStorage.getItem(key) === '1'; } catch (e) {}
@@ -208,12 +490,10 @@
   deck.after(under);
   film.querySelector('[data-hide]').addEventListener('click', () => toggleSide('left'));
   panel.querySelector('[data-hide]').addEventListener('click', () => toggleSide('right'));
-  $('#sb-left').addEventListener('click', () => toggleSide('left'));
-  $('#sb-right').addEventListener('click', () => toggleSide('right'));
   $('#sb-prev').addEventListener('click', () => step(-1));
   $('#sb-next').addEventListener('click', () => step(1));
   $('#sb-reveal').addEventListener('click', () => reveal());
-  under.addEventListener('click', (e) => { if (e.target.closest('[data-keys]')) { e.stopPropagation(); more.classList.remove('open'); help.classList.toggle('on'); } });
+  under.addEventListener('click', (e) => { if (e.target.closest('[data-keys]')) { e.stopPropagation(); closeMenus(); help.classList.toggle('on'); } });
 
   const thumbs = new IntersectionObserver((es) => es.forEach((e) => { const box = e.target; box._sbVisible = e.isIntersecting; if (!e.isIntersecting) { if (window.DeckRenderer?.enabled()) box.replaceChildren(); return; } if (!window.DeckRenderer?.enabled()) thumbs.unobserve(box); fillThumb(box); }), { root: $('#sb-film-list'), rootMargin: '300px' });
   function fillThumb(box) {
@@ -376,13 +656,17 @@
   // the right bar: the slide's notes and what changed. Comments live under the slide itself.
   function renderPanel() {
     const body = $('#sb-panel-body'); if (!cur) { body.innerHTML = '<div class="sb-empty">No slide selected.</div>'; return; }
-    const id = cur, i = info(id), all = slideIds(), n = positionOf(id, all) + 1;
-    const notes = notesOf(id);
-    body.innerHTML = `<div class="sb-sec"><p class="sb-title">${esc(title(id))}</p><div class="sb-meta">Slide ${n} of ${all.length} · ${esc(id)}</div></div>
+    const id = cur, i = info(id), all = slideIds(), n = all.indexOf(id) + 1;
+    const notes = notesOf(id), o = origOf(id), on = o ? all.indexOf(o) + 1 : 0, sibs = o ? optionsOf(o).filter((y) => y !== id) : [];
+    body.innerHTML = `<div class="sb-sec"><p class="sb-title">${esc(title(id))}</p><div class="sb-meta">Slide ${n} of ${all.length} · ${esc(id)}</div>${o ? `<div class="sb-meta sb-pmeta">${optionsOf(o).length > 1 ? `Option ${optionsOf(o).indexOf(id) + 1} of ${optionsOf(o).length} · ` : ''}${{ accept: `Proposed · accepted in place of ${esc(o)}`, keep: `Proposed · you kept the original, ${esc(o)}` }[(decisionOf(id) || {}).d] || `Proposed · would replace ${on ? `slide ${on}` : `${esc(o)}, which isn’t in this version`}`}</div>` : ''}</div>
       <div class="sb-sec" id="sb-change-slot">${changeBlock(id, i)}</div>
       ${historyBlock(id) ? `<div class="sb-sec">${historyBlock(id)}</div>` : ''}
+      ${changesBlock(id, i) ? `<div class="sb-sec">${changesBlock(id, i)}</div>` : ''}
       <div class="sb-sec"><h4>Notes and sources</h4>${notes ? `<div class="sb-notes">${esc(notes)}</div>` : '<div class="sb-hint">No notes on this slide.</div>'}</div>
-      <div class="sb-sec"><div class="sb-hint">Comment under the slide, then click Ask agent (or ask your coding agent to “process changes”). Tick “Still drafting” to hold one back.</div></div>`;
+      ${o ? `<div class="sb-sec"><h4>The original</h4><button class="sb-porig" data-flipo="${esc(o)}" title="Show it in place of the proposal (Space)"><span class="sb-pthumb" data-id="${esc(o)}"></span></button><div class="sb-hint">${esc(title(o))}</div></div>` : ''}
+      ${sibs.length ? `<div class="sb-sec"><h4>The other options</h4><div class="sb-psibs">${sibs.map((y) => `<button class="sb-porig" data-flipo="${esc(y)}" title="Show it here (Space)"><span class="sb-pthumb" data-id="${esc(y)}"></span><span class="sb-hint">Option ${optionsOf(o).indexOf(y) + 1}</span></button>`).join('')}</div></div>` : ''}
+      <div class="sb-sec"><div class="sb-hint">${o ? 'Accept it or keep your original with the buttons under the slide, or ask for a change in the box. Space flips between the two.' : 'Comment under the slide, then click Ask agent (or say “process changes” in Claude Code). Tick “Still drafting” to hold one back.'}</div></div>`;
+    body.querySelectorAll('.sb-pthumb').forEach((pt) => requestAnimationFrame(() => fitThumb(pt, pt.clientWidth / 1000)));
   }
   // the slide's thread: each earlier comment, the agent's reply, and how it ended
   const historyBlock = (id) => {
@@ -395,6 +679,10 @@
       ${x.reply.forText ? `<div class="sb-h-you"><b>You</b>${esc(x.reply.forText)}</div>` : ''}
       <div class="sb-h-claude"><b>Agent · ${said[x.reply.status] || ''}</b>${esc(x.reply.text)}</div>
       <div class="sb-h-end">${end(x)} · ${day(x.resolved || x.reopened || x.replaced)}</div></li>`).join('')}</ol>`;
+  };
+  const changesBlock = (id, i) => {
+    const rows = (review.rounds || []).slice().reverse().filter((r) => !(i.ch && i.ch.round === r.number)).map((r) => ({ r, note: notesOf2(r)[id] })).filter((x) => x.note !== undefined);
+    return rows.length ? `<h4>Changes to this slide</h4><ol class="sb-hist sb-chist">${rows.map(({ r, note }) => `<li><b>Round ${esc(r.number)}${r.at ? ` · ${esc(dayOf(r.at))}` : ''}</b>${note ? esc(note) : 'Changed in this round.'}</li>`).join('')}</ol>` : '';
   };
   const changeBlock = (id, i) => i.ch ? `<h4>Changed in round ${esc(i.ch.round || '')}<button class="sb-btn" data-act="seen" style="padding:2px 8px;font-size:11.5px;text-transform:none;letter-spacing:0">Mark as seen</button></h4><div class="sb-change">${esc(i.ch.note || 'Updated this round.')}</div>` : '<div class="sb-hint">No changes on this slide in the last round.</div>';
 
@@ -667,8 +955,7 @@
     else if (u === 'reveal') reveal();
     else if (u === 'prev') { step(-1); if (isTimed()) tenReady(); } else if (u === 'next') { step(1); if (isTimed()) tenReady(); } });
 
-  const hideBtn = () => $('#sb-hide');
-  function setHide(on) { ui.hide = on; saveUi(); document.body.classList.toggle('sb-titles-only', !!on); hideBtn().classList.toggle('on', !!on); document.querySelectorAll('.slide.sb-reveal').forEach((x) => x.classList.remove('sb-reveal')); requestAnimationFrame(masks); }
+  function setHide(on) { ui.hide = on; saveUi(); document.body.classList.toggle('sb-titles-only', !!on); setTog(vTitles, on); document.querySelectorAll('.slide.sb-reveal').forEach((x) => x.classList.remove('sb-reveal')); requestAnimationFrame(masks); }
   function reveal() { const w = cur && wrapOf(cur), sl = w && w.querySelector('.slide'); if (sl) sl.classList.toggle('sb-reveal'); masks(); }
   // Vertical flow and Titles only hide everything but the title. When the title sits right in the slide,
   // CSS does it. When a layout nests it (a column, a panel), a mask covers the slide with a hole cut around
@@ -733,13 +1020,12 @@
     document.body.classList.toggle('sb-noleft', !!ui.noleft);
     document.body.classList.toggle('sb-noright', !!ui.noright);
     const noL = ui.view === 'sorter' || ui.view === 'checks', noR = noL;   // Focus and Scroll share both side bars
-    $('#sb-left').classList.toggle('on', !ui.noleft && !noL); $('#sb-right').classList.toggle('on', !ui.noright && !noR);
-    $('#sb-left').disabled = noL; $('#sb-right').disabled = noR;
-    $('#sb-left').title = noL ? 'No side bar in this view' : 'Show or hide the slides bar ( [ )';
-    $('#sb-right').title = noR ? 'Notes are in Focus and Scroll' : 'Show or hide notes ( ] )';
+    setTog(vLeft, !ui.noleft && !noL); setTog(vRight, !ui.noright && !noR);
+    vLeft.disabled = noL; vRight.disabled = noR;
+    vLeft.title = vRight.title = noL ? 'The side bars are in Focus and Scroll' : '';
     size();
   }
-  function toggleSide(which) { if ($(which === 'left' ? '#sb-left' : '#sb-right').disabled) return; if (which === 'left') ui.noleft = !ui.noleft; else ui.noright = !ui.noright; saveUi(); sideState(); }
+  function toggleSide(which) { if ((which === 'left' ? vLeft : vRight).disabled) return; if (which === 'left') ui.noleft = !ui.noleft; else ui.noright = !ui.noright; saveUi(); sideState(); }
 
   function size() {
     const test = ui.view === 'checks';
@@ -787,6 +1073,7 @@
     if (virtual()) decorate([selected]);
     deck.querySelectorAll(':scope > .sb-active').forEach((w) => { if (w.dataset.id !== id) w.classList.remove('sb-active'); });
     if (changedSlide) { const x = $('#sb-edge'); if (x) x.classList.remove('on'); }   // the end-of-filter hint belongs to the slide it was shown on
+    if (changedSlide && flipped) flip(null);
     if (ui.view === 'focus') { wrapOf(id).classList.add('sb-active'); size(); window.scrollTo(0, 0); }
     else if (ui.view === 'checks') { wrapOf(id).classList.add('sb-active'); size(); window.scrollTo(0, 0);
       let hl = under.querySelector('.sb-hint-line'); if (!hl) { hl = h('div', 'sb-hint-line'); under.after(hl); }
@@ -795,8 +1082,9 @@
     else if (ui.view === 'scroll' && !fromScroll) { tracking = false; wrapOf(id).scrollIntoView({ block: 'start' }); trackingTimer = setTimeout(() => { if (request === goRequest) tracking = true; }, 400); }
     if (window.DeckRenderer) window.DeckRenderer.layout(id);
     history.replaceState(null, '', '#' + (sideSelect ? 'v=' + encodeURIComponent(sideSelect.value) + '&' : '') + 's=' + encodeURIComponent(id));
-    const all = slideIds(), ids = visible(), k = filter === 'all' ? positionOf(id, all) : ids.indexOf(id);
-    $('#sb-pos').innerHTML = `Slide ${positionOf(id, all) + 1} of ${all.length}${filter !== 'all' ? ` · ${k + 1} of ${ids.length} ${esc(FILTERS.find((f) => f[0] === filter)[1].toLowerCase())}` : ''} · <kbd>←</kbd> <kbd>→</kbd> to move · <button class="sb-keyhint" data-keys>? shortcuts</button>`;
+    const all = slideIds(), ids = visible(), k = ids.indexOf(id);
+    const pk = origOf(id) ? ((decisionOf(id) || {}).d ? ' · <kbd>U</kbd> undo' : ' · <kbd>A</kbd> accept · <kbd>K</kbd> keep · <kbd>Space</kbd> flip') : '';
+    $('#sb-pos').innerHTML = `Slide ${all.indexOf(id) + 1} of ${all.length}${filter !== 'all' && k >= 0 ? ` · ${k + 1} of ${ids.length} ${esc(FILTERS.find((f) => f[0] === filter)[1].toLowerCase())}` : ''} · <kbd>←</kbd> <kbd>→</kbd>${pk ? '' : ' to move'}${pk} · <button class="sb-keyhint" data-keys>? shortcuts</button>`;
     revealFilm(id);
     $('#sb-film-list').querySelectorAll('.sb-fi').forEach((b) => { b.classList.toggle('on', b.dataset.id === id); b.setAttribute('aria-current', b.dataset.id === id ? 'true' : 'false'); });
     const on = $('#sb-film-list .sb-fi.on'); if (on) on.scrollIntoView({ block: 'nearest' });
@@ -836,6 +1124,7 @@
       let bd = host.querySelector(':scope > .sb-badge');
       if (i.changed) { if (!bd) { bd = h('span', 'sb-badge' + (row ? ' inline' : '')); if (!row && getComputedStyle(fr).position === 'static') fr.style.position = 'relative'; host.appendChild(bd); } bd.textContent = `Changed · round ${i.ch.round || ''}`; }
       else if (bd) bd.remove();
+      propBar(w, id, row);
       const fb = w.querySelector('textarea.fb'); if (!fb) return;
       if (fb.placeholder !== 'Feedback for your agent on this slide…') fb.placeholder = 'Feedback for your agent on this slide…';
       const hold = (!window.DeckRenderer?.enabled() || id === cur || i.text || i.rep || w.querySelector('.sb-hold')) ? holdRow(w) : null;
@@ -850,6 +1139,55 @@
       } else if (rp) rp.remove();
     });
   }
+  // a proposed slide: Original | Proposed above it (Original | Option 1 | 2 | 3 when there are several),
+  // Accept / Keep original under it, and its comment box asks for a change
+  function propBar(w, id, row) {
+    const o = origOf(id), fb = w.querySelector('textarea.fb');
+    let bar = w.querySelector(':scope > .sb-pbar'), sw = row && row.querySelector('.sb-flip');
+    w.classList.toggle('sb-isprop', !!o);
+    if (fb) { if (!fb.dataset.ph) fb.dataset.ph = fb.placeholder; fb.placeholder = o ? 'Or ask for a change to this proposal…' : fb.dataset.ph; }
+    const on = inVersion(), def = defaults(), x = o && decisionOf(id, on, def);
+    if (!o) { if (bar) bar.remove(); if (sw) sw.remove(); return; }
+    const all = [...on], g = x.g, ps = g.ps, many = ps.length > 1, at = all.indexOf(o) + 1;
+    const leads = all.filter((y) => propLead(y, on, def)), k = leads.findIndex((y) => origOf(y) === o) + 1;
+    const now = flipShows(id), j = flipList(id).indexOf(now);   // 0: the original; 1…: option j
+    const optName = (y) => (many ? `Option ${ps.indexOf(y) + 1}` : 'Proposed');
+    const sig = [many, ps.join()].join('|');
+    if (sw && sw.dataset.sig !== sig) { sw.remove(); sw = null; }
+    if (row && !sw) {
+      sw = h('span', 'sb-flip', `<span class="sb-ppill"></span><span class="sb-seg2" role="group" aria-label="Show"><button data-flip="${esc(o)}" title="Show the original in its place (Space)">Original</button>${ps.map((y) => `<button data-flip="${esc(y)}" title="Show ${esc(optName(y).toLowerCase())} (Space)">${esc(optName(y))}</button>`).join('')}</span><button class="sb-spacekey" data-flipo="next" title="Flip to the ${many ? 'next one' : 'other one'} (Space${many ? '; Shift+Space goes back' : ''})"><kbd>Space</kbd> flips</button>`);
+      sw.dataset.sig = sig; row.appendChild(sw);
+    }
+    if (sw) {
+      sw.querySelector('.sb-ppill').textContent = !x.d && !x.out ? `Proposal ${k} of ${leads.length}${many ? ` · ${ps.length} options` : ''}` : x.d === 'accept' ? `Proposal · ${many ? `option ${ps.indexOf(id) + 1} ` : ''}accepted` : x.d === 'keep' ? 'Proposal · original kept' : 'Proposal';
+      sw.querySelectorAll('[data-flip]').forEach((b) => b.classList.toggle('on', b.dataset.flip === now));
+    }
+    const vn = (v) => { const op = sideSelect && [...sideSelect.options].find((q) => q.value === v); return op ? verName(op.textContent) : v; };
+    const K = (t) => `<kbd>${t}</kbd>`, left = leads.filter((y) => origOf(y) !== o).length;
+    const where = at ? `slide ${at}` : `“${esc(title(o))}”`;
+    const seeing = !many ? (j === 0 ? `<b>Showing the original.</b> ${K('Space')} flips back to the proposal.` : `<b>Would replace ${where}.</b> ${K('Space')} flips to the original.`)
+      : `<b>${ps.length} options would replace ${where}.</b> ${j === 0 ? 'Showing the original.' : `Showing option ${j}.`} ${K('Space')} flips through them.`;
+    const pickNow = j > 0 ? flipList(id)[j] : many ? null : id;   // one proposal: Accept means it, whichever is on screen
+    const html = !x.d
+      ? `<span class="sb-pb-t">${seeing} ${left ? `${left + 1} left to decide.` : 'The last one to decide.'}</span>
+         <span class="sb-pb-b"><button class="sb-btn" data-pdo="keep" title="Keep your original and take ${many ? 'every option' : 'this proposal'} out (K)">Keep original${K('K')}</button><button class="sb-btn sb-acc" data-pdo="accept" ${pickNow ? `data-pick="${esc(pickNow)}"` : 'disabled'} title="${pickNow ? `Use ${many ? `option ${j}` : 'this slide'} in place of the original (A)` : 'Flip to the one you want first (Space)'}">${many && pickNow ? `Accept option ${j}` : 'Accept'}${K('A')}</button></span>`
+      : `<span class="sb-pb-t"><b>${x.d === 'accept' ? (many ? `Accepted option ${ps.indexOf(id) + 1}.` : 'Accepted.') : 'You kept the original.'}</b> ${x.d === 'accept'
+          ? (x.said ? `It has taken the original’s place in this version${many ? ', and the other options are out' : ''}.` : 'You took the original out of this version.')
+          : `This proposal comes out${x.version && sideSelect && x.version !== sideSelect.value ? ` (you decided in ${esc(vn(x.version))})` : ''}.`} ${j === 0 ? `Showing the original; ${K('Space')} flips back.` : `${K('Space')} flips to the original.`} Your agent writes it into the deck at the next round.</span>
+         <span class="sb-pb-b"><button class="sb-btn" data-pdo="undo" title="Put the original and ${many ? 'every option' : 'the proposal'} back, and decide again (U)">Undo${K('U')}</button></span>`;
+    if (!bar) { bar = h('div', 'sb-pbar'); const fr = frameOf(w); (fr !== w ? fr : w.querySelector('.slide')).after(bar); }
+    bar.classList.toggle('done', !!x.d);
+    if (bar.dataset.html !== html) { bar.innerHTML = html; bar.dataset.html = html; }
+  }
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-pdo], [data-flip], [data-flipo]'); if (!b) return;
+    const w = b.closest('#deck > [data-id]'), id = w ? w.dataset.id : cur; if (!id) return;
+    if (id !== cur) go(id);
+    if (b.dataset.pdo) decide(id, b.dataset.pdo === 'undo' ? null : b.dataset.pdo, b.dataset.pick);
+    else if (b.dataset.flip) flip(b.dataset.flip);
+    else flip(b.dataset.flipo || 'next');
+  });
+
   // "Still drafting" sits under each comment and shows once there is text
   function holdRow(w) {
     const fb = w.querySelector('textarea.fb'); if (!fb) return null;
@@ -866,9 +1204,10 @@
   const releaseEmpty = debounce(() => { released.forEach((id) => { const m = review.comments[id]; if (m && m.state === 'draft' && !commentOf(id)) post({ op: 'comment-state', slide: id, state: 'ready', text: '' }).then(setReview); }); released.clear(); }, 600);
   function counts() {
     const ids = slideIds();
-    const n = { all: ids.length, open: 0, replied: 0, questions: 0, changed: 0 }, done = []; let ask = 0;
+    const n = { all: ids.length, proposed: propList().length, open: 0, replied: 0, questions: 0, changed: 0 }, done = []; let ask = 0;
     ids.forEach((id) => { const i = info(id); n.open += +i.open; n.replied += +i.replied; n.questions += +i.question; n.changed += +i.changed; if (i.open && !i.question) ask++; if (i.st === 'done' && i.text) done.push(id); });
     $('#sb-chips').innerHTML = FILTERS.map(([f, l]) => (f === 'all' || n[f] || f === filter) ? `<button class="sb-chip${f === filter ? ' on' : ''}" data-f="${f}">${l} <b>${n[f]}</b></button>` : '').join('');
+    ask += propDecided().length;
     const askN = $('#sb-ask-n'); if (askN) { askN.textContent = ask ? String(ask) : ''; askN.classList.toggle('on', ask > 0); }
     const rb = $('#sb-resolve'); rb.hidden = done.length < 2; rb.textContent = `Looks good: all ${done.length} done`;
     rb.onclick = async () => { rb.disabled = true; for (const id of done) { const r = await post({ op: 'resolve', slide: id }); setComment(id, ''); review = r; } rb.disabled = false; refresh(); };
@@ -896,7 +1235,7 @@
   });
 
   // the deck re-renders on version switches and reorders: follow it
-  const afterDeck = debounce(() => { if (cur && !hasSlide(cur)) cur = null; refresh(); watch(); if (ui.view === 'focus' && !wantedSlide) go(cur || visible()[0] || slideIds()[0], true); }, 150);
+  const afterDeck = debounce(() => { if (cur && !hasSlide(cur)) cur = null; if (flipped && !document.querySelector('.sb-flipov')) flipped = null; refresh(); watch(); if (ui.view === 'focus' && !wantedSlide) go(cur || visible()[0] || slideIds()[0], true); }, 150);
   new MutationObserver(() => { if (!virtual()) afterDeck(); }).observe(deck, { childList: true });
   window.addEventListener('sb:order', () => { goRequest++; wantedSlide = null; deck.removeAttribute('aria-busy'); afterDeck(); });
   window.addEventListener('sb:window', () => { watch(); decorate(); });
@@ -914,8 +1253,15 @@
     if (isTimed() && tenState === 'asked' && (e.key === 'm' || e.key === 'M')) { tenVerdict(false); return; }
     if (isTimed() && tenState === 'asked' && (e.key === 'a' || e.key === 'A')) { tenStart(); return; }
     const k = e.key.toLowerCase();
-    if (e.key === '?') { help.classList.toggle('on'); return; }
-    if (e.key === 'Escape') { help.classList.remove('on'); more.classList.remove('open'); return; }
+    const pv = (ui.view === 'focus' || ui.view === 'scroll') && cur && origOf(cur);
+    if (pv && k === 'a') { const ps = optionsOf(origOf(cur)), sh = flipShows(cur), pick = ps.length > 1 ? (ps.includes(sh) ? sh : null) : cur;
+      if (!pick) { say('That’s the original on screen. Flip to the option you want (Space), then press A.'); return; }
+      const x = decisionOf(pick); if (!(x && x.d === 'accept')) decide(cur, 'accept', pick); return; }
+    if (pv && k === 'k') { if ((groupOf(origOf(cur)) || {}).d !== 'keep') decide(cur, 'keep'); return; }
+    if (k === 'u' && (ui.view === 'focus' || ui.view === 'scroll')) { undoDecision(); return; }
+    if (pv && e.key === ' ' && !ui.hide) { e.preventDefault(); flip(e.shiftKey ? 'prev' : 'next'); return; }
+    if (e.key === '?') { closeMenus(); help.classList.toggle('on'); return; }
+    if (e.key === 'Escape') { help.classList.remove('on'); roundsCard.classList.remove('on'); closeMenus(); return; }
     const views = { f: 'focus', s: 'scroll', g: 'sorter', c: 'checks' }, tests = { 1: 'five', 2: 'ten', 3: 'horizontal', 4: 'vertical', 5: 'guides' };
     if (views[k]) { setView(views[k]); return; }
     if (tests[k]) { openCheck(tests[k]); return; }
@@ -975,20 +1321,23 @@
   const idle = () => { const a = document.activeElement; const typing = a && (a.isContentEditable || /^(INPUT|TEXTAREA)$/.test(a.tagName)); return !typing && Date.now() - lastKey > 8000; };
   function reload() { try { SB.flush(); } catch (e) {} setTimeout(() => location.reload(), 450); }
   async function pulse() {
+    if (document.hidden) return;   // a tab in the background checks again when you come back to it
     let p; try { p = await (await fetch(api('pulse'), { cache: 'no-store' })).json(); } catch (e) { return; }
+    askButton(p); updateNote(p.update);
     if (!base) { base = p; return; }
     if (p.review !== base.review) { base.review = p.review; loadReview(); }
     if (p.file !== base.file || p.shell !== base.shell) { pending = true; banner.firstChild.textContent = 'This deck changed on disk.'; }
     const other = p.saved && p.saved.by && p.saved.by !== SB.tab && !(base.saved && base.saved.at === p.saved.at);
     base.saved = p.saved;
-    if (other && !SB.readonly && !pending) { pending = true; banner.firstChild.textContent = 'You saved changes in another tab.'; }   // reload to see them; nothing here is lost
+    if (other && !SB.readonly && !pending) { pending = true; banner.firstChild.textContent = p.saved.by === 'sb-import' ? 'Your agent brought in a reviewer’s comments and edits.' : 'You saved changes in another tab.'; }   // reload to see them; nothing here is lost
     if (pending) { if (idle()) reload(); else banner.classList.add('on'); }
   }
   setInterval(pulse, 2500);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) pulse(); });
 
   // ---------- agent-friendly handle (an agent can drive the page with this) ----------
   window.SlideBuilder = {
-    go, step, setView, say, current: () => cur, filter: (f) => { filter = f; refresh(); }, order: (ids) => saveOrder(ids), title, hidden: (id) => clientOnly.has(id),
+    go, step, setView, say, shareItem, current: () => cur, decide, undo: undoDecision, flip, proposals: () => Object.keys(lib()).filter(origOf).map((p) => ({ p, o: origOf(p), option: optionsOf(origOf(p)).indexOf(p) + 1, of: optionsOf(origOf(p)).length, decision: (decisionOf(p) || {}).d || null })), filter: (f) => { filter = f; refresh(); }, order: (ids) => saveOrder(ids), title, hidden: (id) => clientOnly.has(id),
     slides: () => slideIds().map((id, k) => Object.assign({ n: k + 1, id, title: title(id) }, (({ text, st, changed, hold }) => ({ comment: text, reply: st, changed, draft: hold }))(info(id)))),
     comment: (id, text) => text === undefined ? commentOf(id) : setComment(id, text),
   };
@@ -998,7 +1347,6 @@
   if (wantV && sideSelect && !(SB.hideVersions || []).includes(wantV) && [...sideSelect.options].some((o) => o.value === wantV) && sideSelect.value !== wantV) { sideSelect.value = wantV; if (window.DeckData) { await renderPitch(wantV); restore(); } else sideSelect.dispatchEvent(new Event('change', { bubbles: true })); }
   const want = decodeURIComponent((location.hash.match(/[#&]s=([^&]+)/) || [])[1] || '');
   cur = want && hasSlide(want) ? want : null;
-  hideBtn().addEventListener('click', () => setHide(!ui.hide));
   setHide(!!ui.hide);
   watch();
   loadReview().then(async () => { await setView(['scroll', 'sorter', 'checks'].includes(ui.view) ? ui.view : 'focus'); if (cur && window.DeckData && !DeckData.ready([cur])) await go(cur, true); requestAnimationFrame(() => { document.body.classList.add('sb-ready'); window.dispatchEvent(new Event('sb:ready')); }); });

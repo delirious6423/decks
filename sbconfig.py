@@ -1,4 +1,4 @@
-"""Where Decks Performance Fork keeps your decks, and which port it serves them on.
+"""Where Decks Performance keeps your decks, and which port it serves them on.
 
 Settings come from, in order (later wins):
 
@@ -8,9 +8,11 @@ Settings come from, in order (later wins):
 
     { "port": 8790, "host": "127.0.0.1", "decks_dir": "~/slide-decks", "check_updates": true }
 
-check_updates: once a day the server asks GitHub which release of Decks Performance Fork is newest (from delirious6423/decks), so the
-dashboard can say when there's a new version. Set it to false (or SB_CHECK_UPDATES=0) to
-turn that off.
+check_updates: every six hours the server asks GitHub which release of Decks Performance is newest (and
+again within minutes if it couldn't reach GitHub), so the dashboard and the deck's ? can say
+when there's a new version. Set it to false (or SB_CHECK_UPDATES=0) to
+turn that off. The Check for updates button (dashboard footer, and ? in a deck) still asks
+GitHub when you click it.
 
 The deck registry (decks.json) and settings.json live in the decks folder, next to
 the decks themselves, so the app folder never holds your work. Command line tools
