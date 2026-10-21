@@ -764,8 +764,9 @@ class Handler(BaseHTTPRequestHandler):
                         keys[k] = merged[k] = merge_saved(bases[k], v, keys[k])   # another tab saved this key since
                     else:
                         keys[k] = v
-            for k in body.get('remove') or []:
-                keys.pop(k, None)
+            for k in body.get('remove') or []:   # like set: only this deck's own keys
+                if isinstance(k, str) and any(k.startswith(p) for p in deck.get('prefixes', [])):
+                    keys.pop(k, None)
             st['savedAt'] = time.time()
             write_json(path, st)
             SAVES[deck['slug']] = {'at': st['savedAt'], 'by': str(body.get('tab') or '')[:40]}
